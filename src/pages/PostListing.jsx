@@ -543,7 +543,7 @@ Return ONLY the JSON.` }],
 
         {tab < TABS.length - 1 ? (
           <button
-            onClick={() => { if (canAdvance()) setTab(t => t + 1) else toast.error('Fill in the required fields first') }}
+            onClick={() => { if (canAdvance()) { setTab(t => t + 1) } else { toast.error('Fill in the required fields first') } }}
             style={{
               flex: 2, padding: '14px',
               background: canAdvance() ? 'var(--terracotta)' : 'var(--sand-dark)',
