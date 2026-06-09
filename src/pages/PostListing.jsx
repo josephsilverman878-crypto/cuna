@@ -527,7 +527,8 @@ Return ONLY the JSON.` }],
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: 'var(--white)', borderTop: '1px solid var(--sand-dark)',
-        padding: '12px 24px max(12px, env(safe-area-inset-bottom))',
+        padding: '12px 24px',
+bottom: '60px',
         display: 'flex', gap: '12px', zIndex: 99,
       }}>
         {tab > 0 && (
