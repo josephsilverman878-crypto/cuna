@@ -503,12 +503,12 @@ Return ONLY the JSON.` }],
         {/* Tab bar */}
         <div style={{ display: 'flex', gap: '6px' }}>
           {TABS.map((name, i) => (
-            <button key={name} onClick={() => i < tab && setTab(i)}
+            <button key={name} onClick={() => setTab(i)}
               style={{
                 flex: 1, padding: '8px 4px',
-                background: 'none', border: 'none', cursor: i < tab ? 'pointer' : 'default',
+                background: 'none', border: 'none', cursor: 'pointer',
                 fontSize: '12px', fontWeight: i === tab ? 700 : 400,
-                color: i === tab ? 'var(--terracotta)' : i < tab ? 'var(--charcoal)' : 'var(--warm-gray)',
+                color: i === tab ? 'var(--terracotta)' : 'var(--charcoal)',
                 borderBottom: `2px solid ${i === tab ? 'var(--terracotta)' : 'transparent'}`,
                 transition: 'all 0.15s',
               }}>
@@ -543,7 +543,7 @@ Return ONLY the JSON.` }],
 
         {tab < TABS.length - 1 ? (
           <button
-            onClick={() => { if (canAdvance()) { setTab(t => t + 1) } else { toast.error('Fill in the required fields first') } }}
+            onClick={() => setTab(t => t + 1)}
             style={{
               flex: 2, padding: '14px',
               background: canAdvance() ? 'var(--terracotta)' : 'var(--sand-dark)',
