@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import toast from 'react-hot-toast'
-import { Plus, Users, MessageCircle, Eye, EyeOff, BedDouble, Bath } from 'lucide-react'
+import { Plus, Users, MessageCircle, Eye, EyeOff, BedDouble, Bath, Pencil } from 'lucide-react'
 
 export default function PosterDashboard() {
   const { user, profile, signOut } = useAuth()
@@ -187,6 +187,13 @@ export default function PosterDashboard() {
                 >
                   {listing.status === 'active' ? <EyeOff size={14} /> : <Eye size={14} />}
                   {listing.status === 'active' ? 'Pause' : 'Activate'}
+                </button>
+                <button
+                  onClick={() => navigate(`/edit-listing/${listing.id}`)}
+                  className="btn-ghost"
+                  style={{ fontSize: '13px', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Pencil size={14} /> Edit
                 </button>
                 <div style={{ flex: 1 }} />
                 <div style={{ fontSize: '13px', color: 'var(--warm-gray)', display: 'flex', alignItems: 'center', gap: '4px' }}>
