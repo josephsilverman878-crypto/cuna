@@ -55,7 +55,10 @@ function AppRoutes() {
       <Route path="/dashboard" element={
         <ProtectedRoute role="poster"><PosterDashboard /></ProtectedRoute>
       } />
-      <Route path="/post-listing" element={
+      <Route path="/edit-listing/:id" element={
+  <ProtectedRoute role="poster"><EditListing /></ProtectedRoute>
+} />
+<Route path="/post-listing" element={
         <ProtectedRoute role="poster"><PostListing /></ProtectedRoute>
       } />
 
@@ -63,7 +66,6 @@ function AppRoutes() {
     </Routes>
   )
 }
-
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
