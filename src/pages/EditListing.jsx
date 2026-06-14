@@ -391,6 +391,25 @@ export default function EditListing() {
     </div>,
   ]
 
+  async function delistListing() {
+    const { error } = await supabase
+      .from('listings').update({ status: 'delisted' }).eq('id', id)
+    if (!error) {
+      toast.success('Listing delisted')
+      navigate('/dashboard')
+    }
+  }
+
+  async function deleteListing() {
+    if (!window.confirm('Delete this listing? This cannot be undone.')) return
+    const { error } = await supabase
+      .from('listings').delete().eq('id', id)
+    if (!error) {
+      toast.success('Listing deleted')
+      navigate('/dashboard')
+    }
+  }
+
   if (loading) return <div className="center" style={{ height: '100dvh' }}><div className="spinner" /></div>
 
   return (
