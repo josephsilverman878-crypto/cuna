@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import toast from 'react-hot-toast'
-import { Loader, ChevronLeft, X, Upload, ChevronRight } from 'lucide-react'
+import { Loader, ChevronLeft, X, Upload, ChevronRight, Trash2, ArchiveX } from 'lucide-react'
 
 const TABS = ['Details', 'Amenities', 'Photos', 'Review']
 
