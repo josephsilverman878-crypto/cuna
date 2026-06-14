@@ -78,6 +78,25 @@ export default function PosterDashboard() {
     }
   }
 
+  async function delistListing(listing) {
+    const { error } = await supabase
+      .from('listings').update({ status: 'delisted' }).eq('id', listing.id)
+    if (!error) {
+      setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'delisted' } : l))
+      toast.success('Listing delisted')
+    }
+  }
+
+  async function deleteListing(listing) {
+    if (!window.confirm(`Delete ${listing.address}? This cannot be undone.`)) return
+    const { error } = await supabase
+      .from('listings').delete().eq('id', listing.id)
+    if (!error) {
+      setListings(prev => prev.filter(l => l.id !== listing.id))
+      toast.success('Listing deleted')
+    }
+  }
+
   if (loading) return <div className="center" style={{ height: '100dvh' }}><div className="spinner" /></div>
 
   const totalInterested = Object.values(interested).reduce((sum, arr) => sum + arr.length, 0)
