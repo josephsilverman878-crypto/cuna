@@ -214,6 +214,22 @@ export default function PosterDashboard() {
                 >
                   <Pencil size={14} /> Edit
                 </button>
+                {listing.status !== 'delisted' && (
+                  <button
+                    onClick={() => delistListing(listing)}
+                    className="btn-ghost"
+                    style={{ fontSize: '13px', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--warm-gray)' }}
+                  >
+                    <ArchiveX size={14} /> Delist
+                  </button>
+                )}
+                <button
+                  onClick={() => deleteListing(listing)}
+                  className="btn-ghost"
+                  style={{ fontSize: '13px', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '6px', color: '#e53e3e' }}
+                >
+                  <Trash2 size={14} /> Delete
+                </button>
                 <div style={{ flex: 1 }} />
                 <div style={{ fontSize: '13px', color: 'var(--warm-gray)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <Users size={14} />
