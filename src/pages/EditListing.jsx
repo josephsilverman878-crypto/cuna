@@ -246,6 +246,35 @@ export default function EditListing() {
             style={{ ...inputStyle, resize: 'vertical' }} />
         </div>
       </div>
+
+      <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+        <button
+          type="button"
+          onClick={delistListing}
+          style={{
+            flex: 1, padding: '12px', background: 'rgba(155,142,136,0.15)',
+            border: 'none', borderRadius: '12px',
+            fontWeight: 600, fontSize: '13px', cursor: 'pointer',
+            color: 'var(--warm-gray)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', gap: '6px',
+          }}
+        >
+          <ArchiveX size={14} /> Delist
+        </button>
+        <button
+          type="button"
+          onClick={deleteListing}
+          style={{
+            flex: 1, padding: '12px', background: 'rgba(229,62,62,0.15)',
+            border: 'none', borderRadius: '12px',
+            fontWeight: 600, fontSize: '13px', cursor: 'pointer',
+            color: '#e53e3e', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', gap: '6px',
+          }}
+        >
+          <Trash2 size={14} /> Delete
+        </button>
+      </div>
     </div>,
 
     // ── TAB 1: AMENITIES ──
