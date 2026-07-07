@@ -94,9 +94,6 @@ export default function PosterDashboard() {
       renter_id: renterId,
       poster_id: user.id,
       listing_id: listingId,
-      renter_liked: true,
-      poster_liked: true,
-      status: 'matched',
       matched_at: new Date().toISOString(),
     })
     if (!error) {
