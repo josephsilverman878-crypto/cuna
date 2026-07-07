@@ -67,14 +67,20 @@ export default function PosterDashboard() {
   }
 
   async function likeRenter(renterId, listingId) {
-    const { error } = await supabase.from('poster_likes').insert({
-      poster_id: user.id,
+    const { error } = await supabase.from('matches').insert({
       renter_id: renterId,
+      poster_id: user.id,
       listing_id: listingId,
+      renter_liked: true,
+      poster_liked: true,
+      status: 'matched',
+      matched_at: new Date().toISOString(),
     })
     if (!error) {
-      toast.success('Liked! If they already swiped right, you\'re matched.')
+      toast.success('Match created! Message them now.')
       fetchData()
+    } else {
+      toast.error('Match already exists')
     }
   }
 
