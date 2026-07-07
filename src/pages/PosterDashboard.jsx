@@ -28,14 +28,37 @@ export default function PosterDashboard() {
 
     if (listingData?.length > 0) {
       const ids = listingData.map(l => l.id)
-      const { data: swipeData } = await supabase
+      const { data: swipeData, error: swipeError } = await supabase
         .from('swipes')
-        .select('*, profiles!swipes_renter_id_fkey(id, name, email, phone), renter_profiles!inner(*)')
+        .select('*')
         .in('listing_id', ids)
         .eq('direction', 'right')
 
+      if (swipeError) console.error('Swipe fetch error:', swipeError)
+
+      let enriched = []
+      if (swipeData?.length > 0) {
+        const renterIds = [...new Set(swipeData.map(s => s.renter_id))]
+
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('id, name, email, phone')
+          .in('id', renterIds)
+
+        const { data: renterProfileData } = await supabase
+          .from('renter_profiles')
+          .select('*')
+          .in('id', renterIds)
+
+        enriched = swipeData.map(s => ({
+          ...s,
+          profiles: profileData?.find(p => p.id === s.renter_id) || null,
+          renter_profiles: renterProfileData?.find(rp => rp.id === s.renter_id) || null,
+        }))
+      }
+
       const grouped = {}
-      swipeData?.forEach(s => {
+      enriched.forEach(s => {
         if (!grouped[s.listing_id]) grouped[s.listing_id] = []
         grouped[s.listing_id].push(s)
       })
