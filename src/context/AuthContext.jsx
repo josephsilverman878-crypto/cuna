@@ -47,7 +47,10 @@ export function AuthProvider({ children }) {
       })
       if (profileError) throw profileError
       if (role === 'renter') {
-        await supabase.from('renter_profiles').insert({ user_id: data.user.id })
+        const { error: renterError } = await supabase
+          .from('renter_profiles')
+          .insert({ id: data.user.id })
+        if (renterError) console.error('Renter profile creation failed:', renterError)
       }
     }
     return data
