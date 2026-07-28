@@ -1,0 +1,179 @@
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
+import BottomNav from '../components/BottomNav'
+import toast from 'react-hot-toast'
+import { Heart, X, MapPin, BedDouble, Bath, RotateCcw, ArrowRightLeft } from 'lucide-react'
+
+export default function SwipeHistory() {
+  const { user } = useAuth()
+  const [tab, setTab] = useState('right')
+  const [swipes, setSwipes] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => { fetchSwipes() }, [])
+
+  async function fetchSwipes() {
+    setLoading(true)
+    const { data: swipeData, error } = await supabase
+      .from('swipes')
+      .select('*')
+      .eq('renter_id', user.id)
+      .order('swiped_at', { ascending: false })
+
+    if (error) { toast.error('Could not load history'); setLoading(false); return }
+
+    let enriched = []
+    if (swipeData?.length > 0) {
+      const listingIds = [...new Set(swipeData.map(s => s.listing_id))]
+      const { data: listingData } = await supabase
+        .from('listings')
+        .select('*')
+        .in('id', listingIds)
+
+      enriched = swipeData
+        .map(s => ({ ...s, listing: listingData?.find(l => l.id === s.listing_id) || null }))
+        .filter(s => s.listing)
+    }
+
+    setSwipes(enriched)
+    setLoading(false)
+  }
+
+  async function moveSwipe(swipe, newDirection) {
+    const { error } = await supabase
+      .from('swipes')
+      .update({ direction: newDirection })
+      .eq('id', swipe.id)
+    if (!error) {
+      setSwipes(prev => prev.map(s => s.id === swipe.id ? { ...s, direction: newDirection } : s))
+      toast.success(newDirection === 'right' ? 'Moved to Liked' : 'Moved to Passed')
+    } else {
+      toast.error('Could not move listing')
+    }
+  }
+
+  async function removeSwipe(swipe) {
+    const { error } = await supabase
+      .from('swipes')
+      .delete()
+      .eq('id', swipe.id)
+    if (!error) {
+      setSwipes(prev => prev.filter(s => s.id !== swipe.id))
+      toast.success('Removed — it will show up in Discover again')
+    } else {
+      toast.error('Could not remove')
+    }
+  }
+
+  const filtered = swipes.filter(s => s.direction === tab)
+  const likedCount = swipes.filter(s => s.direction === 'right').length
+  const passedCount = swipes.filter(s => s.direction === 'left').length
+
+  if (loading) return <div className="center" style={{ height: '100dvh' }}><div className="spinner" /></div>
+
+  return (
+    <div style={{ minHeight: '100dvh', background: 'var(--sand)', paddingBottom: '80px' }}>
+      <div style={{
+        background: 'var(--white)', borderBottom: '1px solid var(--sand-dark)',
+        padding: '20px 24px',
+      }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 600, color: 'var(--terracotta)' }}>
+          History
+        </div>
+        <div style={{ fontSize: '13px', color: 'var(--warm-gray)', marginTop: '2px' }}>
+          Listings you've swiped on
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', padding: '20px 24px 0', gap: '8px' }}>
+        {[
+          { id: 'right', label: `❤️ Liked (${likedCount})` },
+          { id: 'left', label: `✕ Passed (${passedCount})` },
+        ].map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            style={{
+              padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 500,
+              background: tab === t.id ? 'var(--terracotta)' : 'var(--white)',
+              color: tab === t.id ? 'white' : 'var(--warm-gray)',
+              border: 'none', cursor: 'pointer', transition: 'all 0.2s',
+              boxShadow: 'var(--shadow-sm)',
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--warm-gray)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>
+              {tab === 'right' ? '❤️' : '✕'}
+            </div>
+            <p>{tab === 'right' ? 'No liked listings yet.' : 'No passed listings yet.'}</p>
+          </div>
+        ) : filtered.map(swipe => {
+          const listing = swipe.listing
+          const cover = listing.photos?.length > 0
+            ? listing.photos[0]
+            : 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80'
+          return (
+            <div key={swipe.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ display: 'flex' }}>
+                <img src={cover} alt="" style={{ width: '110px', height: '110px', objectFit: 'cover', flexShrink: 0 }} />
+                <div style={{ padding: '12px 16px', flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: '15px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {listing.address}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px', color: 'var(--warm-gray)', fontSize: '12px' }}>
+                    <MapPin size={11} />
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {listing.neighborhood ? `${listing.neighborhood}, ` : ''}{listing.city}
+                    </span>
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', color: 'var(--terracotta)', fontWeight: 600, marginTop: '4px' }}>
+                    ${listing.price?.toLocaleString()}/mo
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '4px', fontSize: '12px', color: 'var(--charcoal-soft)' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}><BedDouble size={12} /> {listing.bedrooms}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}><Bath size={12} /> {listing.bathrooms}</span>
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', borderTop: '1px solid var(--sand-dark)' }}>
+                <button
+                  onClick={() => moveSwipe(swipe, tab === 'right' ? 'left' : 'right')}
+                  style={{
+                    flex: 1, padding: '10px', background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: '12px', fontWeight: 600, color: 'var(--warm-gray)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                  }}
+                >
+                  <ArrowRightLeft size={13} />
+                  {tab === 'right' ? 'Move to Passed' : 'Move to Liked'}
+                </button>
+                <div style={{ width: '1px', background: 'var(--sand-dark)' }} />
+                <button
+                  onClick={() => removeSwipe(swipe)}
+                  style={{
+                    flex: 1, padding: '10px', background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: '12px', fontWeight: 600, color: 'var(--terracotta)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                  }}
+                >
+                  <RotateCcw size={13} />
+                  Remove & re-discover
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <BottomNav />
+    </div>
+  )
+}
