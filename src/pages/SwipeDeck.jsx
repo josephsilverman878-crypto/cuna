@@ -138,9 +138,13 @@ export default function SwipeDeck() {
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏠</div>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', marginBottom: '12px' }}>
-              You've seen everything
+              {filtersActive ? 'No listings match your filters' : "You've seen everything"}
             </h2>
-            <p style={{ color: 'var(--warm-gray)', marginBottom: '24px' }}>Check back soon for new listings</p>
+            <p style={{ color: 'var(--warm-gray)', marginBottom: '24px' }}>
+              {filtersActive
+                ? 'Try widening your search preferences in Profile'
+                : 'Check back soon for new listings'}
+            </p>
             <button className="btn-primary" onClick={fetchListings}>Refresh</button>
           </div>
         ) : (
