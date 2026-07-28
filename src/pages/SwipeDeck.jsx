@@ -20,12 +20,19 @@ export default function SwipeDeck() {
 
   async function fetchListings() {
     setLoading(true)
+
     const { data: swipedIds } = await supabase
       .from('swipes')
       .select('listing_id')
       .eq('renter_id', user.id)
 
     const excludeIds = swipedIds?.map(s => s.listing_id) || []
+
+    const { data: prefs } = await supabase
+      .from('renter_profiles')
+      .select('budget_min, budget_max, bedrooms, sqft_min, neighborhoods')
+      .eq('id', user.id)
+      .maybeSingle()
 
     let query = supabase
       .from('listings')
@@ -36,9 +43,34 @@ export default function SwipeDeck() {
       query = query.not('id', 'in', `(${excludeIds.join(',')})`)
     }
 
-    const { data, error } = await query.limit(20)
-    if (error) toast.error('Could not load listings')
-    else setListings(data || [])
+    if (prefs?.budget_min > 0) query = query.gte('price', prefs.budget_min)
+    if (prefs?.budget_max > 0) query = query.lte('price', prefs.budget_max)
+    if (prefs?.bedrooms > 0) query = query.gte('bedrooms', prefs.bedrooms)
+
+    const { data, error } = await query.limit(50)
+    if (error) { toast.error('Could not load listings'); setLoading(false); return }
+
+    let results = data || []
+
+    if (prefs?.sqft_min > 0) {
+      results = results.filter(l => !l.sqft || l.sqft >= prefs.sqft_min)
+    }
+
+    const hoods = (prefs?.neighborhoods || [])
+      .map(n => n.trim().toLowerCase()).filter(Boolean)
+    if (hoods.length > 0) {
+      results = results.filter(l =>
+        l.neighborhood && hoods.includes(l.neighborhood.trim().toLowerCase())
+      )
+    }
+
+    setFiltersActive(
+      prefs?.budget_min > 0 || prefs?.budget_max > 0 ||
+      prefs?.bedrooms > 0 || prefs?.sqft_min > 0 || hoods.length > 0
+    )
+
+    setListings(results)
+    setCurrentIndex(0)
     setLoading(false)
   }
 
