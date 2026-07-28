@@ -73,7 +73,8 @@ export default function Profile() {
       if (error) throw error
       toast.success('Profile saved!')
     } catch (err) {
-      toast.error('Failed to save')
+      console.error('Profile save error:', err)
+      toast.error(err.message || 'Failed to save')
     } finally {
       setSaving(false)
     }
