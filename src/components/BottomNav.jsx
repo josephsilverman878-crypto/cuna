@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Home, Heart, MessageCircle, User } from 'lucide-react'
+import { Home, Heart, MessageCircle, User, History } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function BottomNav() {
@@ -10,6 +10,7 @@ export default function BottomNav() {
   const renterTabs = [
     { path: '/swipe', icon: Home, label: 'Discover' },
     { path: '/matches', icon: Heart, label: 'Matches' },
+    { path: '/history', icon: History, label: 'History' },
     { path: '/profile', icon: User, label: 'Profile' },
   ]
 
