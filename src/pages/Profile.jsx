@@ -22,8 +22,8 @@ export default function Profile() {
     const { data } = await supabase
       .from('renter_profiles')
       .select('*')
-      .eq('user_id', user.id)
-      .single()
+      .eq('id', user.id)
+      .maybeSingle()
     if (data) {
       setRenterProfile(data)
       setForm({
