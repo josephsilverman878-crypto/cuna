@@ -9,6 +9,7 @@ import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import SwipeDeck from './pages/SwipeDeck'
+import SwipeHistory from './pages/SwipeHistory'
 import PostListing from './pages/PostListing'
 import EditListing from './pages/EditListing'
 import Matches from './pages/Matches'
@@ -42,7 +43,10 @@ function AppRoutes() {
       <Route path="/swipe" element={
         <ProtectedRoute role="renter"><SwipeDeck /></ProtectedRoute>
       } />
-      <Route path="/matches" element={
+      <Route path="/history" element={
+  <ProtectedRoute role="renter"><SwipeHistory /></ProtectedRoute>
+} />
+<Route path="/matches" element={
         <ProtectedRoute role="renter"><Matches /></ProtectedRoute>
       } />
       <Route path="/messages/:matchId" element={
