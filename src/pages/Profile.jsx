@@ -54,7 +54,7 @@ export default function Profile() {
         : []
 
       const { error } = await supabase.from('renter_profiles').upsert({
-        user_id: user.id,
+        id: user.id,
         move_in_date: form.move_in_date || null,
         budget_min: form.budget_min ? parseInt(form.budget_min) : null,
         budget_max: form.budget_max ? parseInt(form.budget_max) : null,
