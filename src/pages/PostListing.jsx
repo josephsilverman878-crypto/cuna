@@ -6,7 +6,7 @@ import BottomNav from '../components/BottomNav'
 import toast from 'react-hot-toast'
 import { Link2, Loader, ChevronLeft, ImagePlus, X, Upload, ChevronRight } from 'lucide-react'
 
-const TABS = ['Details', 'Amenities', 'Photos', 'Review']
+const TABS = ['Details', 'Costs & Fees', 'Amenities', 'Photos', 'Review']
 
 const EMPTY_FORM = {
   source_url: '', source_platform: 'manual',
