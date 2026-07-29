@@ -142,7 +142,7 @@ export default function Profile() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
                     <label className="label">Budget min ($)</label>
-                    <input type="number" placeholder="2000" value={form.budget_min}
+                    <input type="number" min="0" placeholder="2000" value={form.budget_min}
                       onChange={e => update('budget_min', e.target.value)} style={{ marginTop: '6px' }} />
                   </div>
                   <div>
