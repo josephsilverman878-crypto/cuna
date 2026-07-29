@@ -66,6 +66,7 @@ export default function Matches() {
           const listing = match.listings
           const poster = match.profiles
           const photo = listing?.photos?.[0] || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&q=80'
+          const hasUnread = unreadMatchIds.has(match.id)
 
           return (
             <div
