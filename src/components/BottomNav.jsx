@@ -11,26 +11,53 @@ export default function BottomNav() {
   const navigate = useNavigate()
   const location = useLocation()
   const { profile, user } = useAuth()
-  const [unreadMatches, setUnreadMatches] = useState(0)
+  const [badgeCount, setBadgeCount] = useState(0)
 
   useEffect(() => {
     if (profile?.role !== 'renter' || !user) return
+
     if (location.pathname === '/matches') markMatchesSeen()
-    else fetchUnreadMatches()
+    else fetchBadgeCount()
+
+    const interval = setInterval(() => {
+      if (location.pathname !== '/matches') fetchBadgeCount()
+    }, 30000)
+
+    return () => clearInterval(interval)
   }, [profile, user, location.pathname])
 
-  async function fetchUnreadMatches() {
-    const { count, error } = await supabase
+  async function fetchBadgeCount() {
+    const { data: myMatches, error } = await supabase
       .from('matches')
-      .select('id', { count: 'exact', head: true })
+      .select('id, seen_by_renter')
       .eq('renter_id', user.id)
-      .eq('seen_by_renter', false)
-    if (error) { console.error('Unread match count failed:', error); return }
-    const n = count || 0
-    setUnreadMatches(n)
-    if (n > 0 && !matchToastShown) {
+
+    if (error) { console.error('Badge count failed:', error); return }
+    if (!myMatches?.length) { setBadgeCount(0); return }
+
+    const matchIds = myMatches.map(m => m.id)
+
+    const { data: unreadMsgs, error: msgError } = await supabase
+      .from('messages')
+      .select('match_id')
+      .in('match_id', matchIds)
+      .neq('sender_id', user.id)
+      .or('read.is.null,read.eq.false')
+
+    if (msgError) console.error('Unread message check failed:', msgError)
+
+    const needsAttention = new Set((unreadMsgs || []).map(m => m.match_id))
+    const newMatches = myMatches.filter(m => !m.seen_by_renter)
+    newMatches.forEach(m => needsAttention.add(m.id))
+
+    setBadgeCount(needsAttention.size)
+
+    if (newMatches.length > 0 && !matchToastShown) {
       matchToastShown = true
-      toast.success(`🎉 You have ${n} new match${n > 1 ? 'es' : ''}!`, { duration: 4000 })
+      toast.success(
+        `🎉 You have ${newMatches.length} new match${newMatches.length > 1 ? 'es' : ''}!`,
+        { duration: 4000 }
+      )
     }
   }
 
@@ -41,12 +68,12 @@ export default function BottomNav() {
       .eq('renter_id', user.id)
       .eq('seen_by_renter', false)
     if (error) console.error('Mark matches seen failed:', error)
-    setUnreadMatches(0)
+    fetchBadgeCount()
   }
 
   const renterTabs = [
     { path: '/swipe', icon: Home, label: 'Discover' },
-    { path: '/matches', icon: Heart, label: 'Matches', badge: unreadMatches },
+    { path: '/matches', icon: Heart, label: 'Matches', badge: badgeCount },
     { path: '/history', icon: History, label: 'History' },
     { path: '/profile', icon: User, label: 'Profile' },
   ]
