@@ -147,7 +147,7 @@ export default function Profile() {
                   </div>
                   <div>
                     <label className="label">Budget max ($)</label>
-                    <input type="number" placeholder="4000" value={form.budget_max}
+                    <input type="number" min="0" placeholder="4000" value={form.budget_max}
                       onChange={e => update('budget_max', e.target.value)} style={{ marginTop: '6px' }} />
                   </div>
                 </div>
