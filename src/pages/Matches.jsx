@@ -83,7 +83,15 @@ export default function Matches() {
                 <div style={{ padding: '16px', flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '2px' }}>{listing?.address}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                        {hasUnread && (
+                          <span style={{
+                            width: '8px', height: '8px', borderRadius: '50%',
+                            background: 'var(--terracotta)', flexShrink: 0,
+                          }} />
+                        )}
+                        <div style={{ fontWeight: hasUnread ? 700 : 600, fontSize: '15px' }}>{listing?.address}</div>
+                      </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--warm-gray)', fontSize: '12px' }}>
                         <MapPin size={11} />
                         {listing?.neighborhood ? `${listing.neighborhood}, ` : ''}{listing?.city}
