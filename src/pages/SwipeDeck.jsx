@@ -110,6 +110,16 @@ export default function SwipeDeck() {
     ? listing.photos
     : ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80']
 
+  function totalDueAtSigning(l) {
+    if (!l) return 0
+    const rent = l.price || 0
+    const deposit = l.security_deposit || 0
+    const appFee = l.application_fee || 0
+    const moveIn = l.move_in_fee || 0
+    const other = (l.other_fees || []).reduce((sum, f) => sum + (parseInt(f.amount) || 0), 0)
+    return rent + deposit + appFee + moveIn + other
+  }
+
   if (loading) return (
     <div className="center" style={{ height: '100dvh' }}>
       <div className="spinner" />
