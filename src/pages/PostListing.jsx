@@ -13,6 +13,8 @@ const EMPTY_FORM = {
   address: '', city: '', state: 'NY', neighborhood: '', zip_code: '',
   price: '', bedrooms: '', bathrooms: '', sqft: '',
   description: '', available_date: '',
+  // costs & fees
+  security_deposit: '', application_fee: '', move_in_fee: '', other_fees: [],
   // amenities as booleans
   doorman: false, elevator: false, gym: false, laundry: false,
   dishwasher: false, hardwood: false, pets: false, roof_deck: false,
