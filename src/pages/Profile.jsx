@@ -160,7 +160,7 @@ export default function Profile() {
                   </div>
                   <div>
                     <label className="label">Min sq ft</label>
-                    <input type="number" placeholder="600" value={form.sqft_min}
+                    <input type="number" min="0" placeholder="600" value={form.sqft_min}
                       onChange={e => update('sqft_min', e.target.value)} style={{ marginTop: '6px' }} />
                   </div>
                 </div>
