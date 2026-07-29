@@ -25,6 +25,7 @@ export default function EditListing() {
     address: '', city: '', state: 'NY', neighborhood: '', zip_code: '',
     price: '', bedrooms: '', bathrooms: '', sqft: '',
     description: '', available_date: '',
+    security_deposit: '', application_fee: '', move_in_fee: '', other_fees: [],
     doorman: false, elevator: false, gym: false, laundry: false,
     dishwasher: false, hardwood: false, pets: false, roof_deck: false,
     central_air: false, washer_dryer: false, parking: false, storage: false,
