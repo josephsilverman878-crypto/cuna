@@ -26,6 +26,19 @@ export default function Matches() {
       .order('matched_at', { ascending: false })
 
     if (!error) setMatches(data || [])
+
+    if (data?.length > 0) {
+      const { data: unreadMsgs, error: msgError } = await supabase
+        .from('messages')
+        .select('match_id')
+        .in('match_id', data.map(m => m.id))
+        .neq('sender_id', user.id)
+        .or('read.is.null,read.eq.false')
+
+      if (msgError) console.error('Unread check failed:', msgError)
+      else setUnreadMatchIds(new Set((unreadMsgs || []).map(m => m.match_id)))
+    }
+
     setLoading(false)
   }
 
