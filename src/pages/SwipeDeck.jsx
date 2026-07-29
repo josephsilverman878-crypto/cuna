@@ -323,14 +323,14 @@ export default function SwipeDeck() {
           onClick={() => setShowDetail(false)}
           style={{
             position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-            zIndex: 200,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 200, padding: '24px',
           }}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: 'var(--white)', borderRadius: '24px 24px 0 0',
+              background: 'var(--white)', borderRadius: '24px',
               width: '100%', maxWidth: '480px', maxHeight: '85dvh', overflowY: 'auto',
               padding: '24px',
             }}
