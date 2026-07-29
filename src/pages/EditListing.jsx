@@ -6,7 +6,7 @@ import BottomNav from '../components/BottomNav'
 import toast from 'react-hot-toast'
 import { Loader, ChevronLeft, X, Upload, ChevronRight, Trash2, ArchiveX } from 'lucide-react'
 
-const TABS = ['Details', 'Amenities', 'Photos', 'Review']
+const TABS = ['Details', 'Costs & Fees', 'Amenities', 'Photos', 'Review']
 
 export default function EditListing() {
   const { user } = useAuth()
