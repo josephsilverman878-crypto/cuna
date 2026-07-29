@@ -30,9 +30,13 @@ function ProtectedRoute({ children, role }) {
 
 function AppRoutes() {
   const { user, profile, loading } = useAuth()
+  const location = useLocation()
 
   if (loading) return <div className="center" style={{ height: '100dvh' }}><div className="spinner" /></div>
 
+  if (user && !profile && location.pathname !== '/reset-password') {
+    return <CompleteProfile />
+  }
   return (
     <Routes>
       <Route path="/" element={
