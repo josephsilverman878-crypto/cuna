@@ -7,6 +7,8 @@ import './index.css'
 
 import Landing from './pages/Landing'
 import Login from './pages/Login'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import Register from './pages/Register'
 import SwipeDeck from './pages/SwipeDeck'
 import SwipeHistory from './pages/SwipeHistory'
