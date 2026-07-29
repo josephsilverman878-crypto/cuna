@@ -17,7 +17,7 @@ export default function SwipeDeck() {
   const cardRef = useRef(null)
 
   useEffect(() => { fetchListings() }, [])
-  useEffect(() => { setPhotoIndex(0) }, [currentIndex])
+  useEffect(() => { setPhotoIndex(0); setShowDetail(false) }, [currentIndex])
 
   async function fetchListings() {
     setLoading(true)
