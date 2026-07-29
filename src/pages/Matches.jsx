@@ -10,6 +10,7 @@ export default function Matches() {
   const navigate = useNavigate()
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
+  const [unreadMatchIds, setUnreadMatchIds] = useState(new Set())
 
   useEffect(() => { fetchMatches() }, [])
 
