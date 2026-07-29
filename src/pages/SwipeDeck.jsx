@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import toast from 'react-hot-toast'
-import { X, Heart, MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { X, Heart, MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Info } from 'lucide-react'
 
 export default function SwipeDeck() {
   const { user } = useAuth()
