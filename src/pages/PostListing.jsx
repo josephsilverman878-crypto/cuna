@@ -197,6 +197,12 @@ Return ONLY the JSON.` }],
           bathrooms: parseFloat(form.bathrooms),
           sqft: form.sqft ? parseInt(form.sqft) : null,
           description: form.description || null,
+          security_deposit: form.security_deposit ? parseInt(form.security_deposit) : null,
+          application_fee: form.application_fee ? parseInt(form.application_fee) : null,
+          move_in_fee: form.move_in_fee ? parseInt(form.move_in_fee) : null,
+          other_fees: form.other_fees
+            .filter(f => f.description && f.amount)
+            .map(f => ({ description: f.description, amount: parseInt(f.amount) })),
           amenities: amenitiesArray,
           available_date: form.available_date || null,
           status: 'active',
