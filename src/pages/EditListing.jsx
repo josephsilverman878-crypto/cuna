@@ -519,6 +519,13 @@ export default function EditListing() {
             ['Bathrooms', form.bathrooms || '—'],
             ['Sqft', form.sqft || '—'],
             ['Available', form.available_date || 'Immediately'],
+            ['Security deposit', form.security_deposit ? `$${parseInt(form.security_deposit).toLocaleString()}` : '—'],
+            ['Application fee', form.application_fee ? `$${parseInt(form.application_fee).toLocaleString()}` : '—'],
+            ['Move-in fee', form.move_in_fee ? `$${parseInt(form.move_in_fee).toLocaleString()}` : '—'],
+            ['Other fees', form.other_fees.length
+              ? form.other_fees.map(f => `${f.description}: $${parseInt(f.amount || 0).toLocaleString()}`).join(', ')
+              : 'None'],
+            ['Total at signing', `$${totalDueAtSigning().toLocaleString()}`],
             ['Photos', `${totalPhotos} photo${totalPhotos !== 1 ? 's' : ''}`],
             ['Amenities', Object.entries({
               doorman: 'Doorman', elevator: 'Elevator', gym: 'Gym',
