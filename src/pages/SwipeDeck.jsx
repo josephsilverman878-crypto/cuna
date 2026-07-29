@@ -245,6 +245,17 @@ export default function SwipeDeck() {
               }}>
                 ${listing.price?.toLocaleString()}/mo
               </div>
+              <button
+                onClick={() => setShowDetail(true)}
+                style={{
+                  position: 'absolute', top: '16px', left: '16px',
+                  background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%',
+                  width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', color: 'var(--charcoal)',
+                }}
+              >
+                <Info size={18} />
+              </button>
             </div>
 
             <div style={{ padding: '20px' }}>
