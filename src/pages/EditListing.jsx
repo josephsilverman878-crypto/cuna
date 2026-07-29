@@ -76,6 +76,32 @@ export default function EditListing() {
   function update(field, value) { setForm(f => ({ ...f, [field]: value })) }
   function toggleAmenity(key) { setForm(f => ({ ...f, [key]: !f[key] })) }
 
+  // ── OTHER FEES (dynamic list) ─────────────────────────────────
+  function addOtherFee() {
+    setForm(f => ({ ...f, other_fees: [...f.other_fees, { description: '', amount: '' }] }))
+  }
+
+  function updateOtherFee(i, field, value) {
+    setForm(f => {
+      const next = [...f.other_fees]
+      next[i] = { ...next[i], [field]: value }
+      return { ...f, other_fees: next }
+    })
+  }
+
+  function removeOtherFee(i) {
+    setForm(f => ({ ...f, other_fees: f.other_fees.filter((_, idx) => idx !== i) }))
+  }
+
+  function totalDueAtSigning() {
+    const rent = parseInt(form.price) || 0
+    const deposit = parseInt(form.security_deposit) || 0
+    const appFee = parseInt(form.application_fee) || 0
+    const moveIn = parseInt(form.move_in_fee) || 0
+    const other = form.other_fees.reduce((sum, f) => sum + (parseInt(f.amount) || 0), 0)
+    return rent + deposit + appFee + moveIn + other
+  }
+
   // ── EXISTING PHOTO REMOVAL ──
   function removeExistingPhoto(i) {
     setExistingPhotos(prev => prev.filter((_, idx) => idx !== i))
