@@ -361,7 +361,87 @@ Return ONLY the JSON.` }],
       </div>
     </div>,
 
-    // ── TAB 1: AMENITIES ──
+    // ── TAB 1: COSTS & FEES ──
+    <div key="fees" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className="card" style={{
+        background: 'rgba(180,74,54,0.06)', border: '1px solid rgba(180,74,54,0.2)',
+      }}>
+        <p style={{ fontSize: '13px', lineHeight: '1.6', margin: 0 }}>
+          <strong>FARE Act compliance:</strong> NYC listings must disclose all fees a renter
+          will pay. Since you're posting as the landlord's agent, no tenant-paid broker fee
+          may be charged. Enter only fees the renter actually owes.
+        </p>
+      </div>
+
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', margin: 0 }}>Standard fees</h3>
+
+        <div style={rowStyle}>
+          <div>
+            <label className="label">Security deposit ($)</label>
+            <input type="number" min="0" placeholder="0" value={form.security_deposit}
+              onChange={e => update('security_deposit', e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <label className="label">Application fee ($)</label>
+            <input type="number" min="0" placeholder="0" value={form.application_fee}
+              onChange={e => update('application_fee', e.target.value)} style={inputStyle} />
+          </div>
+        </div>
+
+        <div>
+          <label className="label">Move-in fee ($)</label>
+          <input type="number" min="0" placeholder="0" value={form.move_in_fee}
+            onChange={e => update('move_in_fee', e.target.value)} style={inputStyle} />
+        </div>
+      </div>
+
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', margin: 0 }}>Other fees</h3>
+          <button type="button" onClick={addOtherFee} className="btn-primary"
+            style={{ padding: '8px 14px', fontSize: '13px' }}>
+            + Add fee
+          </button>
+        </div>
+
+        {form.other_fees.length === 0 && (
+          <p style={{ fontSize: '13px', color: 'var(--warm-gray)', margin: 0 }}>
+            No other fees added.
+          </p>
+        )}
+
+        {form.other_fees.map((fee, i) => (
+          <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+            <div style={{ flex: 2 }}>
+              <label className="label">Description</label>
+              <input placeholder="e.g. Amenity fee" value={fee.description}
+                onChange={e => updateOtherFee(i, 'description', e.target.value)} style={inputStyle} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label className="label">Amount ($)</label>
+              <input type="number" min="0" placeholder="0" value={fee.amount}
+                onChange={e => updateOtherFee(i, 'amount', e.target.value)} style={inputStyle} />
+            </div>
+            <button type="button" onClick={() => removeOtherFee(i)} style={{
+              background: 'none', border: 'none', cursor: 'pointer', color: 'var(--warm-gray)',
+              padding: '12px 4px', display: 'flex',
+            }}>
+              <X size={18} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontWeight: 600, fontSize: '15px' }}>Total due at signing</span>
+        <span style={{ fontWeight: 700, fontSize: '20px', color: 'var(--terracotta)' }}>
+          ${totalDueAtSigning().toLocaleString()}
+        </span>
+      </div>
+    </div>,
+
+    // ── TAB 2: AMENITIES ──
     <div key="amenities" className="card">
       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', marginBottom: '6px' }}>Building & unit amenities</h3>
       <p style={{ fontSize: '13px', color: 'var(--warm-gray)', marginBottom: '20px' }}>Select everything that applies.</p>
