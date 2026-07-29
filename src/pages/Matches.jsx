@@ -112,7 +112,7 @@ export default function Matches() {
                       padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 500,
                     }}>
                       <MessageCircle size={13} />
-                      Message
+                      {hasUnread ? 'New message' : 'Message'}
                     </div>
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--warm-gray)', marginTop: '6px' }}>
