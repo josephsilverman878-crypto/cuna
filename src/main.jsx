@@ -18,6 +18,7 @@ import Matches from './pages/Matches'
 import Messages from './pages/Messages'
 import Profile from './pages/Profile'
 import PosterDashboard from './pages/PosterDashboard'
+import CompleteProfile from './pages/CompleteProfile'
 
 function ProtectedRoute({ children, role }) {
   const { user, profile, loading } = useAuth()
