@@ -36,7 +36,8 @@ function AppRoutes() {
 
   if (loading) return <div className="center" style={{ height: '100dvh' }}><div className="spinner" /></div>
 
-  if (user && !profile && location.pathname !== '/reset-password') {
+  const publicPaths = ['/reset-password', '/terms', '/privacy']
+  if (user && !profile && !publicPaths.includes(location.pathname)) {
     return <CompleteProfile />
   }
   return (
