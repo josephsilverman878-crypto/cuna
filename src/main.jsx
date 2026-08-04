@@ -51,6 +51,8 @@ function AppRoutes() {
       <Route path="/register" element={user ? <Navigate to="/" /> : <Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
 
       <Route path="/swipe" element={
         <ProtectedRoute role="renter"><SwipeDeck /></ProtectedRoute>
