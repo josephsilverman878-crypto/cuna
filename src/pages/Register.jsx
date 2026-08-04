@@ -21,9 +21,10 @@ export default function Register() {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.role) { toast.error('Please select a role'); return }
+    if (!accepted) { toast.error('Please accept the Terms of Service and Privacy Policy'); return }
     setLoading(true)
     try {
-      await signUp(form)
+      await signUp({ ...form, accepted_terms_at: new Date().toISOString() })
       toast.success('Account created! Welcome to Cuna.')
       navigate('/')
     } catch (err) {
