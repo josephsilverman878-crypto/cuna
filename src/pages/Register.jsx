@@ -8,6 +8,7 @@ export default function Register() {
   const [searchParams] = useSearchParams()
   const { signUp } = useAuth()
   const [loading, setLoading] = useState(false)
+ const [accepted, setAccepted] = useState(false)
   const [form, setForm] = useState({
     role: searchParams.get('role') || '',
     name: '', email: '', phone: '', password: '',
