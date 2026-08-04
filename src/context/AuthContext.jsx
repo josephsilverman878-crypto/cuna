@@ -44,6 +44,7 @@ export function AuthProvider({ children }) {
         email,
         phone,
         role,
+        accepted_terms_at: accepted_terms_at || new Date().toISOString(),
       })
       if (profileError) throw profileError
       if (role === 'renter') {
