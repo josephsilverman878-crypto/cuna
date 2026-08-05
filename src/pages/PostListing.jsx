@@ -108,66 +108,6 @@ export default function PostListing() {
     return urls
   }
 
-  // ── URL SCRAPER ──────────────────────────────────────────────
-  async function scrapeUrl() {
-    if (!urlInput.trim()) return
-    setScraping(true)
-    try {
-      const platform = urlInput.includes('streeteasy') ? 'streeteasy'
-        : urlInput.includes('zillow') ? 'zillow' : 'manual'
-      let pageContent = ''
-      try {
-        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(urlInput)}`)
-        const data = await res.json()
-        pageContent = data.contents?.substring(0, 8000) || ''
-      } catch { pageContent = `URL: ${urlInput}` }
-
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-calls': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{ role: 'user', content: `Extract rental listing details and return ONLY JSON:
-{
-  "address":"","city":"","state":"","neighborhood":"","zip_code":"",
-  "price":null,"bedrooms":null,"bathrooms":null,"sqft":null,
-  "description":"","available_date":null
-}
-URL: ${urlInput}
-Page: ${pageContent}
-Return ONLY the JSON.` }],
-        }),
-      })
-      const data = await response.json()
-      const parsed = JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g, '').trim() || '{}')
-      setForm(f => ({
-        ...f,
-        source_url: urlInput, source_platform: platform,
-        address: parsed.address || f.address,
-        city: parsed.city || f.city,
-        state: parsed.state || f.state,
-        neighborhood: parsed.neighborhood || f.neighborhood,
-        zip_code: parsed.zip_code || f.zip_code,
-        price: parsed.price?.toString() || f.price,
-        bedrooms: parsed.bedrooms?.toString() || f.bedrooms,
-        bathrooms: parsed.bathrooms?.toString() || f.bathrooms,
-        sqft: parsed.sqft?.toString() || f.sqft,
-        description: parsed.description || f.description,
-        available_date: parsed.available_date || f.available_date,
-      }))
-      toast.success('Details imported — review below')
-    } catch (err) {
-      console.error(err)
-      toast.error('Could not import — fill in manually')
-    } finally { setScraping(false) }
-  }
-
   // ── SUBMIT ────────────────────────────────────────────────────
   async function handleSubmit() {
     setSubmitting(true)
