@@ -52,27 +52,61 @@ export default function Register() {
         <div className="card" style={{ padding: '36px' }}>
           <div style={{ marginBottom: '28px' }}>
             <label className="label">I am a</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '8px' }}>
-              {[
-                { value: 'renter', label: '🔍 Renter', sub: 'Looking for a space' },
-                { value: 'poster', label: '🏠 Landlord / Agent', sub: 'Listing a property' },
-              ].map(r => (
+
+            {rolePreset && form.role ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                marginTop: '8px', padding: '14px 16px',
+                borderRadius: 'var(--radius-sm)',
+                border: '2px solid var(--terracotta)',
+                background: 'rgba(196,113,74,0.06)',
+              }}>
+                <div>
+                  <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--charcoal)' }}>
+                    {form.role === 'renter' ? '🔍 Renter' : '🏠 Landlord / Agent'}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--warm-gray)', marginTop: '2px' }}>
+                    {form.role === 'renter' ? 'Looking for a space' : 'Listing a property'}
+                  </div>
+                </div>
                 <button
-                  key={r.value}
                   type="button"
-                  onClick={() => update('role', r.value)}
+                  onClick={() => setRolePreset(false)}
                   style={{
-                    padding: '16px 12px', borderRadius: 'var(--radius-sm)',
-                    border: `2px solid ${form.role === r.value ? 'var(--terracotta)' : 'var(--warm-gray-light)'}`,
-                    background: form.role === r.value ? 'rgba(196,113,74,0.06)' : 'var(--white)',
-                    textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--terracotta)', fontSize: '13px', fontWeight: 600,
                   }}
                 >
-                  <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--charcoal)' }}>{r.label}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--warm-gray)', marginTop: '2px' }}>{r.sub}</div>
+                  Change
                 </button>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '8px' }}>
+                {[
+                  { value: 'renter', label: '🔍 Renter', sub: 'Looking for a space' },
+                  { value: 'poster', label: '🏠 Landlord / Agent', sub: 'Listing a property' },
+                ].map(r => (
+                  <button
+                    key={r.value}
+                    type="button"
+                    onClick={() => update('role', r.value)}
+                    style={{
+                      padding: '16px 12px', borderRadius: 'var(--radius-sm)',
+                      border: `2px solid ${form.role === r.value ? 'var(--terracotta)' : 'var(--warm-gray-light)'}`,
+                      background: form.role === r.value ? 'rgba(196,113,74,0.06)' : 'var(--white)',
+                      textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s',
+                    }}
+                  >
+                    <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--charcoal)' }}>{r.label}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--warm-gray)', marginTop: '2px' }}>{r.sub}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <p style={{ fontSize: '12px', color: 'var(--warm-gray)', marginTop: '8px' }}>
+              This can't be changed after your account is created.
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
