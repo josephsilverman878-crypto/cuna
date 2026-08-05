@@ -16,6 +16,7 @@ export default function CompleteProfile() {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.role) { toast.error('Please select a role'); return }
+    if (!accepted) { toast.error('Please accept the Terms of Service and Privacy Policy'); return }
     setLoading(true)
     try {
       const { error } = await supabase.from('profiles').upsert({
@@ -24,6 +25,7 @@ export default function CompleteProfile() {
         email: user.email,
         phone: form.phone.trim(),
         role: form.role,
+        accepted_terms_at: new Date().toISOString(),
       })
       if (error) throw error
 
