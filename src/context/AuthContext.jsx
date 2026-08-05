@@ -53,6 +53,7 @@ export function AuthProvider({ children }) {
           .insert({ id: data.user.id })
         if (renterError) console.error('Renter profile creation failed:', renterError)
       }
+      await fetchProfile(data.user.id)
     }
     return data
   }
