@@ -8,6 +8,7 @@ export default function CompleteProfile() {
   const { user, fetchProfile, signOut } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+  const [accepted, setAccepted] = useState(false)
   const [form, setForm] = useState({ role: '', name: '', phone: '' })
 
   function update(field, value) { setForm(f => ({ ...f, [field]: value })) }
