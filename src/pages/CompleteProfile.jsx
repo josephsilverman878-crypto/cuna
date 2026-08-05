@@ -104,10 +104,32 @@ export default function CompleteProfile() {
               <input type="tel" required placeholder="(555) 000-0000"
                 value={form.phone} onChange={e => update('phone', e.target.value)} />
             </div>
+            <label style={{
+              display: 'flex', alignItems: 'flex-start', gap: '10px',
+              marginTop: '8px', cursor: 'pointer',
+            }}>
+              <input
+                type="checkbox"
+                checked={accepted}
+                onChange={e => setAccepted(e.target.checked)}
+                style={{ marginTop: '3px', width: '16px', height: '16px', flexShrink: 0, cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: '13px', color: 'var(--warm-gray)', lineHeight: 1.5 }}>
+                I am 18 or older and agree to Cuna's{' '}
+                <Link to="/terms" target="_blank" style={{ color: 'var(--terracotta)', fontWeight: 500 }}>
+                  Terms of Service
+                </Link>{' '}
+                and{' '}
+                <Link to="/privacy" target="_blank" style={{ color: 'var(--terracotta)', fontWeight: 500 }}>
+                  Privacy Policy
+                </Link>.
+              </span>
+            </label>
+
             <button
               type="submit" className="btn-primary w-full"
               style={{ marginTop: '8px', opacity: loading ? 0.7 : 1 }}
-              disabled={loading || !form.role}
+              disabled={loading || !form.role || !accepted}
             >
               {loading ? 'Saving...' : 'Continue'}
             </button>
