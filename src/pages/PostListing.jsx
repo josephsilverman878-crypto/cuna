@@ -205,25 +205,6 @@ export default function PostListing() {
 
     // ── TAB 0: DETAILS ──
     <div key="details" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* URL import */}
-      <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-          <Link2 size={16} color="var(--terracotta)" />
-          <span style={{ fontWeight: 600, fontSize: '15px' }}>Import from URL</span>
-        </div>
-        <p style={{ fontSize: '13px', color: 'var(--warm-gray)', marginBottom: '12px' }}>
-          Paste a StreetEasy or Zillow URL to auto-fill details.
-        </p>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <input type="url" placeholder="https://streeteasy.com/..."
-            value={urlInput} onChange={e => setUrlInput(e.target.value)} style={{ flex: 1 }} />
-          <button onClick={scrapeUrl} disabled={scraping || !urlInput.trim()} className="btn-primary"
-            style={{ whiteSpace: 'nowrap', opacity: scraping ? 0.7 : 1, padding: '12px 18px' }}>
-            {scraping ? <Loader size={15} style={{ animation: 'spin 0.7s linear infinite' }} /> : 'Import'}
-          </button>
-        </div>
-      </div>
-
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', margin: 0 }}>Location</h3>
 
