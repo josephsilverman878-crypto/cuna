@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import toast from 'react-hot-toast'
-import { Plus, Users, MessageCircle, Eye, EyeOff, BedDouble, Bath, Pencil, Trash2, ArchiveX } from 'lucide-react'
+import { Plus, Users, MessageCircle, Eye, EyeOff, BedDouble, Bath, Pencil, Trash2, ArchiveX, ShieldCheck } from 'lucide-react'
 
 export default function PosterDashboard() {
   const { user, profile, signOut } = useAuth()
