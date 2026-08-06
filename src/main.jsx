@@ -20,6 +20,7 @@ import Messages from './pages/Messages'
 import Profile from './pages/Profile'
 import PosterDashboard from './pages/PosterDashboard'
 import CompleteProfile from './pages/CompleteProfile'
+import Admin from './pages/Admin'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 
