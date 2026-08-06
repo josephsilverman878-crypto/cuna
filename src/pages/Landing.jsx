@@ -69,7 +69,7 @@ export default function Landing() {
           <button
             className="btn-secondary"
             style={{ fontSize: '17px', padding: '16px 40px' }}
-            onClick={() => navigate('/register?role=poster')}
+            onClick={() => navigate('/register/pro')}
           >
             List a property
           </button>
