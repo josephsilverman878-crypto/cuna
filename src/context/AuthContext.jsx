@@ -45,6 +45,10 @@ export function AuthProvider({ children }) {
         phone,
         role,
         accepted_terms_at: accepted_terms_at || new Date().toISOString(),
+        license_name: license_name || null,
+        license_number: license_number || null,
+        license_type: license_type || null,
+        brokerage_name: brokerage_name || null,
       })
       if (profileError) throw profileError
       if (role === 'renter') {
