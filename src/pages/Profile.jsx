@@ -22,6 +22,17 @@ export default function Profile() {
 
   useEffect(() => { if (profile?.role === 'renter') fetchRenterProfile() }, [profile])
 
+  useEffect(() => {
+    if (profile?.role === 'poster') {
+      setPosterForm({
+        license_name: profile.license_name || '',
+        license_number: profile.license_number || '',
+        license_type: profile.license_type || '',
+        brokerage_name: profile.brokerage_name || '',
+      })
+    }
+  }, [profile])
+
   async function fetchRenterProfile() {
     const { data } = await supabase
       .from('renter_profiles')
