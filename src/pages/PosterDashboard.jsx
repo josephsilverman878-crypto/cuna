@@ -147,6 +147,34 @@ export default function PosterDashboard() {
         </button>
       </div>
 
+      {profile && !profile.verified && (
+        <div style={{ padding: '20px 24px 0' }}>
+          <div className="card" style={{
+            background: 'rgba(196,113,74,0.06)', border: '1px solid rgba(196,113,74,0.25)',
+            padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px',
+          }}>
+            <div style={{ fontSize: '24px', flexShrink: 0 }}>🕐</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '2px' }}>
+                Verification in progress
+              </div>
+              <div style={{ fontSize: '13px', color: 'var(--warm-gray)', lineHeight: 1.5 }}>
+                Your license details are under review. You'll be able to publish listings once verified.
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/profile')}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--terracotta)', fontSize: '13px', fontWeight: 600, flexShrink: 0,
+              }}
+            >
+              View status
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', padding: '20px 24px 0' }}>
         {[
           { label: 'Active listings', value: listings.filter(l => l.status === 'active').length },
