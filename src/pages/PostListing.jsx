@@ -519,6 +519,44 @@ export default function PostListing() {
     </div>,
   ]
 
+  if (profile && !profile.verified) {
+    return (
+      <div style={{ minHeight: '100dvh', background: 'var(--sand)', paddingBottom: '100px' }}>
+        <div style={{
+          background: 'var(--white)', borderBottom: '1px solid var(--sand-dark)',
+          padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '16px',
+        }}>
+          <button onClick={() => navigate('/dashboard')} style={{
+            background: 'none', border: 'none', cursor: 'pointer', color: 'var(--warm-gray)', display: 'flex',
+          }}>
+            <ChevronLeft size={24} />
+          </button>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600 }}>
+            Post a listing
+          </h1>
+        </div>
+
+        <div style={{ maxWidth: '600px', margin: '0 auto', padding: '24px' }}>
+          <div className="card" style={{ textAlign: 'center', padding: '40px 28px' }}>
+            <div style={{ fontSize: '40px', marginBottom: '16px' }}>🕐</div>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', marginBottom: '12px' }}>
+              Verification in progress
+            </h2>
+            <p style={{ fontSize: '14px', color: 'var(--warm-gray)', lineHeight: 1.6, marginBottom: '24px' }}>
+              Your license details are under review. Once verified, you'll be able to
+              publish listings. You can check your status anytime in your profile.
+            </p>
+            <button className="btn-primary" onClick={() => navigate('/profile')}>
+              View verification status
+            </button>
+          </div>
+        </div>
+
+        <BottomNav />
+      </div>
+    )
+  }
+
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--sand)', paddingBottom: '100px' }}>
       {/* Header */}
