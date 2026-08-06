@@ -68,7 +68,8 @@ function AppRoutes() {
       } />
       <Route path="/messages/:matchId" element={
         <ProtectedRoute><Messages /></ProtectedRoute>
-     <Route path="/profile" element={
+      } />
+      <Route path="/profile" element={
         <ProtectedRoute><Profile /></ProtectedRoute>
       } />
       <Route path="/admin" element={
