@@ -172,6 +172,69 @@ export default function Profile() {
           </div>
         </div>
 
+        {profile?.role === 'poster' && (
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', margin: 0 }}>License & verification</h2>
+              <span style={{
+                fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '20px',
+                background: profile.verified ? 'rgba(74,140,90,0.12)' : 'rgba(155,142,136,0.15)',
+                color: profile.verified ? 'var(--like-green)' : 'var(--warm-gray)',
+              }}>
+                {profile.verified ? '✓ Verified' : 'Pending review'}
+              </span>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--warm-gray)', marginBottom: '20px', lineHeight: 1.5 }}>
+              To post listings, you must be registered with the New York Department of State,
+              Division of Licensing Services. Cuna may request official documents to confirm
+              these details.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label className="label">Full name as licensed *</label>
+                <input placeholder="As it appears on your license" value={posterForm.license_name}
+                  onChange={e => updatePoster('license_name', e.target.value)} style={{ marginTop: '6px' }} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label className="label">License number *</label>
+                  <input placeholder="10401234567" value={posterForm.license_number}
+                    onChange={e => updatePoster('license_number', e.target.value)} style={{ marginTop: '6px' }} />
+                </div>
+                <div>
+                  <label className="label">License type *</label>
+                  <select value={posterForm.license_type}
+                    onChange={e => updatePoster('license_type', e.target.value)} style={{ marginTop: '6px' }}>
+                    <option value="">Select…</option>
+                    <option value="salesperson">Salesperson</option>
+                    <option value="associate_broker">Associate broker</option>
+                    <option value="broker">Broker</option>
+                    <option value="owner">Owner (not licensed)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="label">Brokerage</label>
+                <input placeholder="Silverline Realty Group" value={posterForm.brokerage_name}
+                  onChange={e => updatePoster('brokerage_name', e.target.value)} style={{ marginTop: '6px' }} />
+              </div>
+
+              <button
+                className="btn-primary w-full"
+                onClick={savePosterProfile}
+                style={{ opacity: savingPoster ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                disabled={savingPoster}
+              >
+                <Save size={16} />
+                {savingPoster ? 'Saving...' : 'Save license details'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {profile?.role === 'renter' && (
           <>
             <div className="card">
