@@ -62,7 +62,7 @@ export default function Landing() {
           <button
             className="btn-primary"
             style={{ fontSize: '17px', padding: '16px 40px' }}
-            onClick={() => navigate('/register?role=renter')}
+            onClick={() => navigate('/register')}
           >
             Find your space
           </button>
