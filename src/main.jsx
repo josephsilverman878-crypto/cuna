@@ -20,9 +20,9 @@ import Messages from './pages/Messages'
 import Profile from './pages/Profile'
 import PosterDashboard from './pages/PosterDashboard'
 import CompleteProfile from './pages/CompleteProfile'
-import Admin from './pages/Admin'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
+import Admin from './pages/Admin'
 
 function ProtectedRoute({ children, role }) {
   const { user, profile, loading } = useAuth()
@@ -42,6 +42,7 @@ function AppRoutes() {
   if (user && !profile && !publicPaths.includes(location.pathname)) {
     return <CompleteProfile />
   }
+
   return (
     <Routes>
       <Route path="/" element={
@@ -61,9 +62,9 @@ function AppRoutes() {
         <ProtectedRoute role="renter"><SwipeDeck /></ProtectedRoute>
       } />
       <Route path="/history" element={
-  <ProtectedRoute role="renter"><SwipeHistory /></ProtectedRoute>
-} />
-<Route path="/matches" element={
+        <ProtectedRoute role="renter"><SwipeHistory /></ProtectedRoute>
+      } />
+      <Route path="/matches" element={
         <ProtectedRoute role="renter"><Matches /></ProtectedRoute>
       } />
       <Route path="/messages/:matchId" element={
@@ -80,9 +81,9 @@ function AppRoutes() {
         <ProtectedRoute role="poster"><PosterDashboard /></ProtectedRoute>
       } />
       <Route path="/edit-listing/:id" element={
-  <ProtectedRoute role="poster"><EditListing /></ProtectedRoute>
-} />
-<Route path="/post-listing" element={
+        <ProtectedRoute role="poster"><EditListing /></ProtectedRoute>
+      } />
+      <Route path="/post-listing" element={
         <ProtectedRoute role="poster"><PostListing /></ProtectedRoute>
       } />
 
@@ -90,6 +91,7 @@ function AppRoutes() {
     </Routes>
   )
 }
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
