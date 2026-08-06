@@ -35,7 +35,7 @@ export default function RegisterPro() {
         brokerage_name: form.brokerage_name.trim() || null,
         accepted_terms_at: new Date().toISOString(),
       })
-      toast.success('Account created — license details pending review')
+      toast('🕐 Account created! Your license details are under review — you can post listings once verified.', { duration: 6000 })
       navigate('/')
     } catch (err) {
       toast.error(err.message || 'Sign up failed')
