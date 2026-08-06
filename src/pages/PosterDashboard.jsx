@@ -138,13 +138,28 @@ export default function PosterDashboard() {
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 600, color: 'var(--terracotta)' }}>cuna</div>
           <div style={{ fontSize: '13px', color: 'var(--warm-gray)', marginTop: '2px' }}>Welcome, {profile?.name?.split(' ')[0]}</div>
         </div>
-        <button
-          className="btn-primary"
-          style={{ padding: '10px 18px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}
-          onClick={() => navigate('/post-listing')}
-        >
-          <Plus size={16} /> New listing
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {profile?.is_admin && (
+            <button
+              onClick={() => navigate('/admin')}
+              style={{
+                padding: '10px 16px', fontSize: '14px', borderRadius: '20px',
+                background: 'var(--white)', border: '1.5px solid var(--terracotta)',
+                color: 'var(--terracotta)', fontWeight: 600, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '6px',
+              }}
+            >
+              <ShieldCheck size={16} /> Admin
+            </button>
+          )}
+          <button
+            className="btn-primary"
+            style={{ padding: '10px 18px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            onClick={() => navigate('/post-listing')}
+          >
+            <Plus size={16} /> New listing
+          </button>
+        </div>
       </div>
 
       {profile && !profile.verified && (
