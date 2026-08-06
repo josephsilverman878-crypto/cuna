@@ -9,6 +9,10 @@ export default function Profile() {
   const { user, profile, signOut, fetchProfile } = useAuth()
   const [renterProfile, setRenterProfile] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [savingPoster, setSavingPoster] = useState(false)
+  const [posterForm, setPosterForm] = useState({
+    license_name: '', license_number: '', license_type: '', brokerage_name: '',
+  })
   const [form, setForm] = useState({
     move_in_date: '', budget_min: '', budget_max: '',
     bedrooms: '', sqft_min: '', neighborhoods: '',
