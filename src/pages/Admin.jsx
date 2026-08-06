@@ -42,14 +42,14 @@ export default function Admin() {
       console.error('Approve error:', error)
       toast.error(error.message || 'Could not approve')
     } else {
-      toast.success(`${poster.name} verified`)
+      toast.success(poster.name + ' verified')
       setPosters(prev => prev.filter(p => p.id !== poster.id))
     }
     setApproving(null)
   }
 
   async function revoke(poster) {
-    if (!window.confirm(`Revoke verification for ${poster.name}?`)) return
+    if (!window.confirm('Revoke verification for ' + poster.name + '?')) return
     setApproving(poster.id)
     const { error } = await supabase
       .from('profiles')
@@ -98,37 +98,42 @@ export default function Admin() {
       </div>
 
       <div style={{ maxWidth: '640px', margin: '0 auto', padding: '24px' }}>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-          {[
-            { id: 'pending', label: 'Pending' },
-            { id: 'verified', label: 'Verified' },
-          ].map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              style={{
-                padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 500,
-                background: tab === t.id ? 'var(--terracotta)' : 'var(--white)',
-                color: tab === t.id ? 'white' : 'var(--warm-gray)',
-                border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-sm)',
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          <button
+            onClick={() => setTab('pending')}
+            style={{
+              padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 500,
+              background: tab === 'pending' ? 'var(--terracotta)' : 'var(--white)',
+              color: tab === 'pending' ? 'white' : 'var(--warm-gray)',
+              border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-sm)',
+            }}
+          >
+            Pending
+          </button>
+          <button
+            onClick={() => setTab('verified')}
+            style={{
+              padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 500,
+              background: tab === 'verified' ? 'var(--terracotta)' : 'var(--white)',
+              color: tab === 'verified' ? 'white' : 'var(--warm-gray)',
+              border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-sm)',
+            }}
+          >
+            Verified
+          </button>
         </div>
 
-        
-          href="https://dos.ny.gov/licensing/eaccessny.html"
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          onClick={() => window.open('https://dos.ny.gov/licensing/eaccessny.html', '_blank')}
           style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            fontSize: '13px', fontWeight: 600, color: 'var(--terracotta)', marginBottom: '20px',
+            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+            display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '20px',
+            fontSize: '13px', fontWeight: 600, color: 'var(--terracotta)',
           }}
         >
-          Open NY DOS license search <ExternalLink size={13} />
-        </a>
+          Open NY DOS license search
+          <ExternalLink size={13} />
+        </button>
 
         {loading ? (
           <div className="center" style={{ padding: '40px' }}><div className="spinner" /></div>
@@ -154,12 +159,9 @@ export default function Admin() {
                   <Row label="Phone" value={p.phone} />
                   <Row label="Licensed name" value={p.license_name} />
                   <Row label="License no." value={p.license_number} />
-                  <Row label="License type" value={p.license_type?.replace('_', ' ')} />
+                  <Row label="License type" value={p.license_type} />
                   <Row label="Brokerage" value={p.brokerage_name} />
                   <Row label="Signed up" value={p.created_at ? new Date(p.created_at).toLocaleDateString() : null} />
-                  {tab === 'verified' && (
-                    <Row label="Verified" value={p.verified_at ? new Date(p.verified_at).toLocaleDateString() : null} />
-                  )}
                 </div>
 
                 {tab === 'pending' ? (
@@ -173,7 +175,7 @@ export default function Admin() {
                     }}
                   >
                     <Check size={16} />
-                    {approving === p.id ? 'Approving…' : 'Approve agent'}
+                    {approving === p.id ? 'Approving...' : 'Approve agent'}
                   </button>
                 ) : (
                   <button
@@ -185,7 +187,7 @@ export default function Admin() {
                       fontWeight: 600, fontSize: '13px', color: '#e53e3e',
                     }}
                   >
-                    {approving === p.id ? 'Working…' : 'Revoke verification'}
+                    {approving === p.id ? 'Working...' : 'Revoke verification'}
                   </button>
                 )}
               </div>
