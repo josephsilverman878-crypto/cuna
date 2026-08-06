@@ -60,6 +60,31 @@ export default function Profile() {
   }
 
   function update(field, value) { setForm(f => ({ ...f, [field]: value })) }
+  function updatePoster(field, value) { setPosterForm(f => ({ ...f, [field]: value })) }
+
+  async function savePosterProfile() {
+    if (!posterForm.license_name.trim() || !posterForm.license_number.trim() || !posterForm.license_type) {
+      toast.error('Licensed name, license number, and license type are required')
+      return
+    }
+    setSavingPoster(true)
+    try {
+      const { error } = await supabase.from('profiles').update({
+        license_name: posterForm.license_name.trim(),
+        license_number: posterForm.license_number.trim(),
+        license_type: posterForm.license_type,
+        brokerage_name: posterForm.brokerage_name.trim() || null,
+      }).eq('id', user.id)
+      if (error) throw error
+      await fetchProfile(user.id)
+      toast.success('License details saved — pending review')
+    } catch (err) {
+      console.error('Poster profile save error:', err)
+      toast.error(err.message || 'Failed to save')
+    } finally {
+      setSavingPoster(false)
+    }
+  }
 
   async function saveProfile() {
     setSaving(true)
