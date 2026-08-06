@@ -22,7 +22,7 @@ const EMPTY_FORM = {
 }
 
 export default function PostListing() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const navigate = useNavigate()
   const [tab, setTab] = useState(0)
   const [form, setForm] = useState(EMPTY_FORM)
