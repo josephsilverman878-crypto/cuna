@@ -34,7 +34,7 @@ export function AuthProvider({ children }) {
     setLoading(false)
   }
 
-  async function signUp({ email, password, name, phone, role, accepted_terms_at }) {
+  async function signUp({ email, password, name, phone, role, accepted_terms_at, license_name, license_number, license_type, brokerage_name }) {
     const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) throw error
     if (data.user) {
