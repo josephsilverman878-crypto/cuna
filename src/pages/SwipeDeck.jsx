@@ -304,17 +304,26 @@ export default function SwipeDeck() {
                 </div>
               )}
 
-              <button
-                onClick={() => setShowDetail(true)}
-                style={{
-                  marginTop: '16px', width: '100%',
-                  background: 'none', border: '1px solid var(--sand-dark)', borderRadius: '10px',
-                  padding: '10px', fontSize: '13px', fontWeight: 600, color: 'var(--terracotta)',
-                  cursor: 'pointer',
-                }}
-              >
-                See full details & fees
-              </button>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                <button
+                  onClick={() => setShowDetail(true)}
+                  style={{
+                    flex: 1,
+                    background: 'none', border: '1px solid var(--sand-dark)', borderRadius: '10px',
+                    padding: '10px', fontSize: '13px', fontWeight: 600, color: 'var(--terracotta)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Details & fees
+                </button>
+                <button
+                  onClick={() => setShowTour(true)}
+                  className="btn-primary"
+                  style={{ flex: 1, padding: '10px', fontSize: '13px' }}
+                >
+                  Request a tour
+                </button>
+              </div>
             </div>
           </div>
         )}
