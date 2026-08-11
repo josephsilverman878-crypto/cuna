@@ -1,20 +1,27 @@
-import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 
 export default function Login() {
   const navigate = useNavigate()
-  const { signIn } = useAuth()
+  const [searchParams] = useSearchParams()
+  const { user, signIn } = useAuth()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ email: '', password: '' })
+
+  const next = searchParams.get('next') || '/'
+
+  useEffect(() => {
+    if (user) navigate(next, { replace: true })
+  }, [user])
 
   async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
     try {
       await signIn(form)
-      navigate('/')
+      navigate(next, { replace: true })
     } catch (err) {
       toast.error(err.message || 'Sign in failed')
     } finally {
@@ -61,12 +68,6 @@ export default function Login() {
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
-
-            <div style={{ textAlign: 'center', marginTop: '4px' }}>
-              <Link to="/forgot-password" style={{ color: 'var(--warm-gray)', fontSize: '13px' }}>
-                Forgot your password?
-              </Link>
-            </div>
 
             <div style={{ textAlign: 'center', marginTop: '4px' }}>
               <Link to="/forgot-password" style={{ color: 'var(--warm-gray)', fontSize: '13px' }}>
