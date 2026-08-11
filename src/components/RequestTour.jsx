@@ -51,7 +51,17 @@ export default function RequestTour({ listing, onClose }) {
           message: message.trim(),
         }),
       })
-      if (!resp.ok) throw new Error('Email could not be sent')
+     if (!resp.ok) throw new Error('Email could not be sent')
+
+      const { error: dbError } = await supabase.from('inquiries').insert({
+        listing_id: listing.id,
+        renter_id: user.id,
+        poster_id: listing.poster_id,
+        tour_type: tourType,
+        preferred_times: cleanTimes,
+        message: message.trim() || null,
+      })
+      if (dbError) console.error('Inquiry row failed after email sent:', dbError)
 
       setSent(true)
     } catch (err) {
