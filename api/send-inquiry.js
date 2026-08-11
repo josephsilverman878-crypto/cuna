@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   }
 
   const {
-    listingAddress, listingPrice,
+    listingAddress, listingPrice, listingUrl,
     posterName, posterEmail,
     renterName, renterEmail, renterPhone,
     tourType, times, message,
