@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
+import RequestTour from '../components/RequestTour'
 import toast from 'react-hot-toast'
 import { X, Heart, MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Info } from 'lucide-react'
 
