@@ -55,6 +55,7 @@ export default function RequestTour({ listing, onClose }) {
           renterName: profile?.name,
           renterEmail: profile?.email,
           renterPhone: profile?.phone,
+          listingUrl: window.location.origin + '/listing/' + listing.id,
           tourType,
           times: cleanTimes,
           message: message.trim(),
