@@ -57,6 +57,7 @@ function AppRoutes() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/terms" element={<Terms />} />
+      <Route path="/listing/:id" element={<ListingDetail />} />
       <Route path="/privacy" element={<Privacy />} />
 
       <Route path="/swipe" element={
