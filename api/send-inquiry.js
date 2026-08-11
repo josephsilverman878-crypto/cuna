@@ -49,6 +49,7 @@ export default async function handler(req, res) {
       <p>Your request for <strong>${listingAddress}</strong> ($${Number(listingPrice || 0).toLocaleString()}/mo) was sent to ${posterName || 'the listing agent'}.</p>
       <p><strong>Your preferred tour:</strong> ${tourLabel}</p>
       ${timesHtml}
+      ${listingUrl ? '<p><a href="' + listingUrl + '" style="display:inline-block;background:#B44A36;color:#ffffff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:bold">View listing on Cuna</a></p>' : ''}
       <p>The agent will reach out to you by email. Replying to this email also goes directly to them.</p>
       <p style="color:#9B8E88;font-size:13px;margin-top:20px">Stay alert: never send money or personal financial information before independently verifying who you are dealing with. Cuna never processes payments.</p>
     </div>`
