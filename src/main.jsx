@@ -23,6 +23,7 @@ import CompleteProfile from './pages/CompleteProfile'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import Admin from './pages/Admin'
+import ListingDetail from './pages/ListingDetail'
 
 function ProtectedRoute({ children, role }) {
   const { user, profile, loading } = useAuth()
