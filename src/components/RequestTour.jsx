@@ -34,16 +34,6 @@ export default function RequestTour({ listing, onClose }) {
           hour: 'numeric', minute: '2-digit',
         }))
 
-      const { error: dbError } = await supabase.from('inquiries').insert({
-        listing_id: listing.id,
-        renter_id: user.id,
-        poster_id: listing.poster_id,
-        tour_type: tourType,
-        preferred_times: cleanTimes,
-        message: message.trim() || null,
-      })
-      if (dbError) throw dbError
-
       const resp = await fetch('/api/send-inquiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
