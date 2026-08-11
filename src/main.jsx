@@ -51,7 +51,7 @@ function AppRoutes() {
           ? (profile?.role === 'renter' ? <Navigate to="/swipe" /> : <Navigate to="/dashboard" />)
           : <Landing />
       } />
-      <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
+      <Route path="/login" element={<Login />} />
       <Route path="/register" element={user ? <Navigate to="/" /> : <Register />} />
       <Route path="/register/pro" element={user ? <Navigate to="/" /> : <RegisterPro />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
