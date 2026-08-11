@@ -39,6 +39,7 @@ export default async function handler(req, res) {
         <p style="margin:0"><strong>Renter contact</strong></p>
         <p style="margin:4px 0 0">${renterName}<br/>${renterEmail}${renterPhone ? '<br/>' + renterPhone : ''}</p>
       </div>
+      ${listingUrl ? '<p><a href="' + listingUrl + '" style="display:inline-block;background:#B44A36;color:#ffffff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:bold">View listing on Cuna</a></p>' : ''}
       <p style="color:#9B8E88;font-size:13px;margin-top:20px">Reply to this email to respond directly to the renter.</p>
     </div>`
 
