@@ -14,6 +14,7 @@ export default function SwipeDeck() {
   const [photoIndex, setPhotoIndex] = useState(0)
   const [filtersActive, setFiltersActive] = useState(false)
   const [showDetail, setShowDetail] = useState(false)
+  const [showTour, setShowTour] = useState(false)
   const cardRef = useRef(null)
 
   useEffect(() => { fetchListings() }, [])
