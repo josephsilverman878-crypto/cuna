@@ -40,7 +40,7 @@ function AppRoutes() {
   if (loading) return <div className="center" style={{ height: '100dvh' }}><div className="spinner" /></div>
 
   const publicPaths = ['/reset-password', '/terms', '/privacy']
-  if (user && !profile && !publicPaths.includes(location.pathname)) {
+  if (user && !profile && !publicPaths.includes(location.pathname) && !location.pathname.startsWith('/listing/')) {
     return <CompleteProfile />
   }
 
