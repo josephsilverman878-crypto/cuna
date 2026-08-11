@@ -455,8 +455,20 @@ export default function SwipeDeck() {
                 <span style={{ color: 'var(--terracotta)' }}>${totalDueAtSigning(listing).toLocaleString()}</span>
               </div>
             </div>
+
+            <button
+              className="btn-primary w-full"
+              style={{ marginTop: '16px' }}
+              onClick={() => { setShowDetail(false); setShowTour(true) }}
+            >
+              Request a tour
+            </button>
           </div>
         </div>
+      )}
+
+      {showTour && listing && (
+        <RequestTour listing={listing} onClose={() => setShowTour(false)} />
       )}
 
       {currentIndex < listings.length && (
