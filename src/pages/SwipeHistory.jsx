@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
+import RequestTour from '../components/RequestTour'
 import toast from 'react-hot-toast'
-import { Heart, X, MapPin, BedDouble, Bath, RotateCcw, ArrowRightLeft } from 'lucide-react'
+import { MapPin, BedDouble, Bath, RotateCcw, ArrowRightLeft, CalendarCheck } from 'lucide-react'
 
 export default function SwipeHistory() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [tab, setTab] = useState('right')
   const [swipes, setSwipes] = useState([])
   const [loading, setLoading] = useState(true)
+  const [tourListing, setTourListing] = useState(null)
 
   useEffect(() => { fetchSwipes() }, [])
 
