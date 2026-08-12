@@ -32,7 +32,7 @@ export default function SwipeHistory() {
       const listingIds = [...new Set(swipeData.map(s => s.listing_id))]
       const { data: listingData } = await supabase
         .from('listings')
-        .select('*')
+        .select('*, profiles(name, email, phone)')
         .in('id', listingIds)
 
       enriched = swipeData
