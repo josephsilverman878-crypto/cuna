@@ -4,14 +4,14 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import toast from 'react-hot-toast'
-import { Plus, Users, MessageCircle, Eye, EyeOff, BedDouble, Bath, Pencil, Trash2, ArchiveX, ShieldCheck } from 'lucide-react'
+import { Plus, Users, Eye, EyeOff, BedDouble, Bath, Pencil, Trash2, ArchiveX, ShieldCheck, CalendarCheck, Mail, Phone } from 'lucide-react'
 
 export default function PosterDashboard() {
-  const { user, profile, signOut } = useAuth()
+  const { user, profile } = useAuth()
   const navigate = useNavigate()
   const [listings, setListings] = useState([])
-  const [interested, setInterested] = useState({})
-  const [matches, setMatches] = useState([])
+  const [saves, setSaves] = useState({})
+  const [inquiries, setInquiries] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('listings')
 
@@ -28,13 +28,14 @@ export default function PosterDashboard() {
 
     if (listingData?.length > 0) {
       const ids = listingData.map(l => l.id)
+
       const { data: swipeData, error: swipeError } = await supabase
         .from('swipes')
         .select('*')
         .in('listing_id', ids)
         .eq('direction', 'right')
 
-      if (swipeError) console.error('Swipe fetch error:', swipeError)
+      if (swipeError) console.error('Saves fetch error:', swipeError)
 
       let enriched = []
       if (swipeData?.length > 0) {
@@ -62,20 +63,40 @@ export default function PosterDashboard() {
         if (!grouped[s.listing_id]) grouped[s.listing_id] = []
         grouped[s.listing_id].push(s)
       })
-      setInterested(grouped)
+      setSaves(grouped)
     }
 
-    const { data: matchData } = await supabase
-      .from('matches')
-      .select(`
-        *,
-        listings(address, price, bedrooms),
-        profiles!matches_renter_id_fkey(name, email, phone)
-      `)
+    const { data: inquiryData, error: inqError } = await supabase
+      .from('inquiries')
+      .select('*')
       .eq('poster_id', user.id)
-      .order('matched_at', { ascending: false })
+      .order('created_at', { ascending: false })
 
-    setMatches(matchData || [])
+    if (inqError) console.error('Inquiries fetch error:', inqError)
+
+    let enrichedInquiries = []
+    if (inquiryData?.length > 0) {
+      const renterIds = [...new Set(inquiryData.map(i => i.renter_id))]
+      const listingIds = [...new Set(inquiryData.map(i => i.listing_id))]
+
+      const { data: renterData } = await supabase
+        .from('profiles')
+        .select('id, name, email, phone')
+        .in('id', renterIds)
+
+      const { data: inqListings } = await supabase
+        .from('listings')
+        .select('id, address')
+        .in('id', listingIds)
+
+      enrichedInquiries = inquiryData.map(i => ({
+        ...i,
+        renter: renterData?.find(p => p.id === i.renter_id) || null,
+        listing: inqListings?.find(l => l.id === i.listing_id) || null,
+      }))
+    }
+    setInquiries(enrichedInquiries)
+
     setLoading(false)
   }
 
@@ -86,21 +107,6 @@ export default function PosterDashboard() {
     if (!error) {
       setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: newStatus } : l))
       toast.success(`Listing ${newStatus === 'active' ? 'activated' : 'paused'}`)
-    }
-  }
-
-  async function likeRenter(renterId, listingId) {
-    const { error } = await supabase.from('matches').insert({
-      renter_id: renterId,
-      poster_id: user.id,
-      listing_id: listingId,
-      matched_at: new Date().toISOString(),
-    })
-    if (!error) {
-      toast.success('Match created! Message them now.')
-      fetchData()
-    } else {
-      toast.error('Match already exists')
     }
   }
 
@@ -125,7 +131,12 @@ export default function PosterDashboard() {
 
   if (loading) return <div className="center" style={{ height: '100dvh' }}><div className="spinner" /></div>
 
-  const totalInterested = Object.values(interested).reduce((sum, arr) => sum + arr.length, 0)
+  const totalSaves = Object.values(saves).reduce((sum, arr) => sum + arr.length, 0)
+  const totalViews = listings.reduce((sum, l) => sum + (l.views || 0), 0)
+
+  function inquiryCountFor(listingId) {
+    return inquiries.filter(i => i.listing_id === listingId).length
+  }
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--sand)', paddingBottom: '80px' }}>
@@ -190,17 +201,18 @@ export default function PosterDashboard() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', padding: '20px 24px 0' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', padding: '20px 24px 0' }}>
         {[
           { label: 'Active listings', value: listings.filter(l => l.status === 'active').length },
-          { label: 'Interested renters', value: totalInterested },
-          { label: 'Matches', value: matches.length },
+          { label: 'Views', value: totalViews },
+          { label: 'Saves', value: totalSaves },
+          { label: 'Tour requests', value: inquiries.length },
         ].map(stat => (
-          <div key={stat.label} className="card" style={{ padding: '16px', textAlign: 'center' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 600, color: 'var(--terracotta)' }}>
+          <div key={stat.label} className="card" style={{ padding: '14px 10px', textAlign: 'center' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 600, color: 'var(--terracotta)' }}>
               {stat.value}
             </div>
-            <div style={{ fontSize: '11px', color: 'var(--warm-gray)', marginTop: '4px', lineHeight: 1.3 }}>{stat.label}</div>
+            <div style={{ fontSize: '10px', color: 'var(--warm-gray)', marginTop: '4px', lineHeight: 1.3 }}>{stat.label}</div>
           </div>
         ))}
       </div>
@@ -208,8 +220,8 @@ export default function PosterDashboard() {
       <div style={{ display: 'flex', padding: '20px 24px 0', gap: '8px' }}>
         {[
           { id: 'listings', label: 'My listings' },
-          { id: 'interested', label: `Interested (${totalInterested})` },
-          { id: 'matches', label: `Matches (${matches.length})` },
+          { id: 'saves', label: `Saves (${totalSaves})` },
+          { id: 'inquiries', label: `Requests (${inquiries.length})` },
         ].map(tab => (
           <button
             key={tab.id}
@@ -234,13 +246,16 @@ export default function PosterDashboard() {
             <div style={{ textAlign: 'center', padding: '60px 0' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏠</div>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', marginBottom: '8px' }}>No listings yet</h2>
-              <p style={{ color: 'var(--warm-gray)', marginBottom: '24px', fontSize: '14px' }}>Post your first listing to start receiving interested renters</p>
+              <p style={{ color: 'var(--warm-gray)', marginBottom: '24px', fontSize: '14px' }}>Post your first listing to start receiving interest</p>
               <button className="btn-primary" onClick={() => navigate('/post-listing')}>Post a listing</button>
             </div>
           ) : listings.map(listing => (
             <div key={listing.id} className="card" style={{ padding: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                <div style={{ flex: 1 }}>
+                <div
+                  style={{ flex: 1, cursor: 'pointer' }}
+                  onClick={() => navigate('/listing/' + listing.id)}
+                >
                   <div style={{ fontWeight: 600, fontSize: '16px' }}>{listing.address}</div>
                   <div style={{ fontSize: '13px', color: 'var(--warm-gray)', marginTop: '2px' }}>
                     {listing.neighborhood ? `${listing.neighborhood}, ` : ''}{listing.city}, {listing.state}
@@ -267,7 +282,23 @@ export default function PosterDashboard() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{
+                display: 'flex', gap: '18px', padding: '10px 0', marginBottom: '10px',
+                borderTop: '1px solid var(--sand-dark)', borderBottom: '1px solid var(--sand-dark)',
+                fontSize: '13px', color: 'var(--warm-gray)',
+              }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Eye size={14} /> {listing.views || 0} views
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Users size={14} /> {saves[listing.id]?.length || 0} saves
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <CalendarCheck size={14} /> {inquiryCountFor(listing.id)} requests
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button
                   onClick={() => toggleStatus(listing)}
                   className="btn-ghost"
@@ -299,24 +330,19 @@ export default function PosterDashboard() {
                 >
                   <Trash2 size={14} /> Delete
                 </button>
-                <div style={{ flex: 1 }} />
-                <div style={{ fontSize: '13px', color: 'var(--warm-gray)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Users size={14} />
-                  {interested[listing.id]?.length || 0} interested
-                </div>
               </div>
             </div>
           ))
         )}
 
-        {activeTab === 'interested' && (
-          totalInterested === 0 ? (
+        {activeTab === 'saves' && (
+          totalSaves === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--warm-gray)' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>👀</div>
-              <p>No interested renters yet. Make sure your listings are active.</p>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>💾</div>
+              <p>No saves yet. Make sure your listings are active.</p>
             </div>
           ) : listings.map(listing => {
-            const renters = interested[listing.id] || []
+            const renters = saves[listing.id] || []
             if (renters.length === 0) return null
             return (
               <div key={listing.id}>
@@ -328,20 +354,9 @@ export default function PosterDashboard() {
                   const rp = swipe.renter_profiles
                   return (
                     <div key={swipe.id} className="card" style={{ padding: '16px', marginBottom: '10px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: '15px' }}>{renter?.name}</div>
-                          <div style={{ fontSize: '13px', color: 'var(--terracotta)', marginTop: '2px' }}>{renter?.email}</div>
-                          {rp?.show_phone && <div style={{ fontSize: '13px', color: 'var(--warm-gray)' }}>{renter?.phone}</div>}
-                        </div>
-                        <button
-                          className="btn-primary"
-                          style={{ padding: '8px 16px', fontSize: '13px' }}
-                          onClick={() => likeRenter(renter.id, listing.id)}
-                        >
-                          Like back
-                        </button>
-                      </div>
+                      <div style={{ fontWeight: 600, fontSize: '15px' }}>{renter?.name}</div>
+                      <div style={{ fontSize: '13px', color: 'var(--terracotta)', marginTop: '2px' }}>{renter?.email}</div>
+                      {rp?.show_phone && <div style={{ fontSize: '13px', color: 'var(--warm-gray)' }}>{renter?.phone}</div>}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px' }}>
                         {rp?.show_move_in && rp?.move_in_date && <span className="tag">🗓 Move in {new Date(rp.move_in_date).toLocaleDateString()}</span>}
                         {rp?.show_pets && rp?.has_pets && <span className="tag">🐾 Has pets</span>}
@@ -356,40 +371,68 @@ export default function PosterDashboard() {
           })
         )}
 
-        {activeTab === 'matches' && (
-          matches.length === 0 ? (
+        {activeTab === 'inquiries' && (
+          inquiries.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--warm-gray)' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🤝</div>
-              <p>No matches yet. Like renters back to create matches.</p>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>📩</div>
+              <p>No tour requests yet.</p>
             </div>
-          ) : matches.map(match => {
-            const renter = match.profiles
-            const listing = match.listings
-            return (
-              <div
-                key={match.id} className="card"
-                style={{ cursor: 'pointer', transition: 'transform 0.2s' }}
-                onClick={() => navigate(`/messages/${match.id}`)}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '15px' }}>{renter?.name}</div>
-                    <div style={{ fontSize: '13px', color: 'var(--warm-gray)', marginTop: '2px' }}>{listing?.address}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--terracotta)', marginTop: '4px' }}>
-                      Matched {new Date(match.matched_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: '6px',
-                    background: 'var(--terracotta)', color: 'white',
-                    padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 500,
-                  }}>
-                    <MessageCircle size={14} /> Message
+          ) : inquiries.map(inq => (
+            <div key={inq.id} className="card" style={{ padding: '18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: '15px' }}>{inq.renter?.name}</div>
+                  <div
+                    style={{ fontSize: '13px', color: 'var(--warm-gray)', marginTop: '2px', cursor: 'pointer' }}
+                    onClick={() => navigate('/listing/' + inq.listing_id)}
+                  >
+                    {inq.listing?.address}
                   </div>
                 </div>
+                <span style={{
+                  fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '20px',
+                  background: 'rgba(180,74,54,0.1)', color: 'var(--terracotta)', flexShrink: 0,
+                }}>
+                  {inq.tour_type === 'video' ? 'Video chat' : 'In person'}
+                </span>
               </div>
-            )
-          })
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', marginBottom: '10px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--terracotta)' }}>
+                  <Mail size={13} /> {inq.renter?.email}
+                </span>
+                {inq.renter?.phone && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--warm-gray)' }}>
+                    <Phone size={13} /> {inq.renter.phone}
+                  </span>
+                )}
+              </div>
+
+              {(inq.preferred_times || []).length > 0 && (
+                <div style={{ marginBottom: '10px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--warm-gray)', marginBottom: '4px' }}>
+                    Preferred times
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {inq.preferred_times.map((t, i) => <span key={i} className="tag">{t}</span>)}
+                  </div>
+                </div>
+              )}
+
+              {inq.message && (
+                <p style={{
+                  fontSize: '13px', color: 'var(--charcoal-soft)', lineHeight: 1.5,
+                  background: 'var(--sand)', padding: '10px 12px', borderRadius: '8px', margin: '0 0 10px',
+                }}>
+                  {inq.message}
+                </p>
+              )}
+
+              <div style={{ fontSize: '12px', color: 'var(--warm-gray)' }}>
+                Requested {new Date(inq.created_at).toLocaleString()}
+              </div>
+            </div>
+          ))
         )}
       </div>
 
