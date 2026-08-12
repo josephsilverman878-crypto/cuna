@@ -82,6 +82,7 @@ function AppRoutes() {
         <ProtectedRoute role="poster"><PostListing /></ProtectedRoute>
       } />
 
+      <Route path="/matches" element={<Navigate to="/history" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
