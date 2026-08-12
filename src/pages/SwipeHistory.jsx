@@ -51,7 +51,7 @@ export default function SwipeHistory() {
       .eq('id', swipe.id)
     if (!error) {
       setSwipes(prev => prev.map(s => s.id === swipe.id ? { ...s, direction: newDirection } : s))
-      toast.success(newDirection === 'right' ? 'Moved to Liked' : 'Moved to Passed')
+      toast.success(newDirection === 'right' ? 'Moved to Saved' : 'Moved to Passed')
     } else {
       toast.error('Could not move listing')
     }
