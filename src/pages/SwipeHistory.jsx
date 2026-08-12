@@ -150,6 +150,21 @@ export default function SwipeHistory() {
                   </div>
                 </div>
               </div>
+              {tab === 'right' && (
+                <button
+                  onClick={() => setTourListing(listing)}
+                  style={{
+                    width: '100%', padding: '11px', border: 'none', cursor: 'pointer',
+                    borderTop: '1px solid var(--sand-dark)',
+                    background: 'rgba(180,74,54,0.06)',
+                    fontSize: '13px', fontWeight: 600, color: 'var(--terracotta)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                  }}
+                >
+                  <CalendarCheck size={14} />
+                  Request a tour
+                </button>
+              )}
               <div style={{ display: 'flex', borderTop: '1px solid var(--sand-dark)' }}>
                 <button
                   onClick={() => moveSwipe(swipe, tab === 'right' ? 'left' : 'right')}
