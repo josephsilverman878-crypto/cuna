@@ -83,10 +83,10 @@ export default function SwipeHistory() {
         padding: '20px 24px',
       }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 600, color: 'var(--terracotta)' }}>
-          History
+          Saved
         </div>
         <div style={{ fontSize: '13px', color: 'var(--warm-gray)', marginTop: '2px' }}>
-          Listings you've swiped on
+          Listings you've saved or passed on
         </div>
       </div>
 
