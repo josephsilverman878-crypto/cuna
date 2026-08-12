@@ -195,6 +195,10 @@ export default function SwipeHistory() {
         })}
       </div>
 
+      {tourListing && (
+        <RequestTour listing={tourListing} onClose={() => setTourListing(null)} />
+      )}
+
       <BottomNav />
     </div>
   )
