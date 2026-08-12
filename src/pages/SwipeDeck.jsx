@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
@@ -8,18 +9,18 @@ import { X, Heart, MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight
 
 export default function SwipeDeck() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [listings, setListings] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [swiping, setSwiping] = useState(null)
   const [photoIndex, setPhotoIndex] = useState(0)
   const [filtersActive, setFiltersActive] = useState(false)
-  const [showDetail, setShowDetail] = useState(false)
   const [showTour, setShowTour] = useState(false)
   const cardRef = useRef(null)
 
   useEffect(() => { fetchListings() }, [])
-  useEffect(() => { setPhotoIndex(0); setShowDetail(false) }, [currentIndex])
+  useEffect(() => { setPhotoIndex(0); setShowTour(false) }, [currentIndex])
 
   async function fetchListings() {
     setLoading(true)
@@ -89,18 +90,7 @@ export default function SwipeDeck() {
         direction,
       })
 
-      if (!error && direction === 'right') {
-        const { data: match } = await supabase
-          .from('matches')
-          .select('id')
-          .eq('renter_id', user.id)
-          .eq('listing_id', listing.id)
-          .single()
-
-        if (match) {
-          toast.success("🎉 It's a match! Check your matches tab.", { duration: 4000 })
-        }
-      }
+      if (error) console.error('Swipe save failed:', error)
 
       setCurrentIndex(i => i + 1)
       setSwiping(null)
@@ -111,16 +101,6 @@ export default function SwipeDeck() {
   const photos = listing?.photos?.length > 0
     ? listing.photos
     : ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80']
-
-  function totalDueAtSigning(l) {
-    if (!l) return 0
-    const rent = l.price || 0
-    const deposit = l.security_deposit || 0
-    const appFee = l.application_fee || 0
-    const moveIn = l.move_in_fee || 0
-    const other = (l.other_fees || []).reduce((sum, f) => sum + (parseInt(f.amount) || 0), 0)
-    return rent + deposit + appFee + moveIn + other
-  }
 
   if (loading) return (
     <div className="center" style={{ height: '100dvh' }}>
@@ -192,7 +172,7 @@ export default function SwipeDeck() {
                 transform: 'rotate(-12deg)',
                 background: 'rgba(255,255,255,0.9)',
               }}>
-                {swiping === 'right' ? 'LIKE' : 'PASS'}
+                {swiping === 'right' ? 'SAVED' : 'PASS'}
               </div>
             )}
 
@@ -248,7 +228,7 @@ export default function SwipeDeck() {
                 ${listing.price?.toLocaleString()}/mo
               </div>
               <button
-                onClick={() => setShowDetail(true)}
+                onClick={() => navigate('/listing/' + listing.id)}
                 style={{
                   position: 'absolute', top: '16px', left: '16px',
                   background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%',
@@ -306,7 +286,7 @@ export default function SwipeDeck() {
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
                 <button
-                  onClick={() => setShowDetail(true)}
+                  onClick={() => navigate('/listing/' + listing.id)}
                   style={{
                     flex: 1,
                     background: 'none', border: '1px solid var(--sand-dark)', borderRadius: '10px',
@@ -328,148 +308,6 @@ export default function SwipeDeck() {
           </div>
         )}
       </div>
-
-      {showDetail && listing && (
-        <div
-          onClick={() => setShowDetail(false)}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 200, padding: '24px',
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: 'var(--white)', borderRadius: '24px',
-              width: '100%', maxWidth: '480px', maxHeight: '85dvh', overflowY: 'auto',
-              padding: '24px',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-              <div>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, margin: 0 }}>
-                  {listing.address}
-                </h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', color: 'var(--warm-gray)' }}>
-                  <MapPin size={13} />
-                  <span style={{ fontSize: '13px' }}>{listing.neighborhood ? `${listing.neighborhood}, ` : ''}{listing.city}, {listing.state}</span>
-                </div>
-              </div>
-              <button onClick={() => setShowDetail(false)} style={{
-                background: 'var(--sand)', border: 'none', borderRadius: '50%',
-                width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', flexShrink: 0,
-              }}>
-                <X size={16} />
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', gap: '16px', margin: '16px 0', padding: '12px 0', borderTop: '1px solid var(--sand-dark)', borderBottom: '1px solid var(--sand-dark)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--charcoal-soft)' }}>
-                <BedDouble size={16} />
-                <span style={{ fontSize: '14px', fontWeight: 500 }}>{listing.bedrooms} bed</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--charcoal-soft)' }}>
-                <Bath size={16} />
-                <span style={{ fontSize: '14px', fontWeight: 500 }}>{listing.bathrooms} bath</span>
-              </div>
-              {listing.sqft && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--charcoal-soft)' }}>
-                  <Maximize2 size={16} />
-                  <span style={{ fontSize: '14px', fontWeight: 500 }}>{listing.sqft?.toLocaleString()} sqft</span>
-                </div>
-              )}
-            </div>
-
-            {listing.description && (
-              <div style={{ marginBottom: '20px' }}>
-                <p style={{ fontSize: '14px', color: 'var(--warm-gray)', lineHeight: 1.6, margin: 0 }}>
-                  {listing.description}
-                </p>
-              </div>
-            )}
-
-            {listing.amenities?.length > 0 && (
-              <div style={{ marginBottom: '20px' }}>
-                <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Amenities</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {listing.amenities.map(a => (
-                    <span key={a} className="tag">{a}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div style={{
-              background: 'rgba(180,74,54,0.06)', border: '1px solid rgba(180,74,54,0.2)',
-              borderRadius: '10px', padding: '12px 14px', marginBottom: '16px',
-            }}>
-              <p style={{ fontSize: '12px', lineHeight: 1.5, margin: 0 }}>
-                Under the FARE Act, you can't be charged a broker fee unless you hired the broker yourself.
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '8px' }}>
-              <p style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>Costs & fees</p>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                <span style={{ color: 'var(--warm-gray)' }}>Monthly rent</span>
-                <span style={{ fontWeight: 500 }}>${listing.price?.toLocaleString()}</span>
-              </div>
-
-              {listing.security_deposit > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                  <span style={{ color: 'var(--warm-gray)' }}>Security deposit</span>
-                  <span style={{ fontWeight: 500 }}>${listing.security_deposit.toLocaleString()}</span>
-                </div>
-              )}
-
-              {listing.application_fee > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                  <span style={{ color: 'var(--warm-gray)' }}>Application fee</span>
-                  <span style={{ fontWeight: 500 }}>${listing.application_fee.toLocaleString()}</span>
-                </div>
-              )}
-
-              {listing.move_in_fee > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                  <span style={{ color: 'var(--warm-gray)' }}>Move-in fee</span>
-                  <span style={{ fontWeight: 500 }}>${listing.move_in_fee.toLocaleString()}</span>
-                </div>
-              )}
-
-              {(listing.other_fees || []).map((f, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                  <span style={{ color: 'var(--warm-gray)' }}>{f.description}</span>
-                  <span style={{ fontWeight: 500 }}>${parseInt(f.amount || 0).toLocaleString()}</span>
-                </div>
-              ))}
-
-              <div style={{
-                display: 'flex', justifyContent: 'space-between', fontSize: '15px',
-                paddingTop: '10px', marginTop: '4px', borderTop: '1px solid var(--sand-dark)',
-                fontWeight: 700,
-              }}>
-                <span>Total due at signing</span>
-                <span style={{ color: 'var(--terracotta)' }}>${totalDueAtSigning(listing).toLocaleString()}</span>
-              </div>
-            </div>
-
-            <button
-              className="btn-primary w-full"
-              style={{ marginTop: '16px' }}
-              onClick={() => { setShowDetail(false); setShowTour(true) }}
-            >
-              Request a tour
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showTour && listing && (
-        <RequestTour listing={listing} onClose={() => setShowTour(false)} />
-      )}
 
       {currentIndex < listings.length && (
         <div style={{
@@ -503,6 +341,10 @@ export default function SwipeDeck() {
             <Heart size={28} strokeWidth={2.5} />
           </button>
         </div>
+      )}
+
+      {showTour && listing && (
+        <RequestTour listing={listing} onClose={() => setShowTour(false)} />
       )}
 
       <BottomNav />
