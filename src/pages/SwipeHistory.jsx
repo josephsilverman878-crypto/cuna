@@ -126,7 +126,10 @@ export default function SwipeHistory() {
             : 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80'
           return (
             <div key={swipe.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ display: 'flex' }}>
+              <div
+                style={{ display: 'flex', cursor: 'pointer' }}
+                onClick={() => navigate('/listing/' + listing.id)}
+              >
                 <img src={cover} alt="" style={{ width: '110px', height: '110px', objectFit: 'cover', flexShrink: 0 }} />
                 <div style={{ padding: '12px 16px', flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: '15px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
