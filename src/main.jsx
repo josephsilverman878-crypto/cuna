@@ -64,12 +64,7 @@ function AppRoutes() {
       <Route path="/history" element={
         <ProtectedRoute role="renter"><SwipeHistory /></ProtectedRoute>
       } />
-      <Route path="/matches" element={
-        <ProtectedRoute role="renter"><Matches /></ProtectedRoute>
-      } />
-      <Route path="/messages/:matchId" element={
-        <ProtectedRoute><Messages /></ProtectedRoute>
-      } />
+      
       <Route path="/profile" element={
         <ProtectedRoute><Profile /></ProtectedRoute>
       } />
