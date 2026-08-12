@@ -117,7 +117,7 @@ export default function SwipeHistory() {
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>
               {tab === 'right' ? '❤️' : '✕'}
             </div>
-            <p>{tab === 'right' ? 'No liked listings yet.' : 'No passed listings yet.'}</p>
+            <p>{tab === 'right' ? 'No saved listings yet.' : 'No passed listings yet.'}</p>
           </div>
         ) : filtered.map(swipe => {
           const listing = swipe.listing
