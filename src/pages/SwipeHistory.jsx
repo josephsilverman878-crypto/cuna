@@ -175,7 +175,7 @@ export default function SwipeHistory() {
                   }}
                 >
                   <ArrowRightLeft size={13} />
-                  {tab === 'right' ? 'Move to Passed' : 'Move to Liked'}
+                  {tab === 'right' ? 'Move to Passed' : 'Move to Saved'}
                 </button>
                 <div style={{ width: '1px', background: 'var(--sand-dark)' }} />
                 <button
