@@ -92,7 +92,7 @@ export default function SwipeHistory() {
 
       <div style={{ display: 'flex', padding: '20px 24px 0', gap: '8px' }}>
         {[
-          { id: 'right', label: `❤️ Liked (${likedCount})` },
+          { id: 'right', label: `❤️ Saved (${likedCount})` },
           { id: 'left', label: `✕ Passed (${passedCount})` },
         ].map(t => (
           <button
