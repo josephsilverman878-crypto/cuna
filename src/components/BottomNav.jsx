@@ -1,80 +1,15 @@
-import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Home, Heart, MessageCircle, User, History } from 'lucide-react'
+import { Home, Heart, User } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
-import toast from 'react-hot-toast'
-
-let matchToastShown = false
 
 export default function BottomNav() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { profile, user } = useAuth()
-  const [badgeCount, setBadgeCount] = useState(0)
-
-  useEffect(() => {
-    if (profile?.role !== 'renter' || !user) return
-
-    if (location.pathname === '/matches') markMatchesSeen()
-    else fetchBadgeCount()
-
-    const interval = setInterval(() => {
-      if (location.pathname !== '/matches') fetchBadgeCount()
-    }, 30000)
-
-    return () => clearInterval(interval)
-  }, [profile, user, location.pathname])
-
-  async function fetchBadgeCount() {
-    const { data: myMatches, error } = await supabase
-      .from('matches')
-      .select('id, seen_by_renter')
-      .eq('renter_id', user.id)
-
-    if (error) { console.error('Badge count failed:', error); return }
-    if (!myMatches?.length) { setBadgeCount(0); return }
-
-    const matchIds = myMatches.map(m => m.id)
-
-    const { data: unreadMsgs, error: msgError } = await supabase
-      .from('messages')
-      .select('match_id')
-      .in('match_id', matchIds)
-      .neq('sender_id', user.id)
-      .or('read.is.null,read.eq.false')
-
-    if (msgError) console.error('Unread message check failed:', msgError)
-
-    const needsAttention = new Set((unreadMsgs || []).map(m => m.match_id))
-    const newMatches = myMatches.filter(m => !m.seen_by_renter)
-    newMatches.forEach(m => needsAttention.add(m.id))
-
-    setBadgeCount(needsAttention.size)
-
-    if (newMatches.length > 0 && !matchToastShown) {
-      matchToastShown = true
-      toast.success(
-        `🎉 You have ${newMatches.length} new match${newMatches.length > 1 ? 'es' : ''}!`,
-        { duration: 4000 }
-      )
-    }
-  }
-
-  async function markMatchesSeen() {
-    const { error } = await supabase
-      .from('matches')
-      .update({ seen_by_renter: true })
-      .eq('renter_id', user.id)
-      .eq('seen_by_renter', false)
-    if (error) console.error('Mark matches seen failed:', error)
-    fetchBadgeCount()
-  }
+  const { profile } = useAuth()
 
   const renterTabs = [
     { path: '/swipe', icon: Home, label: 'Discover' },
-    { path: '/matches', icon: Heart, label: 'Matches', badge: badgeCount },
-    { path: '/history', icon: History, label: 'History' },
+    { path: '/history', icon: Heart, label: 'Saved' },
     { path: '/profile', icon: User, label: 'Profile' },
   ]
   const posterTabs = [
@@ -93,7 +28,7 @@ export default function BottomNav() {
       zIndex: 100,
       boxShadow: '0 -4px 20px rgba(44,36,32,0.08)',
     }}>
-      {tabs.map(({ path, icon: Icon, label, badge }) => {
+      {tabs.map(({ path, icon: Icon, label }) => {
         const active = location.pathname === path
         return (
           <button
@@ -110,18 +45,6 @@ export default function BottomNav() {
           >
             <div style={{ position: 'relative', display: 'flex' }}>
               <Icon size={22} strokeWidth={active ? 2.5 : 1.8} />
-              {badge > 0 && (
-                <span style={{
-                  position: 'absolute', top: '-5px', right: '-8px',
-                  minWidth: '17px', height: '17px', padding: '0 4px',
-                  borderRadius: '9px', background: 'var(--terracotta)',
-                  color: 'white', fontSize: '10px', fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  lineHeight: 1,
-                }}>
-                  {badge > 9 ? '9+' : badge}
-                </span>
-              )}
             </div>
             <span style={{ fontSize: '11px', fontWeight: active ? 600 : 400, letterSpacing: '0.3px' }}>
               {label}
