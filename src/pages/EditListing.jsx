@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
+import { scanDescription } from '../lib/fairHousing'
 import toast from 'react-hot-toast'
-import { Loader, ChevronLeft, X, Upload, ChevronRight, Trash2, ArchiveX } from 'lucide-react'
+import { Loader, ChevronLeft, X, Upload, ChevronRight, Trash2, ArchiveX, AlertTriangle } from 'lucide-react'
 
 const TABS = ['Details', 'Costs & Fees', 'Amenities', 'Photos', 'Review']
 
@@ -19,6 +20,7 @@ export default function EditListing() {
   const [photos, setPhotos] = useState([])
   const [existingPhotos, setExistingPhotos] = useState([])
   const [dragging, setDragging] = useState(false)
+  const [fhAck, setFhAck] = useState(false)
   const fileInputRef = useRef()
 
   const [form, setForm] = useState({
@@ -30,6 +32,8 @@ export default function EditListing() {
     dishwasher: false, hardwood: false, pets: false, roof_deck: false,
     central_air: false, washer_dryer: false, parking: false, storage: false,
   })
+
+  const fhScan = scanDescription(form.description)
 
   useEffect(() => { fetchListing() }, [id])
 
@@ -147,6 +151,19 @@ export default function EditListing() {
   }
 
   async function handleSubmit() {
+    // Fair housing gate — re-scan at submit time so the check can't be bypassed
+    // by editing the description after an earlier pass.
+    const scan = scanDescription(form.description)
+    if (scan.blocked.length > 0) {
+      toast.error('Your description may violate fair housing law. Please remove the highlighted language before saving.')
+      setTab(0)
+      return
+    }
+    if (!fhAck) {
+      toast.error('Please confirm the fair housing acknowledgment before saving.')
+      return
+    }
+
     setSubmitting(true)
     try {
       const amenitiesArray = Object.entries({
@@ -205,6 +222,31 @@ export default function EditListing() {
       cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left',
     }}>{label}</button>
   )
+
+  // Fair housing hit box. `blocking` renders red (must fix), otherwise
+  // terracotta (soft warning the poster can proceed past).
+  const fhHitBox = (hit, blocking) => {
+    const color = blocking ? 'var(--pass-red)' : 'var(--terracotta)'
+    const bg = blocking ? 'rgba(224,85,85,0.07)' : 'rgba(196,113,74,0.07)'
+    const border = blocking ? 'rgba(224,85,85,0.35)' : 'rgba(196,113,74,0.35)'
+    return (
+      <div key={`${blocking ? 'b' : 'f'}-${hit.phrase}`} style={{
+        display: 'flex', alignItems: 'flex-start', gap: '10px',
+        background: bg, border: `1px solid ${border}`,
+        borderRadius: '10px', padding: '12px 14px',
+      }}>
+        <AlertTriangle size={16} color={color} style={{ flexShrink: 0, marginTop: '2px' }} />
+        <div>
+          <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color }}>
+            {hit.label} — “{hit.phrase}”
+          </p>
+          <p style={{ margin: '4px 0 0', fontSize: '12px', lineHeight: 1.55, color: 'var(--charcoal-soft)' }}>
+            {hit.explain}
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   const totalPhotos = existingPhotos.length + photos.length
 
@@ -281,6 +323,18 @@ export default function EditListing() {
           <textarea rows={4} placeholder="Describe the apartment…"
             value={form.description} onChange={e => update('description', e.target.value)}
             style={{ ...inputStyle, resize: 'vertical' }} />
+          <p style={{ fontSize: '12px', color: 'var(--warm-gray)', lineHeight: 1.55, margin: '8px 0 0' }}>
+            Describe the apartment, not the tenant. Do not mention who may or may not
+            apply — including vouchers or rental assistance, children, or any protected
+            characteristic.
+          </p>
+
+          {(fhScan.blocked.length > 0 || fhScan.flagged.length > 0) && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+              {fhScan.blocked.map(hit => fhHitBox(hit, true))}
+              {fhScan.flagged.map(hit => fhHitBox(hit, false))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -541,6 +595,44 @@ export default function EditListing() {
           ))}
         </div>
       </div>
+
+      {fhScan.blocked.length > 0 && (
+        <div className="card" style={{
+          background: 'rgba(224,85,85,0.07)', border: '1px solid rgba(224,85,85,0.35)',
+          display: 'flex', flexDirection: 'column', gap: '10px',
+        }}>
+          <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--pass-red)' }}>
+            Fair housing issues must be fixed before saving
+          </p>
+          {fhScan.blocked.map(hit => fhHitBox(hit, true))}
+          <button type="button" onClick={() => setTab(0)} style={{
+            alignSelf: 'flex-start', background: 'none', border: 'none', padding: 0,
+            cursor: 'pointer', color: 'var(--terracotta)', fontSize: '13px', fontWeight: 600,
+          }}>
+            Edit description
+          </button>
+        </div>
+      )}
+
+      <div className="card">
+        <label style={{
+          display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer',
+        }}>
+          <input
+            type="checkbox"
+            required
+            checked={fhAck}
+            onChange={e => setFhAck(e.target.checked)}
+            style={{ width: '18px', height: '18px', flexShrink: 0, marginTop: '2px', accentColor: 'var(--terracotta)' }}
+          />
+          <span style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--charcoal)' }}>
+            I confirm this listing complies with the federal Fair Housing Act, the New
+            York State Human Rights Law, and the New York City Human Rights Law, and does
+            not state or imply any preference or limitation based on a protected
+            characteristic — including lawful source of income such as housing vouchers.
+          </span>
+        </label>
+      </div>
     </div>,
   ]
 
@@ -621,12 +713,15 @@ export default function EditListing() {
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
           }}>Next <ChevronRight size={16} /></button>
         ) : (
-          <button onClick={handleSubmit} disabled={submitting} style={{
-            flex: 2, padding: '14px', background: 'var(--terracotta)',
+          <button onClick={handleSubmit} disabled={submitting || !fhAck} style={{
+            flex: 2, padding: '14px',
+            background: fhAck ? 'var(--terracotta)' : 'var(--sand-dark)',
             border: 'none', borderRadius: '12px',
-            fontWeight: 600, fontSize: '15px', cursor: 'pointer', color: '#fff',
+            fontWeight: 600, fontSize: '15px',
+            cursor: fhAck ? 'pointer' : 'not-allowed', color: '#fff',
             opacity: submitting ? 0.7 : 1,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            transition: 'background 0.2s',
           }}>
             {submitting
               ? <><Loader size={16} style={{ animation: 'spin 0.7s linear infinite' }} /> {uploadProgress || 'Saving…'}</>

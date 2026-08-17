@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import RequestTour from '../components/RequestTour'
+import FairHousingNotice from '../components/FairHousingNotice'
 import toast from 'react-hot-toast'
 import { MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Heart } from 'lucide-react'
 
@@ -263,6 +264,10 @@ export default function ListingDetail() {
               </div>
             </div>
           </div>
+        </div>
+
+        <div style={{ marginTop: '16px' }}>
+          <FairHousingNotice />
         </div>
       </div>
 

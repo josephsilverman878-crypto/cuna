@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import RequestTour from '../components/RequestTour'
+import FairHousingNotice from '../components/FairHousingNotice'
 import toast from 'react-hot-toast'
 import { X, Heart, MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Info } from 'lucide-react'
 
@@ -342,6 +343,10 @@ export default function SwipeDeck() {
           </button>
         </div>
       )}
+
+      <div style={{ maxWidth: '440px', margin: '0 auto', padding: '0 24px 16px' }}>
+        <FairHousingNotice compact />
+      </div>
 
       {showTour && listing && (
         <RequestTour listing={listing} onClose={() => setShowTour(false)} />
