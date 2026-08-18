@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import RequestTour from '../components/RequestTour'
 import FairHousingNotice from '../components/FairHousingNotice'
+import { petsPolicyLabel } from '../lib/petsPolicy'
 import toast from 'react-hot-toast'
 import { MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Heart } from 'lucide-react'
 
@@ -205,6 +206,13 @@ export default function ListingDetail() {
               <p style={{ fontSize: '15px', color: 'var(--charcoal-soft)', lineHeight: 1.7, marginBottom: '20px' }}>
                 {listing.description}
               </p>
+            )}
+
+            {petsPolicyLabel(listing.pets_policy) && (
+              <div style={{ marginBottom: '20px' }}>
+                <p style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>Pets</p>
+                <span className="tag">🐾 {petsPolicyLabel(listing.pets_policy)}</span>
+              </div>
             )}
 
             {listing.amenities?.length > 0 && (

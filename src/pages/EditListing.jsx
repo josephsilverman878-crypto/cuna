@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import { scanDescription } from '../lib/fairHousing'
+import { PETS_POLICY_OPTIONS, PETS_POLICY_NOTE, petsPolicyLabel } from '../lib/petsPolicy'
 import toast from 'react-hot-toast'
 import { Loader, ChevronLeft, X, Upload, ChevronRight, Trash2, ArchiveX, AlertTriangle } from 'lucide-react'
 
@@ -28,8 +29,9 @@ export default function EditListing() {
     price: '', bedrooms: '', bathrooms: '', sqft: '',
     description: '', available_date: '',
     security_deposit: '', application_fee: '', move_in_fee: '', other_fees: [],
+    pets_policy: '',
     doorman: false, elevator: false, gym: false, laundry: false,
-    dishwasher: false, hardwood: false, pets: false, roof_deck: false,
+    dishwasher: false, hardwood: false, roof_deck: false,
     central_air: false, washer_dryer: false, parking: false, storage: false,
   })
 
@@ -61,13 +63,13 @@ export default function EditListing() {
       application_fee: data.application_fee?.toString() || '',
       move_in_fee: data.move_in_fee?.toString() || '',
       other_fees: data.other_fees || [],
+      pets_policy: data.pets_policy || '',
       doorman: amenities.includes('Doorman'),
       elevator: amenities.includes('Elevator'),
       gym: amenities.includes('Gym'),
       laundry: amenities.includes('Laundry'),
       dishwasher: amenities.includes('Dishwasher'),
       hardwood: amenities.includes('Hardwood floors'),
-      pets: amenities.includes('Pets allowed'),
       roof_deck: amenities.includes('Roof deck'),
       central_air: amenities.includes('Central air'),
       washer_dryer: amenities.includes('Washer/dryer'),
@@ -163,13 +165,18 @@ export default function EditListing() {
       toast.error('Please confirm the fair housing acknowledgment before saving.')
       return
     }
+    if (!form.pets_policy) {
+      toast.error('Please choose a pets policy before saving.')
+      setTab(2)
+      return
+    }
 
     setSubmitting(true)
     try {
       const amenitiesArray = Object.entries({
         doorman: 'Doorman', elevator: 'Elevator', gym: 'Gym',
         laundry: 'Laundry', dishwasher: 'Dishwasher', hardwood: 'Hardwood floors',
-        pets: 'Pets allowed', roof_deck: 'Roof deck', central_air: 'Central air',
+        roof_deck: 'Roof deck', central_air: 'Central air',
         washer_dryer: 'Washer/dryer', parking: 'Parking', storage: 'Storage',
       }).filter(([k]) => form[k]).map(([, v]) => v)
 
@@ -194,6 +201,7 @@ export default function EditListing() {
           .filter(f => f.description && f.amount)
           .map(f => ({ description: f.description, amount: parseInt(f.amount) })),
         amenities: amenitiesArray,
+        pets_policy: form.pets_policy,
         available_date: form.available_date || null,
         photos: allPhotos,
       }).eq('id', id)
@@ -449,22 +457,50 @@ export default function EditListing() {
     </div>,
 
     // ── TAB 2: AMENITIES ──
-    <div key="amenities" className="card">
-      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', marginBottom: '6px' }}>Building & unit amenities</h3>
-      <p style={{ fontSize: '13px', color: 'var(--warm-gray)', marginBottom: '20px' }}>Select everything that applies.</p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-        {amenityBtn('doorman', '🚪 Doorman')}
-        {amenityBtn('elevator', '🛗 Elevator')}
-        {amenityBtn('gym', '🏋️ Gym')}
-        {amenityBtn('laundry', '🧺 Laundry in building')}
-        {amenityBtn('dishwasher', '🍽️ Dishwasher')}
-        {amenityBtn('hardwood', '🪵 Hardwood floors')}
-        {amenityBtn('pets', '🐾 Pets allowed')}
-        {amenityBtn('roof_deck', '🌇 Roof deck')}
-        {amenityBtn('central_air', '❄️ Central air')}
-        {amenityBtn('washer_dryer', '🫧 Washer/dryer in unit')}
-        {amenityBtn('parking', '🚗 Parking')}
-        {amenityBtn('storage', '📦 Storage')}
+    <div key="amenities" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className="card">
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', marginBottom: '6px' }}>Pets policy *</h3>
+        <p style={{ fontSize: '13px', color: 'var(--warm-gray)', marginBottom: '16px' }}>Choose one. Required.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {PETS_POLICY_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => update('pets_policy', opt.value)}
+              style={{
+                padding: '12px 14px', borderRadius: '10px', textAlign: 'left',
+                border: `2px solid ${form.pets_policy === opt.value ? 'var(--terracotta)' : 'var(--sand-dark)'}`,
+                background: form.pets_policy === opt.value ? 'rgba(180,74,54,0.08)' : 'var(--white)',
+                color: form.pets_policy === opt.value ? 'var(--terracotta)' : 'var(--warm-gray)',
+                fontWeight: form.pets_policy === opt.value ? 600 : 400,
+                fontSize: '14px', cursor: 'pointer', transition: 'all 0.15s',
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <p style={{ fontSize: '12px', color: 'var(--warm-gray)', lineHeight: 1.55, margin: '12px 0 0' }}>
+          {PETS_POLICY_NOTE}
+        </p>
+      </div>
+
+      <div className="card">
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', marginBottom: '6px' }}>Building & unit amenities</h3>
+        <p style={{ fontSize: '13px', color: 'var(--warm-gray)', marginBottom: '20px' }}>Select everything that applies.</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          {amenityBtn('doorman', '🚪 Doorman')}
+          {amenityBtn('elevator', '🛗 Elevator')}
+          {amenityBtn('gym', '🏋️ Gym')}
+          {amenityBtn('laundry', '🧺 Laundry in building')}
+          {amenityBtn('dishwasher', '🍽️ Dishwasher')}
+          {amenityBtn('hardwood', '🪵 Hardwood floors')}
+          {amenityBtn('roof_deck', '🌇 Roof deck')}
+          {amenityBtn('central_air', '❄️ Central air')}
+          {amenityBtn('washer_dryer', '🫧 Washer/dryer in unit')}
+          {amenityBtn('parking', '🚗 Parking')}
+          {amenityBtn('storage', '📦 Storage')}
+        </div>
       </div>
     </div>,
 
@@ -581,10 +617,11 @@ export default function EditListing() {
               : 'None'],
             ['Total at signing', `$${totalDueAtSigning().toLocaleString()}`],
             ['Photos', `${totalPhotos} photo${totalPhotos !== 1 ? 's' : ''}`],
+            ['Pets', petsPolicyLabel(form.pets_policy) || 'Not selected'],
             ['Amenities', Object.entries({
               doorman: 'Doorman', elevator: 'Elevator', gym: 'Gym',
               laundry: 'Laundry', dishwasher: 'Dishwasher', hardwood: 'Hardwood floors',
-              pets: 'Pets allowed', roof_deck: 'Roof deck', central_air: 'Central air',
+              roof_deck: 'Roof deck', central_air: 'Central air',
               washer_dryer: 'Washer/dryer', parking: 'Parking', storage: 'Storage',
             }).filter(([k]) => form[k]).map(([, v]) => v).join(', ') || 'None'],
           ].map(([label, value]) => (

@@ -29,41 +29,22 @@ export default function PosterDashboard() {
     if (listingData?.length > 0) {
       const ids = listingData.map(l => l.id)
 
+      // Saves are deliberately aggregate-only: posters see interest counts, never
+      // who saved. Renter identity is shared only when the renter sends a tour
+      // request. Do not re-add profile lookups here.
       const { data: swipeData, error: swipeError } = await supabase
         .from('swipes')
-        .select('*')
+        .select('listing_id')
         .in('listing_id', ids)
         .eq('direction', 'right')
 
       if (swipeError) console.error('Saves fetch error:', swipeError)
 
-      let enriched = []
-      if (swipeData?.length > 0) {
-        const renterIds = [...new Set(swipeData.map(s => s.renter_id))]
-
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('id, name, email, phone')
-          .in('id', renterIds)
-
-        const { data: renterProfileData } = await supabase
-          .from('renter_profiles')
-          .select('*')
-          .in('id', renterIds)
-
-        enriched = swipeData.map(s => ({
-          ...s,
-          profiles: profileData?.find(p => p.id === s.renter_id) || null,
-          renter_profiles: renterProfileData?.find(rp => rp.id === s.renter_id) || null,
-        }))
-      }
-
-      const grouped = {}
-      enriched.forEach(s => {
-        if (!grouped[s.listing_id]) grouped[s.listing_id] = []
-        grouped[s.listing_id].push(s)
+      const counts = {}
+      ;(swipeData || []).forEach(s => {
+        counts[s.listing_id] = (counts[s.listing_id] || 0) + 1
       })
-      setSaves(grouped)
+      setSaves(counts)
     }
 
     const { data: inquiryData, error: inqError } = await supabase
@@ -131,7 +112,7 @@ export default function PosterDashboard() {
 
   if (loading) return <div className="center" style={{ height: '100dvh' }}><div className="spinner" /></div>
 
-  const totalSaves = Object.values(saves).reduce((sum, arr) => sum + arr.length, 0)
+  const totalSaves = Object.values(saves).reduce((sum, n) => sum + n, 0)
   const totalViews = listings.reduce((sum, l) => sum + (l.views || 0), 0)
 
   function inquiryCountFor(listingId) {
@@ -291,7 +272,7 @@ export default function PosterDashboard() {
                   <Eye size={14} /> {listing.views || 0} views
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <Users size={14} /> {saves[listing.id]?.length || 0} saves
+                  <Users size={14} /> {saves[listing.id] || 0} saves
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <CalendarCheck size={14} /> {inquiryCountFor(listing.id)} requests
@@ -341,34 +322,48 @@ export default function PosterDashboard() {
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>💾</div>
               <p>No saves yet. Make sure your listings are active.</p>
             </div>
-          ) : listings.map(listing => {
-            const renters = saves[listing.id] || []
-            if (renters.length === 0) return null
-            return (
-              <div key={listing.id}>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--warm-gray)', marginBottom: '8px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                  {listing.address}
-                </div>
-                {renters.map(swipe => {
-                  const renter = swipe.profiles
-                  const rp = swipe.renter_profiles
-                  return (
-                    <div key={swipe.id} className="card" style={{ padding: '16px', marginBottom: '10px' }}>
-                      <div style={{ fontWeight: 600, fontSize: '15px' }}>{renter?.name}</div>
-                      <div style={{ fontSize: '13px', color: 'var(--terracotta)', marginTop: '2px' }}>{renter?.email}</div>
-                      {rp?.show_phone && <div style={{ fontSize: '13px', color: 'var(--warm-gray)' }}>{renter?.phone}</div>}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px' }}>
-                        {rp?.show_move_in && rp?.move_in_date && <span className="tag">🗓 Move in {new Date(rp.move_in_date).toLocaleDateString()}</span>}
-                        {rp?.show_pets && rp?.has_pets && <span className="tag">🐾 Has pets</span>}
-                        {rp?.show_pets && !rp?.has_pets && <span className="tag">No pets</span>}
-                        {rp?.show_credit && rp?.credit_score_range && <span className="tag">📊 Credit: {rp.credit_score_range.replace('_', '-')}</span>}
+          ) : (
+            <>
+              <p style={{
+                fontSize: '13px', color: 'var(--warm-gray)', lineHeight: 1.6, margin: 0,
+              }}>
+                Saves show interest in your listing. Renter details are shared when someone
+                sends you a tour request.
+              </p>
+
+              {listings.map(listing => {
+                const count = saves[listing.id] || 0
+                if (count === 0) return null
+                return (
+                  <div key={listing.id} className="card" style={{
+                    padding: '16px 18px', display: 'flex',
+                    justifyContent: 'space-between', alignItems: 'center', gap: '14px',
+                  }}>
+                    <div
+                      style={{ flex: 1, cursor: 'pointer', minWidth: 0 }}
+                      onClick={() => navigate('/listing/' + listing.id)}
+                    >
+                      <div style={{ fontWeight: 600, fontSize: '15px' }}>{listing.address}</div>
+                      <div style={{ fontSize: '13px', color: 'var(--warm-gray)', marginTop: '2px' }}>
+                        {listing.neighborhood ? `${listing.neighborhood}, ` : ''}{listing.city}, {listing.state}
                       </div>
                     </div>
-                  )
-                })}
-              </div>
-            )
-          })
+                    <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                      <div style={{
+                        fontFamily: 'var(--font-display)', fontSize: '26px',
+                        fontWeight: 600, color: 'var(--terracotta)', lineHeight: 1,
+                      }}>
+                        {count}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--warm-gray)', marginTop: '4px' }}>
+                        {count === 1 ? 'save' : 'saves'}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </>
+          )
         )}
 
         {activeTab === 'inquiries' && (

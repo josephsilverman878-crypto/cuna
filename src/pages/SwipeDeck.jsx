@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import RequestTour from '../components/RequestTour'
 import FairHousingNotice from '../components/FairHousingNotice'
+import { petsPolicyLabel } from '../lib/petsPolicy'
 import toast from 'react-hot-toast'
 import { X, Heart, MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Info } from 'lucide-react'
 
@@ -277,9 +278,12 @@ export default function SwipeDeck() {
                 </p>
               )}
 
-              {listing.amenities?.length > 0 && (
+              {(petsPolicyLabel(listing.pets_policy) || listing.amenities?.length > 0) && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {listing.amenities.slice(0, 4).map(a => (
+                  {petsPolicyLabel(listing.pets_policy) && (
+                    <span className="tag">🐾 {petsPolicyLabel(listing.pets_policy)}</span>
+                  )}
+                  {(listing.amenities || []).slice(0, 4).map(a => (
                     <span key={a} className="tag">{a}</span>
                   ))}
                 </div>
