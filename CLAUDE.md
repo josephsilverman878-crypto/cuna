@@ -27,6 +27,9 @@ Work happens on the `main` branch. Every push to main deploys to production.
 - FARE Act: listings must disclose all fees. No tenant-paid broker fee option
   exists or should be added.
 - Fair housing: listing descriptions must not state preferences about tenants.
+- You have no database access. The anon key in .env.local cannot run migrations or
+  admin queries. When a change needs SQL, write the SQL and hand it to Joseph to run
+  in the Supabase SQL editor — don't attempt it via curl or the REST API.
 
 ## Debugging lesson
 Failures in this project are usually SILENT: a missing RLS policy returning zero
