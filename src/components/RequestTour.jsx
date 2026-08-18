@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
@@ -11,6 +11,61 @@ export default function RequestTour({ listing, onClose }) {
   const [tourType, setTourType] = useState('in_person')
   const [times, setTimes] = useState([''])
   const [message, setMessage] = useState('')
+  const [renterProfile, setRenterProfile] = useState(null)
+  const [loadingProfile, setLoadingProfile] = useState(true)
+
+  // Load the renter's privacy toggles up front so the preview below shows
+  // exactly what will be shared — the same object is used to build the payload.
+  useEffect(() => {
+    let cancelled = false
+    async function loadRenterProfile() {
+      const { data, error } = await supabase
+        .from('renter_profiles')
+        .select('move_in_date, has_pets, pet_details, credit_score_range, show_phone, show_move_in, show_pets, show_credit')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (error) console.error('Renter profile fetch failed:', error)
+      if (!cancelled) {
+        setRenterProfile(data || null)
+        setLoadingProfile(false)
+      }
+    }
+    loadRenterProfile()
+    return () => { cancelled = true }
+  }, [user.id])
+
+  // Only fields whose matching toggle is ON. Absent toggles share nothing.
+  // If the profile row is missing entirely, nothing optional is shared.
+  function buildSharedDetails() {
+    const rp = renterProfile
+    const shared = {}
+    if (!rp) return shared
+    if (rp.show_phone && profile?.phone) shared.renterPhone = profile.phone
+    if (rp.show_move_in && rp.move_in_date) shared.moveInDate = rp.move_in_date
+    if (rp.show_pets) {
+      shared.hasPets = !!rp.has_pets
+      if (rp.has_pets && rp.pet_details) shared.petDetails = rp.pet_details
+    }
+    if (rp.show_credit && rp.credit_score_range) shared.creditScoreRange = rp.credit_score_range
+    return shared
+  }
+
+  const shared = buildSharedDetails()
+
+  function formatCredit(range) {
+    return range ? range.replace('_', '-') : ''
+  }
+
+  // Human-readable list of the optional items being shared, for the preview.
+  const sharedLabels = []
+  if (shared.renterPhone) sharedLabels.push('Phone: ' + shared.renterPhone)
+  if (shared.moveInDate) sharedLabels.push('Move-in: ' + new Date(shared.moveInDate).toLocaleDateString())
+  if (shared.hasPets !== undefined) {
+    sharedLabels.push(shared.hasPets
+      ? 'Pets: has pets' + (shared.petDetails ? ` (${shared.petDetails})` : '')
+      : 'Pets: no pets')
+  }
+  if (shared.creditScoreRange) sharedLabels.push('Credit: ' + formatCredit(shared.creditScoreRange))
 
   function updateTime(i, value) {
     setTimes(prev => prev.map((t, idx) => idx === i ? value : t))
@@ -44,15 +99,18 @@ export default function RequestTour({ listing, onClose }) {
           posterEmail: listing.profiles?.email,
           renterName: profile?.name,
           renterEmail: profile?.email,
-          renterPhone: profile?.phone,
           listingUrl: window.location.origin + '/listing/' + listing.id,
           tourType,
           times: cleanTimes,
           message: message.trim(),
+          // Only toggled-on fields; renterPhone is included here or not at all.
+          ...shared,
         }),
       })
      if (!resp.ok) throw new Error('Email could not be sent')
 
+      // Snapshot what was actually shared at send time, so the poster's
+      // dashboard reflects this moment rather than the renter's current settings.
       const { error: dbError } = await supabase.from('inquiries').insert({
         listing_id: listing.id,
         renter_id: user.id,
@@ -60,6 +118,11 @@ export default function RequestTour({ listing, onClose }) {
         tour_type: tourType,
         preferred_times: cleanTimes,
         message: message.trim() || null,
+        shared_phone: shared.renterPhone || null,
+        shared_move_in_date: shared.moveInDate || null,
+        shared_has_pets: shared.hasPets !== undefined ? shared.hasPets : null,
+        shared_pet_details: shared.petDetails || null,
+        shared_credit_score_range: shared.creditScoreRange || null,
       })
       if (dbError) console.error('Inquiry row failed after email sent:', dbError)
 
@@ -123,9 +186,40 @@ export default function RequestTour({ listing, onClose }) {
               background: 'var(--sand)', borderRadius: '10px', padding: '12px 14px', marginBottom: '20px',
             }}>
               <p style={{ fontSize: '12px', color: 'var(--warm-gray)', margin: 0, lineHeight: 1.5 }}>
-                Sent as <strong>{profile?.name}</strong> ({profile?.email}
-                {profile?.phone ? ', ' + profile.phone : ''}). The agent will reply to your email.
+                Sent as <strong>{profile?.name}</strong> ({profile?.email}).
+                The agent will reply to your email.
               </p>
+
+              {loadingProfile ? (
+                <p style={{ fontSize: '12px', color: 'var(--warm-gray)', margin: '10px 0 0' }}>
+                  Checking what you're sharing…
+                </p>
+              ) : (
+                <>
+                  <p style={{
+                    fontSize: '11px', fontWeight: 700, color: 'var(--charcoal)',
+                    textTransform: 'uppercase', letterSpacing: '0.5px', margin: '12px 0 6px',
+                  }}>
+                    Also shared with this agent
+                  </p>
+                  {sharedLabels.length > 0 ? (
+                    <ul style={{ margin: 0, paddingLeft: '18px' }}>
+                      {sharedLabels.map(label => (
+                        <li key={label} style={{ fontSize: '12px', color: 'var(--charcoal-soft)', lineHeight: 1.6 }}>
+                          {label}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p style={{ fontSize: '12px', color: 'var(--warm-gray)', margin: 0, lineHeight: 1.5 }}>
+                      Nothing else — only your name and email.
+                    </p>
+                  )}
+                  <p style={{ fontSize: '11px', color: 'var(--warm-gray)', margin: '8px 0 0', lineHeight: 1.5 }}>
+                    Controlled by the sharing toggles in your profile.
+                  </p>
+                </>
+              )}
             </div>
 
             <label className="label">Tour type</label>

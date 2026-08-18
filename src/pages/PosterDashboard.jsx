@@ -60,9 +60,11 @@ export default function PosterDashboard() {
       const renterIds = [...new Set(inquiryData.map(i => i.renter_id))]
       const listingIds = [...new Set(inquiryData.map(i => i.listing_id))]
 
+      // Phone is deliberately not selected here — it comes from the inquiry's
+      // shared_phone snapshot only, so a renter who never shared it stays private.
       const { data: renterData } = await supabase
         .from('profiles')
-        .select('id, name, email, phone')
+        .select('id, name, email')
         .in('id', renterIds)
 
       const { data: inqListings } = await supabase
@@ -396,12 +398,31 @@ export default function PosterDashboard() {
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--terracotta)' }}>
                   <Mail size={13} /> {inq.renter?.email}
                 </span>
-                {inq.renter?.phone && (
+                {/* Phone comes from the inquiry snapshot, not the live profile —
+                    it appears only if the renter shared it when they sent this. */}
+                {inq.shared_phone && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--warm-gray)' }}>
-                    <Phone size={13} /> {inq.renter.phone}
+                    <Phone size={13} /> {inq.shared_phone}
                   </span>
                 )}
               </div>
+
+              {(inq.shared_move_in_date || typeof inq.shared_has_pets === 'boolean' || inq.shared_credit_score_range) && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                  {inq.shared_move_in_date && (
+                    <span className="tag">🗓 Move in {new Date(inq.shared_move_in_date).toLocaleDateString()}</span>
+                  )}
+                  {inq.shared_has_pets === true && (
+                    <span className="tag">
+                      🐾 Has pets{inq.shared_pet_details ? ` — ${inq.shared_pet_details}` : ''}
+                    </span>
+                  )}
+                  {inq.shared_has_pets === false && <span className="tag">No pets</span>}
+                  {inq.shared_credit_score_range && (
+                    <span className="tag">📊 Credit: {inq.shared_credit_score_range.replace('_', '-')}</span>
+                  )}
+                </div>
+              )}
 
               {(inq.preferred_times || []).length > 0 && (
                 <div style={{ marginBottom: '10px' }}>
