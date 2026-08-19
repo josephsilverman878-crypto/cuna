@@ -24,6 +24,13 @@ export default function RequestTour({ listing, onClose }) {
         .select('move_in_date, has_pets, pet_details, credit_score_range, show_phone, show_move_in, show_pets, show_credit')
         .eq('id', user.id)
         .maybeSingle()
+      // TEMP DEBUG — remove once privacy toggles are confirmed working
+      console.log('[cuna-debug] renter_profiles fetch', {
+        userId: user.id,
+        error,
+        rowReturned: !!data,
+        row: data,
+      })
       if (error) console.error('Renter profile fetch failed:', error)
       if (!cancelled) {
         setRenterProfile(data || null)
@@ -51,6 +58,15 @@ export default function RequestTour({ listing, onClose }) {
   }
 
   const shared = buildSharedDetails()
+
+  // TEMP DEBUG — remove once privacy toggles are confirmed working
+  console.log('[cuna-debug] shared object built', {
+    renterProfileLoaded: !!renterProfile,
+    show_phone: renterProfile?.show_phone,
+    authProfileHasPhone: !!profile?.phone,
+    shared,
+    sharedKeys: Object.keys(shared),
+  })
 
   function formatCredit(range) {
     return range ? range.replace('_', '-') : ''
@@ -89,29 +105,38 @@ export default function RequestTour({ listing, onClose }) {
           hour: 'numeric', minute: '2-digit',
         }))
 
+      const emailPayload = {
+        listingAddress: listing.address,
+        listingPrice: listing.price,
+        posterName: listing.profiles?.name,
+        posterEmail: listing.profiles?.email,
+        renterName: profile?.name,
+        renterEmail: profile?.email,
+        listingUrl: window.location.origin + '/listing/' + listing.id,
+        tourType,
+        times: cleanTimes,
+        message: message.trim(),
+        // Only toggled-on fields; renterPhone is included here or not at all.
+        ...shared,
+      }
+
+      // TEMP DEBUG — remove once privacy toggles are confirmed working
+      console.log('[cuna-debug] POST /api/send-inquiry payload', {
+        payload: emailPayload,
+        payloadKeys: Object.keys(emailPayload),
+        hasRenterPhoneKey: 'renterPhone' in emailPayload,
+      })
+
       const resp = await fetch('/api/send-inquiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          listingAddress: listing.address,
-          listingPrice: listing.price,
-          posterName: listing.profiles?.name,
-          posterEmail: listing.profiles?.email,
-          renterName: profile?.name,
-          renterEmail: profile?.email,
-          listingUrl: window.location.origin + '/listing/' + listing.id,
-          tourType,
-          times: cleanTimes,
-          message: message.trim(),
-          // Only toggled-on fields; renterPhone is included here or not at all.
-          ...shared,
-        }),
+        body: JSON.stringify(emailPayload),
       })
      if (!resp.ok) throw new Error('Email could not be sent')
 
       // Snapshot what was actually shared at send time, so the poster's
       // dashboard reflects this moment rather than the renter's current settings.
-      const { error: dbError } = await supabase.from('inquiries').insert({
+      const insertPayload = {
         listing_id: listing.id,
         renter_id: user.id,
         poster_id: listing.poster_id,
@@ -123,7 +148,20 @@ export default function RequestTour({ listing, onClose }) {
         shared_has_pets: shared.hasPets !== undefined ? shared.hasPets : null,
         shared_pet_details: shared.petDetails || null,
         shared_credit_score_range: shared.creditScoreRange || null,
+      }
+
+      // TEMP DEBUG — remove once privacy toggles are confirmed working
+      console.log('[cuna-debug] inquiries insert payload', insertPayload)
+
+      const { data: insertedRows, error: dbError } = await supabase
+        .from('inquiries').insert(insertPayload).select()
+
+      // TEMP DEBUG — shows whether the row we think we wrote is what came back
+      console.log('[cuna-debug] inquiries insert result', {
+        error: dbError,
+        returnedRow: insertedRows?.[0] || null,
       })
+
       if (dbError) console.error('Inquiry row failed after email sent:', dbError)
 
       setSent(true)
