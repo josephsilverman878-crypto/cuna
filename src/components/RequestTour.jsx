@@ -10,6 +10,9 @@ export default function RequestTour({ listing, onClose }) {
   const [sent, setSent] = useState(false)
   const [tourType, setTourType] = useState('in_person')
   const [times, setTimes] = useState([''])
+  // Parallel to `times`. True where the input holds a partial datetime that the
+  // browser reports as an empty value — see updateTime.
+  const [timeErrors, setTimeErrors] = useState([false])
   const [message, setMessage] = useState('')
   const [renterProfile, setRenterProfile] = useState(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
@@ -43,17 +46,19 @@ export default function RequestTour({ listing, onClose }) {
 
   // Only fields whose matching toggle is ON. Absent toggles share nothing.
   // If the profile row is missing entirely, nothing optional is shared.
+  // Toggles are compared with === true on purpose: a NULL column or any
+  // non-boolean value must fail closed rather than fall through a truthy check.
   function buildSharedDetails() {
     const rp = renterProfile
     const shared = {}
     if (!rp) return shared
-    if (rp.show_phone && profile?.phone) shared.renterPhone = profile.phone
-    if (rp.show_move_in && rp.move_in_date) shared.moveInDate = rp.move_in_date
-    if (rp.show_pets) {
+    if (rp.show_phone === true && profile?.phone) shared.renterPhone = profile.phone
+    if (rp.show_move_in === true && rp.move_in_date) shared.moveInDate = rp.move_in_date
+    if (rp.show_pets === true) {
       shared.hasPets = !!rp.has_pets
       if (rp.has_pets && rp.pet_details) shared.petDetails = rp.pet_details
     }
-    if (rp.show_credit && rp.credit_score_range) shared.creditScoreRange = rp.credit_score_range
+    if (rp.show_credit === true && rp.credit_score_range) shared.creditScoreRange = rp.credit_score_range
     return shared
   }
 
@@ -83,19 +88,35 @@ export default function RequestTour({ listing, onClose }) {
   }
   if (shared.creditScoreRange) sharedLabels.push('Credit: ' + formatCredit(shared.creditScoreRange))
 
-  function updateTime(i, value) {
+  // A datetime-local input reports value === '' until EVERY segment is filled —
+  // date, hour, minute and AM/PM. While it is partially filled it reports
+  // validity.badInput, which is the only way to tell "user typed nothing" apart
+  // from "user typed something incomplete". Both look like '' otherwise, and
+  // .filter(Boolean) used to drop the second case silently.
+  function updateTime(i, e) {
+    const { value, validity } = e.target
     setTimes(prev => prev.map((t, idx) => idx === i ? value : t))
+    setTimeErrors(prev => prev.map((bad, idx) => idx === i ? validity?.badInput === true : bad))
   }
 
   function addTime() {
-    if (times.length < 3) setTimes(prev => [...prev, ''])
+    if (times.length >= 3) return
+    setTimes(prev => [...prev, ''])
+    setTimeErrors(prev => [...prev, false])
   }
 
   function removeTime(i) {
     setTimes(prev => prev.filter((_, idx) => idx !== i))
+    setTimeErrors(prev => prev.filter((_, idx) => idx !== i))
   }
 
   async function submit() {
+    // Refuse to send rather than quietly dropping a half-entered time and
+    // telling the agent no times were offered.
+    if (timeErrors.some(Boolean)) {
+      toast.error('One of your preferred times is incomplete')
+      return
+    }
     setSending(true)
     try {
       const cleanTimes = times
@@ -285,15 +306,24 @@ export default function RequestTour({ listing, onClose }) {
             <label className="label">Preferred times (optional, up to 3)</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', margin: '8px 0 6px' }}>
               {times.map((t, i) => (
-                <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <input type="datetime-local" value={t}
-                    onChange={e => updateTime(i, e.target.value)} style={{ flex: 1 }} />
-                  {times.length > 1 && (
-                    <button type="button" onClick={() => removeTime(i)} style={{
-                      background: 'none', border: 'none', cursor: 'pointer', color: 'var(--warm-gray)', display: 'flex',
-                    }}>
-                      <X size={16} />
-                    </button>
+                <div key={i}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input type="datetime-local" value={t}
+                      onChange={e => updateTime(i, e)}
+                      onBlur={e => updateTime(i, e)}
+                      style={{ flex: 1, border: timeErrors[i] ? '1.5px solid var(--pass-red)' : undefined }} />
+                    {times.length > 1 && (
+                      <button type="button" onClick={() => removeTime(i)} style={{
+                        background: 'none', border: 'none', cursor: 'pointer', color: 'var(--warm-gray)', display: 'flex',
+                      }}>
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
+                  {timeErrors[i] && (
+                    <p style={{ fontSize: '12px', color: 'var(--pass-red)', margin: '6px 0 0' }}>
+                      Incomplete — fill in the date and the full time, including AM/PM.
+                    </p>
                   )}
                 </div>
               ))}
