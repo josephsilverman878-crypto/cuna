@@ -116,6 +116,9 @@ export default function RequestTour({ listing, onClose }) {
         tourType,
         times: cleanTimes,
         message: message.trim(),
+        // TEMP DEBUG — identifies which client build sent this request, so the
+        // server log can prove whether an old tab/bundle is still in play.
+        clientBuild: 'esc-v2',
         // Only toggled-on fields; renterPhone is included here or not at all.
         ...shared,
       }
