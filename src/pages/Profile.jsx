@@ -1,13 +1,44 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import toast from 'react-hot-toast'
 import { LogOut, Save } from 'lucide-react'
 
+// Module scope on purpose. Declared inside Profile() this was a new component
+// type on every render, so React unmounted and remounted all four buttons each
+// time `form` changed — which drops rapid clicks and steals focus.
+function Toggle({ label, value, onToggle }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--sand-dark)' }}>
+      <span style={{ fontSize: '14px', color: 'var(--charcoal-soft)' }}>{label}</span>
+      <button
+        onClick={onToggle}
+        style={{
+          width: '44px', height: '24px', borderRadius: '12px',
+          background: value ? 'var(--terracotta)' : 'var(--warm-gray-light)',
+          border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s',
+        }}
+      >
+        <div style={{
+          width: '18px', height: '18px', borderRadius: '50%', background: 'white',
+          position: 'absolute', top: '3px',
+          left: value ? '23px' : '3px',
+          transition: 'left 0.2s',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+        }} />
+      </button>
+    </div>
+  )
+}
+
 export default function Profile() {
   const { user, profile, signOut, fetchProfile } = useAuth()
-  const [renterProfile, setRenterProfile] = useState(null)
+  // Which user's row has already been loaded into `form`, and whether the user
+  // has typed since. Refs rather than state: both are read inside an async
+  // callback, so they must reflect the value at call time, not at render time.
+  const loadedForUser = useRef(null)
+  const formDirty = useRef(false)
   const [saving, setSaving] = useState(false)
   const [savingPoster, setSavingPoster] = useState(false)
   const [posterForm, setPosterForm] = useState({
@@ -20,7 +51,18 @@ export default function Profile() {
     show_phone: false, show_move_in: true, show_pets: true, show_credit: false,
   })
 
-  useEffect(() => { if (profile?.role === 'renter') fetchRenterProfile() }, [profile])
+  // Load the renter row exactly ONCE per user. This effect calls setForm(), so
+  // every re-run overwrites whatever is on screen — that is how a toggle flipped
+  // OFF got written back as true. Narrowing the deps array is NOT sufficient on
+  // its own: AuthContext does setProfile(data) with whatever its query returned,
+  // so a transient failure makes profile?.role undefined and the next auth event
+  // flips it back, which is a real dep change. Guard on identity instead.
+  useEffect(() => {
+    if (profile?.role !== 'renter' || !user?.id) return
+    if (loadedForUser.current === user.id) return
+    loadedForUser.current = user.id
+    fetchRenterProfile()
+  }, [profile?.role, user?.id])
 
   useEffect(() => {
     if (profile?.role === 'poster') {
@@ -40,7 +82,9 @@ export default function Profile() {
       .eq('id', user.id)
       .maybeSingle()
     if (data) {
-      setRenterProfile(data)
+      // On a slow connection this can resolve after the user has already started
+      // typing. Never overwrite unsaved edits.
+      if (formDirty.current) return
       setForm({
         move_in_date: data.move_in_date || '',
         budget_min: data.budget_min?.toString() || '',
@@ -59,7 +103,10 @@ export default function Profile() {
     }
   }
 
-  function update(field, value) { setForm(f => ({ ...f, [field]: value })) }
+  function update(field, value) {
+    formDirty.current = true
+    setForm(f => ({ ...f, [field]: value }))
+  }
   function updatePoster(field, value) { setPosterForm(f => ({ ...f, [field]: value })) }
 
   async function savePosterProfile() {
@@ -111,6 +158,7 @@ export default function Profile() {
         updated_at: new Date().toISOString(),
       })
       if (error) throw error
+      formDirty.current = false
       toast.success('Profile saved!')
     } catch (err) {
       console.error('Profile save error:', err)
@@ -119,28 +167,6 @@ export default function Profile() {
       setSaving(false)
     }
   }
-
-  const Toggle = ({ field, label }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--sand-dark)' }}>
-      <span style={{ fontSize: '14px', color: 'var(--charcoal-soft)' }}>{label}</span>
-      <button
-        onClick={() => update(field, !form[field])}
-        style={{
-          width: '44px', height: '24px', borderRadius: '12px',
-          background: form[field] ? 'var(--terracotta)' : 'var(--warm-gray-light)',
-          border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s',
-        }}
-      >
-        <div style={{
-          width: '18px', height: '18px', borderRadius: '50%', background: 'white',
-          position: 'absolute', top: '3px',
-          left: form[field] ? '23px' : '3px',
-          transition: 'left 0.2s',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-        }} />
-      </button>
-    </div>
-  )
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--sand)', paddingBottom: '100px' }}>
@@ -329,10 +355,14 @@ export default function Profile() {
               <p style={{ fontSize: '12px', color: 'var(--warm-gray)', marginBottom: '16px' }}>
                 Control what landlords can see after you match. Your name and email are always shared.
               </p>
-              <Toggle field="show_phone" label="Share my phone number" />
-              <Toggle field="show_move_in" label="Share my move-in date" />
-              <Toggle field="show_pets" label="Share pet information" />
-              <Toggle field="show_credit" label="Share credit score range" />
+              <Toggle label="Share my phone number" value={form.show_phone}
+                onToggle={() => update('show_phone', !form.show_phone)} />
+              <Toggle label="Share my move-in date" value={form.show_move_in}
+                onToggle={() => update('show_move_in', !form.show_move_in)} />
+              <Toggle label="Share pet information" value={form.show_pets}
+                onToggle={() => update('show_pets', !form.show_pets)} />
+              <Toggle label="Share credit score range" value={form.show_credit}
+                onToggle={() => update('show_credit', !form.show_credit)} />
             </div>
 
             <button
