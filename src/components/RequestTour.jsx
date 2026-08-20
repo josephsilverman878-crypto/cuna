@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
@@ -13,6 +13,9 @@ export default function RequestTour({ listing, onClose }) {
   // Parallel to `times`. True where the input holds a partial datetime that the
   // browser reports as an empty value — see updateTime.
   const [timeErrors, setTimeErrors] = useState([false])
+  // TEMP DEBUG — lets submit() read the LIVE DOM state of each time input rather
+  // than trusting state that was synchronised through change/blur events.
+  const timeInputRefs = useRef([])
   const [message, setMessage] = useState('')
   const [renterProfile, setRenterProfile] = useState(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
@@ -88,15 +91,36 @@ export default function RequestTour({ listing, onClose }) {
   }
   if (shared.creditScoreRange) sharedLabels.push('Credit: ' + formatCredit(shared.creditScoreRange))
 
-  // A datetime-local input reports value === '' until EVERY segment is filled —
-  // date, hour, minute and AM/PM. While it is partially filled it reports
-  // validity.badInput, which is the only way to tell "user typed nothing" apart
-  // from "user typed something incomplete". Both look like '' otherwise, and
-  // .filter(Boolean) used to drop the second case silently.
+  // TEMP DEBUG — what a datetime-local actually reports. Called on change, on
+  // blur, and again for every input at submit time, so the console shows whether
+  // the events fire at all and whether the values differ between those moments.
+  function logTimeInput(tag, i, el) {
+    if (!el) return
+    console.log('[cuna-debug] datetime-local @' + tag, {
+      index: i,
+      value: el.value,
+      valueLength: el.value.length,
+      valueAsNumber: el.valueAsNumber,
+      badInput: el.validity?.badInput,
+      valid: el.validity?.valid,
+      valueMissing: el.validity?.valueMissing,
+      typeMismatch: el.validity?.typeMismatch,
+      validationMessage: el.validationMessage,
+    })
+  }
+
+  // NOTE: badInput is read EAGERLY here. It previously sat inside the
+  // setTimeErrors updater, which React defers to render time — and ValidityState
+  // is a live object, so that read happened after the event rather than during
+  // it. Whether badInput is the right signal at all is what the logging above is
+  // meant to establish; do not assume it is.
   function updateTime(i, e) {
-    const { value, validity } = e.target
+    const el = e.target
+    logTimeInput(e.type, i, el)
+    const value = el.value
+    const bad = el.validity?.badInput === true
     setTimes(prev => prev.map((t, idx) => idx === i ? value : t))
-    setTimeErrors(prev => prev.map((bad, idx) => idx === i ? validity?.badInput === true : bad))
+    setTimeErrors(prev => prev.map((b, idx) => idx === i ? bad : b))
   }
 
   function addTime() {
@@ -111,6 +135,18 @@ export default function RequestTour({ listing, onClose }) {
   }
 
   async function submit() {
+    // TEMP DEBUG — read the live DOM at submit time. `timeErrors` below is state
+    // synchronised through change/blur, and clicking Send blurs the input first,
+    // so this closure can be one render behind. Comparing the two tells us which.
+    timeInputRefs.current.forEach((el, i) => logTimeInput('submit', i, el))
+    console.log('[cuna-debug] time state at submit', {
+      timesState: times,
+      timeErrorsState: timeErrors,
+      liveValues: timeInputRefs.current.map(el => el?.value ?? null),
+      liveBadInput: timeInputRefs.current.map(el => el?.validity?.badInput ?? null),
+      wouldRefuse: timeErrors.some(Boolean),
+    })
+
     // Refuse to send rather than quietly dropping a half-entered time and
     // telling the agent no times were offered.
     if (timeErrors.some(Boolean)) {
@@ -309,6 +345,7 @@ export default function RequestTour({ listing, onClose }) {
                 <div key={i}>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <input type="datetime-local" value={t}
+                      ref={el => { timeInputRefs.current[i] = el }}
                       onChange={e => updateTime(i, e)}
                       onBlur={e => updateTime(i, e)}
                       style={{ flex: 1, border: timeErrors[i] ? '1.5px solid var(--pass-red)' : undefined }} />
