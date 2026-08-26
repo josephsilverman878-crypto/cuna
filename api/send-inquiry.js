@@ -16,22 +16,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields' })
   }
 
-  // TEMP DEBUG — remove once privacy toggles are confirmed working.
-  // Shows exactly what reached the server, so we can tell a client-side leak
-  // from a stale deployment of this function.
-  console.log('[cuna-debug] send-inquiry received', JSON.stringify({
-    bodyKeys: Object.keys(req.body || {}),
-    hasRenterPhoneKey: 'renterPhone' in (req.body || {}),
-    renterPhoneValue: renterPhone ?? null,
-    // If this is missing/undefined, the request came from a PRE-esc-v2 client
-    // (an old tab or stale bundle) — which alone explains a leaked phone.
-    clientBuild: (req.body || {}).clientBuild ?? 'MISSING (old client)',
-    moveInDate: moveInDate ?? null,
-    hasPets: hasPets ?? null,
-    creditScoreRange: creditScoreRange ?? null,
-    buildMarker: 'esc-v2',
-  }))
-
   // These values land inside an HTML email, so escape anything user-controlled.
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]

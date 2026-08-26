@@ -1,8 +1,14 @@
 # Cuna
 
 NYC rental marketing platform connecting renters with agents/landlords.
-Positioning: "cuna — find your perfect place." A better StreetEasy, differentiated
-by engaging discovery (swipe deck, quick browsing). NOT "Tinder for apartments."
+Positioning: "Cuna — where you belong." An easier, more renter-friendly
+alternative to StreetEasy and Zillow — the next better version of how those
+platforms should work. NOT "Tinder for apartments."
+
+Discovery is moving from the swipe deck to an Instagram-style scroll-and-like
+feed. That rewrite is the next major piece of work and has not started yet, so
+SwipeDeck.jsx and SwipeHistory.jsx are still the live code paths — read them as
+current, but do not build NEW features on top of the deck.
 
 ## Stack
 React + Vite on Vercel · Supabase (Postgres + Auth + Storage) · Resend for email
@@ -14,8 +20,9 @@ Work happens on the `main` branch. Every push to main deploys to production.
 - Two signup doors: /register (renter) and /register/pro (agent, collects NY DOS license)
 - Posters cannot publish until `verified = true` (enforced by a DB trigger, not just UI)
 - Admin approves posters at /admin (requires `is_admin` on profiles)
-- There is NO match loop. Swipe right = private save. Contact happens via
-  "Request a tour" which emails the agent through /api/send-inquiry
+- There is NO match loop. A like (currently a swipe right) = private save.
+  Contact happens via "Request a tour" which emails the agent through
+  /api/send-inquiry
 - /listing/:id is the canonical public listing view. It is what emails link to.
   Do not build duplicate listing detail views.
 - Email is in test mode: INQUIRY_TEST_RECIPIENT redirects all mail to the owner
@@ -78,9 +85,21 @@ Read the actual file before answering questions about behavior. Reasoning about
 what the code probably does is what made the privacy-toggle debug take as long
 as it did; reading it is what ended it.
 
-## Temporary instrumentation (remove when Joseph says)
-There is `[cuna-debug]` console logging in RequestTour.jsx and send-inquiry.js,
-plus a `clientBuild: 'esc-v2'` marker in the inquiry payload. These exist to tell
-a real client-side leak apart from a stale bundle or stale deploy: if the server
-log shows clientBuild MISSING, an old tab sent that request. Leave them in place
-until Joseph asks for them to be stripped.
+## Verify the deployed commit before trusting any test
+Every push to main triggers a Vercel deploy. Before drawing ANY conclusion from a
+live test, confirm the deployed SHA matches the commit under test:
+
+1. `git rev-parse --short HEAD` locally, and `git status` to confirm it is pushed.
+2. Vercel → Deployments: the top entry must say "Ready" AND show that SHA.
+   "Building" or "Queued" means you are testing the PREVIOUS commit.
+3. Hard-reload the tab (Cmd+Shift+R). A cached bundle is a stale client even when
+   the deploy is current.
+4. /api/ functions ship on the same commit but are invoked and logged separately.
+   If only the API changed, check the function log timestamp too.
+
+If the SHA does not match, the test result is not evidence of anything. Say so and
+re-test rather than reasoning about the result.
+
+Stale-deploy ambiguity cost days on the privacy-toggle bug: the frontend was
+current, the emails being read were old, and every conclusion drawn from them was
+wrong.

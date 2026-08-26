@@ -39,6 +39,8 @@ export default function Profile() {
   // callback, so they must reflect the value at call time, not at render time.
   const loadedForUser = useRef(null)
   const formDirty = useRef(false)
+  const loadedPosterForUser = useRef(null)
+  const posterFormDirty = useRef(false)
   const [saving, setSaving] = useState(false)
   const [savingPoster, setSavingPoster] = useState(false)
   const [posterForm, setPosterForm] = useState({
@@ -64,16 +66,23 @@ export default function Profile() {
     fetchRenterProfile()
   }, [profile?.role, user?.id])
 
+  // Same one-shot guard as the renter form above, for the same reason. This
+  // effect calls setPosterForm(), and a token refresh re-fires onAuthStateChange,
+  // which hands AuthContext a NEW profile object — a real dep change that would
+  // silently overwrite unsaved license edits with the last-saved values. The deps
+  // array is not the guard; the refs are.
   useEffect(() => {
-    if (profile?.role === 'poster') {
-      setPosterForm({
-        license_name: profile.license_name || '',
-        license_number: profile.license_number || '',
-        license_type: profile.license_type || '',
-        brokerage_name: profile.brokerage_name || '',
-      })
-    }
-  }, [profile])
+    if (profile?.role !== 'poster' || !user?.id) return
+    if (loadedPosterForUser.current === user.id) return
+    if (posterFormDirty.current) return
+    loadedPosterForUser.current = user.id
+    setPosterForm({
+      license_name: profile.license_name || '',
+      license_number: profile.license_number || '',
+      license_type: profile.license_type || '',
+      brokerage_name: profile.brokerage_name || '',
+    })
+  }, [profile, user?.id])
 
   async function fetchRenterProfile() {
     const { data } = await supabase
@@ -107,7 +116,10 @@ export default function Profile() {
     formDirty.current = true
     setForm(f => ({ ...f, [field]: value }))
   }
-  function updatePoster(field, value) { setPosterForm(f => ({ ...f, [field]: value })) }
+  function updatePoster(field, value) {
+    posterFormDirty.current = true
+    setPosterForm(f => ({ ...f, [field]: value }))
+  }
 
   async function savePosterProfile() {
     if (!posterForm.license_name.trim() || !posterForm.license_number.trim() || !posterForm.license_type) {
@@ -123,6 +135,7 @@ export default function Profile() {
         brokerage_name: posterForm.brokerage_name.trim() || null,
       }).eq('id', user.id)
       if (error) throw error
+      posterFormDirty.current = false
       await fetchProfile(user.id)
       toast.success('License details saved — pending review')
     } catch (err) {
