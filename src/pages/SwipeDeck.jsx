@@ -86,13 +86,26 @@ export default function SwipeDeck() {
     setSwiping(direction)
 
     setTimeout(async () => {
-      const { error } = await supabase.from('swipes').insert({
-        renter_id: user.id,
-        listing_id: listing.id,
-        direction,
-      })
+      // upsert, not insert: UNIQUE(renter_id, listing_id) means a row may already
+      // exist — e.g. the renter hearted this listing from /listing/:id earlier in
+      // the session while this deck array still holds it. A bare insert raises
+      // 23505 there, and the old code logged it and advanced anyway, silently
+      // losing the write.
+      const { error } = await supabase
+        .from('swipes')
+        .upsert({
+          renter_id: user.id,
+          listing_id: listing.id,
+          liked: direction === 'right',
+          hidden: direction === 'left',
+        }, { onConflict: 'renter_id,listing_id' })
 
-      if (error) console.error('Swipe save failed:', error)
+      if (error) {
+        console.error('Swipe save failed:', error)
+        toast.error('Could not save that — try again')
+        setSwiping(null)
+        return
+      }
 
       setCurrentIndex(i => i + 1)
       setSwiping(null)

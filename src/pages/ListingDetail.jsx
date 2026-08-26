@@ -41,11 +41,11 @@ export default function ListingDetail() {
     if (user) {
       const { data: swipe } = await supabase
         .from('swipes')
-        .select('id, direction')
+        .select('id, liked')
         .eq('renter_id', user.id)
         .eq('listing_id', id)
         .maybeSingle()
-      setSaved(swipe?.direction === 'right')
+      setSaved(swipe?.liked === true)
     }
   }
 
@@ -58,23 +58,17 @@ export default function ListingDetail() {
     if (profile?.role !== 'renter') { toast.error('Only renter accounts can save listings'); return }
     setSaving(true)
     try {
-      const { data: existing } = await supabase
+      // upsert rather than check-then-act: two fast taps could both see no row
+      // and race into a UNIQUE(renter_id, listing_id) violation. `hidden` is
+      // deliberately not passed, so a hide the renter set elsewhere survives.
+      const { error } = await supabase
         .from('swipes')
-        .select('id')
-        .eq('renter_id', user.id)
-        .eq('listing_id', id)
-        .maybeSingle()
-
-      if (existing) {
-        const { error } = await supabase
-          .from('swipes').update({ direction: 'right' }).eq('id', existing.id)
-        if (error) throw error
-      } else {
-        const { error } = await supabase.from('swipes').insert({
-          renter_id: user.id, listing_id: id, direction: 'right',
-        })
-        if (error) throw error
-      }
+        .upsert({
+          renter_id: user.id,
+          listing_id: id,
+          liked: true,
+        }, { onConflict: 'renter_id,listing_id' })
+      if (error) throw error
       setSaved(true)
       toast.success('Saved to your liked listings')
     } catch (err) {

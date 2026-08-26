@@ -36,7 +36,7 @@ export default function PosterDashboard() {
         .from('swipes')
         .select('listing_id')
         .in('listing_id', ids)
-        .eq('direction', 'right')
+        .eq('liked', true)
 
       if (swipeError) console.error('Saves fetch error:', swipeError)
 

@@ -10,7 +10,7 @@ import { MapPin, BedDouble, Bath, RotateCcw, ArrowRightLeft, CalendarCheck } fro
 export default function SwipeHistory() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [tab, setTab] = useState('right')
+  const [tab, setTab] = useState('saved')
   const [swipes, setSwipes] = useState([])
   const [loading, setLoading] = useState(true)
   const [tourListing, setTourListing] = useState(null)
@@ -44,14 +44,15 @@ export default function SwipeHistory() {
     setLoading(false)
   }
 
-  async function moveSwipe(swipe, newDirection) {
+  async function moveSwipe(swipe, toSaved) {
+    const patch = { liked: toSaved, hidden: !toSaved }
     const { error } = await supabase
       .from('swipes')
-      .update({ direction: newDirection })
+      .update(patch)
       .eq('id', swipe.id)
     if (!error) {
-      setSwipes(prev => prev.map(s => s.id === swipe.id ? { ...s, direction: newDirection } : s))
-      toast.success(newDirection === 'right' ? 'Moved to Saved' : 'Moved to Passed')
+      setSwipes(prev => prev.map(s => s.id === swipe.id ? { ...s, ...patch } : s))
+      toast.success(toSaved ? 'Moved to Saved' : 'Moved to Passed')
     } else {
       toast.error('Could not move listing')
     }
@@ -70,9 +71,9 @@ export default function SwipeHistory() {
     }
   }
 
-  const filtered = swipes.filter(s => s.direction === tab)
-  const likedCount = swipes.filter(s => s.direction === 'right').length
-  const passedCount = swipes.filter(s => s.direction === 'left').length
+  const filtered = swipes.filter(s => tab === 'saved' ? s.liked : s.hidden)
+  const likedCount = swipes.filter(s => s.liked).length
+  const passedCount = swipes.filter(s => s.hidden).length
 
   if (loading) return <div className="center" style={{ height: '100dvh' }}><div className="spinner" /></div>
 
@@ -92,8 +93,8 @@ export default function SwipeHistory() {
 
       <div style={{ display: 'flex', padding: '20px 24px 0', gap: '8px' }}>
         {[
-          { id: 'right', label: `❤️ Saved (${likedCount})` },
-          { id: 'left', label: `✕ Passed (${passedCount})` },
+          { id: 'saved', label: `❤️ Saved (${likedCount})` },
+          { id: 'passed', label: `✕ Passed (${passedCount})` },
         ].map(t => (
           <button
             key={t.id}
@@ -115,9 +116,9 @@ export default function SwipeHistory() {
         {filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--warm-gray)' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>
-              {tab === 'right' ? '❤️' : '✕'}
+              {tab === 'saved' ? '❤️' : '✕'}
             </div>
-            <p>{tab === 'right' ? 'No saved listings yet.' : 'No passed listings yet.'}</p>
+            <p>{tab === 'saved' ? 'No saved listings yet.' : 'No passed listings yet.'}</p>
           </div>
         ) : filtered.map(swipe => {
           const listing = swipe.listing
@@ -150,7 +151,7 @@ export default function SwipeHistory() {
                   </div>
                 </div>
               </div>
-              {tab === 'right' && (
+              {tab === 'saved' && (
                 <button
                   onClick={() => setTourListing(listing)}
                   style={{
@@ -167,7 +168,7 @@ export default function SwipeHistory() {
               )}
               <div style={{ display: 'flex', borderTop: '1px solid var(--sand-dark)' }}>
                 <button
-                  onClick={() => moveSwipe(swipe, tab === 'right' ? 'left' : 'right')}
+                  onClick={() => moveSwipe(swipe, tab !== 'saved')}
                   style={{
                     flex: 1, padding: '10px', background: 'none', border: 'none', cursor: 'pointer',
                     fontSize: '12px', fontWeight: 600, color: 'var(--warm-gray)',
@@ -175,7 +176,7 @@ export default function SwipeHistory() {
                   }}
                 >
                   <ArrowRightLeft size={13} />
-                  {tab === 'right' ? 'Move to Passed' : 'Move to Saved'}
+                  {tab === 'saved' ? 'Move to Passed' : 'Move to Saved'}
                 </button>
                 <div style={{ width: '1px', background: 'var(--sand-dark)' }} />
                 <button
