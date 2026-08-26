@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import RequestTour from '../components/RequestTour'
 import toast from 'react-hot-toast'
-import { MapPin, BedDouble, Bath, RotateCcw, ArrowRightLeft, CalendarCheck } from 'lucide-react'
+import { MapPin, BedDouble, Bath, RotateCcw, EyeOff, CalendarCheck } from 'lucide-react'
 
 export default function SwipeHistory() {
   const { user } = useAuth()
@@ -44,17 +44,19 @@ export default function SwipeHistory() {
     setLoading(false)
   }
 
-  async function moveSwipe(swipe, toSaved) {
-    const patch = { liked: toSaved, hidden: !toSaved }
+  // Only ever touches `hidden`. liked and hidden are independent now — a renter
+  // can save a listing and also keep it out of their feed, and hiding must not
+  // quietly unsave it.
+  async function setHidden(swipe, value) {
     const { error } = await supabase
       .from('swipes')
-      .update(patch)
+      .update({ hidden: value })
       .eq('id', swipe.id)
     if (!error) {
-      setSwipes(prev => prev.map(s => s.id === swipe.id ? { ...s, ...patch } : s))
-      toast.success(toSaved ? 'Moved to Saved' : 'Moved to Passed')
+      setSwipes(prev => prev.map(s => s.id === swipe.id ? { ...s, hidden: value } : s))
+      toast.success(value ? 'Hidden from your feed' : 'Unhidden')
     } else {
-      toast.error('Could not move listing')
+      toast.error(value ? 'Could not hide listing' : 'Could not unhide listing')
     }
   }
 
@@ -94,7 +96,7 @@ export default function SwipeHistory() {
       <div style={{ display: 'flex', padding: '20px 24px 0', gap: '8px' }}>
         {[
           { id: 'saved', label: `❤️ Saved (${likedCount})` },
-          { id: 'passed', label: `✕ Passed (${passedCount})` },
+          { id: 'passed', label: `🚫 Hidden (${passedCount})` },
         ].map(t => (
           <button
             key={t.id}
@@ -116,9 +118,9 @@ export default function SwipeHistory() {
         {filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--warm-gray)' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>
-              {tab === 'saved' ? '❤️' : '✕'}
+              {tab === 'saved' ? '❤️' : '🚫'}
             </div>
-            <p>{tab === 'saved' ? 'No saved listings yet.' : 'No passed listings yet.'}</p>
+            <p>{tab === 'saved' ? 'No saved listings yet.' : 'No hidden listings yet.'}</p>
           </div>
         ) : filtered.map(swipe => {
           const listing = swipe.listing
@@ -168,15 +170,15 @@ export default function SwipeHistory() {
               )}
               <div style={{ display: 'flex', borderTop: '1px solid var(--sand-dark)' }}>
                 <button
-                  onClick={() => moveSwipe(swipe, tab !== 'saved')}
+                  onClick={() => setHidden(swipe, tab === 'saved')}
                   style={{
                     flex: 1, padding: '10px', background: 'none', border: 'none', cursor: 'pointer',
                     fontSize: '12px', fontWeight: 600, color: 'var(--warm-gray)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                   }}
                 >
-                  <ArrowRightLeft size={13} />
-                  {tab === 'saved' ? 'Move to Passed' : 'Move to Saved'}
+                  <EyeOff size={13} />
+                  {tab === 'saved' ? 'Hide from feed' : 'Unhide'}
                 </button>
                 <div style={{ width: '1px', background: 'var(--sand-dark)' }} />
                 <button
