@@ -11,7 +11,7 @@ import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import Register from './pages/Register'
 import RegisterPro from './pages/RegisterPro'
-import SwipeDeck from './pages/SwipeDeck'
+import Feed from './pages/Feed'
 import SwipeHistory from './pages/SwipeHistory'
 import PostListing from './pages/PostListing'
 import EditListing from './pages/EditListing'
@@ -46,7 +46,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={
         user
-          ? (profile?.role === 'renter' ? <Navigate to="/swipe" /> : <Navigate to="/dashboard" />)
+          ? (profile?.role === 'renter' ? <Navigate to="/feed" /> : <Navigate to="/dashboard" />)
           : <Landing />
       } />
       <Route path="/login" element={<Login />} />
@@ -58,9 +58,10 @@ function AppRoutes() {
       <Route path="/listing/:id" element={<ListingDetail />} />
       <Route path="/privacy" element={<Privacy />} />
 
-      <Route path="/swipe" element={
-        <ProtectedRoute role="renter"><SwipeDeck /></ProtectedRoute>
+      <Route path="/feed" element={
+        <ProtectedRoute role="renter"><Feed /></ProtectedRoute>
       } />
+      <Route path="/swipe" element={<Navigate to="/feed" replace />} />
       <Route path="/history" element={
         <ProtectedRoute role="renter"><SwipeHistory /></ProtectedRoute>
       } />

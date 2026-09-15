@@ -8,7 +8,7 @@ export default function BottomNav() {
   const { profile } = useAuth()
 
   const renterTabs = [
-    { path: '/swipe', icon: Home, label: 'Discover' },
+    { path: '/feed', icon: Home, label: 'Discover' },
     { path: '/history', icon: Heart, label: 'Saved' },
     { path: '/profile', icon: User, label: 'Profile' },
   ]
