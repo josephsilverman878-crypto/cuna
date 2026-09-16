@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import RequestTour from '../components/RequestTour'
 import FairHousingNotice from '../components/FairHousingNotice'
 import { petsPolicyLabel } from '../lib/petsPolicy'
+import { getMySwipe, setLiked } from '../lib/swipes'
 import toast from 'react-hot-toast'
 import { MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Heart } from 'lucide-react'
 
@@ -39,12 +40,7 @@ export default function ListingDetail() {
     supabase.rpc('increment_listing_views', { listing_uuid: id }).then(() => {})
 
     if (user) {
-      const { data: swipe } = await supabase
-        .from('swipes')
-        .select('id, liked')
-        .eq('renter_id', user.id)
-        .eq('listing_id', id)
-        .maybeSingle()
+      const { data: swipe } = await getMySwipe(user.id, id)
       setSaved(swipe?.liked === true)
     }
   }
@@ -61,13 +57,7 @@ export default function ListingDetail() {
       // upsert rather than check-then-act: two fast taps could both see no row
       // and race into a UNIQUE(renter_id, listing_id) violation. `hidden` is
       // deliberately not passed, so a hide the renter set elsewhere survives.
-      const { error } = await supabase
-        .from('swipes')
-        .upsert({
-          renter_id: user.id,
-          listing_id: id,
-          liked: true,
-        }, { onConflict: 'renter_id,listing_id' })
+      const { error } = await setLiked(user.id, id, true)
       if (error) throw error
       setSaved(true)
       toast.success('Saved to your liked listings')

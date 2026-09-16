@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
+import { getSaveCounts } from '../lib/swipes'
 import toast from 'react-hot-toast'
 import { Plus, Users, Eye, EyeOff, BedDouble, Bath, Pencil, Trash2, ArchiveX, ShieldCheck, CalendarCheck, Mail, Phone } from 'lucide-react'
 
@@ -32,11 +33,7 @@ export default function PosterDashboard() {
       // Saves are deliberately aggregate-only: posters see interest counts, never
       // who saved. Renter identity is shared only when the renter sends a tour
       // request. Do not re-add profile lookups here.
-      const { data: swipeData, error: swipeError } = await supabase
-        .from('swipes')
-        .select('listing_id')
-        .in('listing_id', ids)
-        .eq('liked', true)
+      const { data: swipeData, error: swipeError } = await getSaveCounts(ids)
 
       if (swipeError) console.error('Saves fetch error:', swipeError)
 

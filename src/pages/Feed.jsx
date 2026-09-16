@@ -6,6 +6,7 @@ import BottomNav from '../components/BottomNav'
 import RequestTour from '../components/RequestTour'
 import FairHousingNotice from '../components/FairHousingNotice'
 import { petsPolicyLabel } from '../lib/petsPolicy'
+import { getMySwipes, setLiked, setHidden } from '../lib/swipes'
 import toast from 'react-hot-toast'
 import { MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Heart, MoreVertical, EyeOff, Filter } from 'lucide-react'
 
@@ -252,10 +253,7 @@ export default function Feed() {
   async function init() {
     setLoading(true)
 
-    const { data: swipeRows } = await supabase
-      .from('swipes')
-      .select('listing_id, liked, hidden')
-      .eq('renter_id', user.id)
+    const { data: swipeRows } = await getMySwipes(user.id, 'listing_id, liked, hidden')
 
     setLikedIds(new Set((swipeRows || []).filter(s => s.liked).map(s => s.listing_id)))
     // Held in a local as well as state: the first fetchPage below needs it in
@@ -376,13 +374,7 @@ export default function Feed() {
     const wasLiked = likedIds.has(listing.id)
 
     // `hidden` is deliberately not passed — liking must not disturb a hide.
-    const { error } = await supabase
-      .from('swipes')
-      .upsert({
-        renter_id: user.id,
-        listing_id: listing.id,
-        liked: !wasLiked,
-      }, { onConflict: 'renter_id,listing_id' })
+    const { error } = await setLiked(user.id, listing.id, !wasLiked)
 
     if (error) {
       console.error('Like failed:', error)
@@ -401,13 +393,7 @@ export default function Feed() {
   async function hideListing(listing) {
     // `liked` is deliberately not passed — hiding preserves an existing like,
     // so un-hiding later restores it to Saved intact.
-    const { error } = await supabase
-      .from('swipes')
-      .upsert({
-        renter_id: user.id,
-        listing_id: listing.id,
-        hidden: true,
-      }, { onConflict: 'renter_id,listing_id' })
+    const { error } = await setHidden(user.id, listing.id, true)
 
     if (error) {
       console.error('Hide failed:', error)
