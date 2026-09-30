@@ -1,11 +1,15 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { safeNextPath } from '../lib/safeNext'
 import toast from 'react-hot-toast'
 
 export default function Register() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { signUp } = useAuth()
+  // Same contract as Login: return the new account to where they started.
+  const next = safeNextPath(searchParams.get('next'))
   const [loading, setLoading] = useState(false)
   const [accepted, setAccepted] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' })
@@ -21,7 +25,7 @@ export default function Register() {
     try {
       await signUp({ ...form, role: 'renter', accepted_terms_at: new Date().toISOString() })
       toast.success('Welcome to Cuna!')
-      navigate('/')
+      navigate(next)
     } catch (err) {
       toast.error(err.message || 'Sign up failed')
     } finally {
