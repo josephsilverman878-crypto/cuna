@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { safeNextPath } from '../lib/safeNext'
 import toast from 'react-hot-toast'
 
 export default function Login() {
@@ -10,7 +11,9 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ email: '', password: '' })
 
-  const next = searchParams.get('next') || '/'
+  // Was unvalidated: any absolute URL in `next` would have been followed.
+  const next = safeNextPath(searchParams.get('next'))
+  const registerHref = next === '/' ? '/register' : `/register?next=${encodeURIComponent(next)}`
 
   useEffect(() => {
     if (user) navigate(next, { replace: true })
@@ -79,7 +82,7 @@ export default function Login() {
 
         <p style={{ textAlign: 'center', marginTop: '24px', color: 'var(--warm-gray)', fontSize: '14px' }}>
           Don't have an account?{' '}
-          <Link to="/register" style={{ color: 'var(--terracotta)', fontWeight: 500 }}>Sign up</Link>
+          <Link to={registerHref} style={{ color: 'var(--terracotta)', fontWeight: 500 }}>Sign up</Link>
         </p>
       </div>
     </div>
