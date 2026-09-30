@@ -22,6 +22,8 @@ import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import Admin from './pages/Admin'
 import ListingDetail from './pages/ListingDetail'
+import NewToNY from './pages/NewToNY'
+import NewToNYResults from './pages/NewToNYResults'
 
 function ProtectedRoute({ children, role }) {
   const { user, profile, loading } = useAuth()
@@ -37,7 +39,7 @@ function AppRoutes() {
 
   if (loading) return <div className="center" style={{ height: '100dvh' }}><div className="spinner" /></div>
 
-  const publicPaths = ['/reset-password', '/terms', '/privacy']
+  const publicPaths = ['/reset-password', '/terms', '/privacy', '/new-to-ny', '/new-to-ny/results']
   if (user && !profile && !publicPaths.includes(location.pathname) && !location.pathname.startsWith('/listing/')) {
     return <CompleteProfile />
   }
@@ -57,6 +59,8 @@ function AppRoutes() {
       <Route path="/terms" element={<Terms />} />
       <Route path="/listing/:id" element={<ListingDetail />} />
       <Route path="/privacy" element={<Privacy />} />
+      <Route path="/new-to-ny" element={<NewToNY />} />
+      <Route path="/new-to-ny/results" element={<NewToNYResults />} />
 
       <Route path="/feed" element={
         <ProtectedRoute role="renter"><Feed /></ProtectedRoute>
