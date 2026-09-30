@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import RequestTour from '../components/RequestTour'
+import { getMySwipes, setHidden, removeSwipe } from '../lib/swipes'
 import toast from 'react-hot-toast'
 import { MapPin, BedDouble, Bath, RotateCcw, EyeOff, CalendarCheck } from 'lucide-react'
 
@@ -19,11 +20,7 @@ export default function SwipeHistory() {
 
   async function fetchSwipes() {
     setLoading(true)
-    const { data: swipeData, error } = await supabase
-      .from('swipes')
-      .select('*')
-      .eq('renter_id', user.id)
-      .order('swiped_at', { ascending: false })
+    const { data: swipeData, error } = await getMySwipes(user.id, '*', { orderBy: 'swiped_at', ascending: false })
 
     if (error) { toast.error('Could not load history'); setLoading(false); return }
 
@@ -47,11 +44,8 @@ export default function SwipeHistory() {
   // Only ever touches `hidden`. liked and hidden are independent now — a renter
   // can save a listing and also keep it out of their feed, and hiding must not
   // quietly unsave it.
-  async function setHidden(swipe, value) {
-    const { error } = await supabase
-      .from('swipes')
-      .update({ hidden: value })
-      .eq('id', swipe.id)
+  async function handleSetHidden(swipe, value) {
+    const { error } = await setHidden(user.id, swipe.listing_id, value)
     if (!error) {
       setSwipes(prev => prev.map(s => s.id === swipe.id ? { ...s, hidden: value } : s))
       toast.success(value ? 'Hidden from your feed' : 'Unhidden')
@@ -60,11 +54,8 @@ export default function SwipeHistory() {
     }
   }
 
-  async function removeSwipe(swipe) {
-    const { error } = await supabase
-      .from('swipes')
-      .delete()
-      .eq('id', swipe.id)
+  async function handleRemoveSwipe(swipe) {
+    const { error } = await removeSwipe(user.id, swipe.listing_id)
     if (!error) {
       setSwipes(prev => prev.filter(s => s.id !== swipe.id))
       toast.success('Removed — it will show up in Discover again')
@@ -170,7 +161,7 @@ export default function SwipeHistory() {
               )}
               <div style={{ display: 'flex', borderTop: '1px solid var(--sand-dark)' }}>
                 <button
-                  onClick={() => setHidden(swipe, tab === 'saved')}
+                  onClick={() => handleSetHidden(swipe, tab === 'saved')}
                   style={{
                     flex: 1, padding: '10px', background: 'none', border: 'none', cursor: 'pointer',
                     fontSize: '12px', fontWeight: 600, color: 'var(--warm-gray)',
@@ -182,7 +173,7 @@ export default function SwipeHistory() {
                 </button>
                 <div style={{ width: '1px', background: 'var(--sand-dark)' }} />
                 <button
-                  onClick={() => removeSwipe(swipe)}
+                  onClick={() => handleRemoveSwipe(swipe)}
                   style={{
                     flex: 1, padding: '10px', background: 'none', border: 'none', cursor: 'pointer',
                     fontSize: '12px', fontWeight: 600, color: 'var(--terracotta)',
