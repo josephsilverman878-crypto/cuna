@@ -49,21 +49,23 @@ export default function ListingDetail() {
     navigate('/login?next=' + encodeURIComponent('/listing/' + id))
   }
 
-  async function handleSave() {
+  async function handleToggleSave() {
     if (!user) { requireLogin(); return }
     if (profile?.role !== 'renter') { toast.error('Only renter accounts can save listings'); return }
+    const next = !saved
     setSaving(true)
     try {
       // upsert rather than check-then-act: two fast taps could both see no row
       // and race into a UNIQUE(renter_id, listing_id) violation. `hidden` is
-      // deliberately not passed, so a hide the renter set elsewhere survives.
-      const { error } = await setLiked(user.id, id, true)
+      // deliberately not passed, so a hide the renter set elsewhere survives
+      // both saving and unsaving.
+      const { error } = await setLiked(user.id, id, next)
       if (error) throw error
-      setSaved(true)
-      toast.success('Saved to your liked listings')
+      setSaved(next)
+      toast.success(next ? 'Saved to your liked listings' : 'Removed from saved')
     } catch (err) {
-      console.error('Save failed:', err)
-      toast.error(err.message || 'Could not save')
+      console.error(next ? 'Save failed:' : 'Unsave failed:', err)
+      toast.error(err.message || (next ? 'Could not save' : 'Could not unsave'))
     } finally {
       setSaving(false)
     }
@@ -269,11 +271,11 @@ export default function ListingDetail() {
         padding: '12px 24px', display: 'flex', gap: '12px', zIndex: 99,
       }}>
         <button
-          onClick={handleSave}
-          disabled={saving || saved}
+          onClick={handleToggleSave}
+          disabled={saving}
           style={{
             flex: 1, padding: '14px', borderRadius: '12px', fontWeight: 600, fontSize: '15px',
-            cursor: saved ? 'default' : 'pointer',
+            cursor: saving ? 'default' : 'pointer',
             background: saved ? 'rgba(76,175,125,0.12)' : 'var(--sand)',
             border: 'none',
             color: saved ? 'var(--like-green)' : 'var(--charcoal)',
@@ -281,8 +283,8 @@ export default function ListingDetail() {
             opacity: saving ? 0.7 : 1,
           }}
         >
-          <Heart size={16} />
-          {saved ? 'Saved' : saving ? 'Saving…' : 'Save'}
+          <Heart size={16} fill={saved ? 'var(--like-green)' : 'none'} />
+          {saving ? (saved ? 'Removing…' : 'Saving…') : saved ? 'Saved' : 'Save'}
         </button>
         <button
           className="btn-primary"
