@@ -18,6 +18,14 @@
 //
 // The function is pure: same answers in, same order out. No clock, no random,
 // no network, no React.
+//
+// TIEBREAKS, when two neighborhoods score the same:
+//   1. more budget headroom — how far the top of the relevant range sits below
+//      the user's ceiling, from the dataset range and their own budget answer
+//   2. higher transit_access, a dataset score
+//   3. id, so the order is still fully deterministic
+// All three read dataset fields and the user's stated budget, nothing else.
+// Never tiebreak on inventory, listing counts, or anything about people.
 
 const DIMENSIONS = ['nightlife', 'dining', 'green_space', 'walkability', 'transit_access']
 
@@ -107,10 +115,18 @@ function rangeFit(range, userMax) {
   return 'partial'
 }
 
+// Dollars between the top of the relevant range and the user's ceiling.
+// Negative when the range overshoots. 0 when there is no ceiling ("and up"
+// bands) or no range, so it contributes no signal rather than a false one.
+function headroomFor(range, userMax) {
+  if (!range || !Number.isFinite(userMax)) return 0
+  return userMax - range.max
+}
+
 function budgetAssessment(answers, n) {
   const budget = answers.budget
   // No budget answer: do not filter anyone out, and award nothing.
-  if (!budget) return { fit: 'unknown', points: 0, reason: null, caveats: [] }
+  if (!budget) return { fit: 'unknown', points: 0, reason: null, caveats: [], headroom: 0 }
   const userMax = budget.max === null || budget.max === undefined ? Infinity : budget.max
   const caveats = []
 
@@ -125,7 +141,7 @@ function budgetAssessment(answers, n) {
       if (fit === 'none') continue
       if (!best || (fit === 'full' && best.fit === 'partial')) best = { type, range, fit }
     }
-    if (!best) return { fit: 'none', points: 0, reason: null, caveats }
+    if (!best) return { fit: 'none', points: 0, reason: null, caveats, headroom: 0 }
 
     const label = PROPERTY_LABEL[best.type]
     const reason = best.fit === 'full'
@@ -137,6 +153,7 @@ function budgetAssessment(answers, n) {
       points: best.fit === 'full' ? W.BUDGET_FULL : W.BUDGET_PARTIAL,
       reason,
       caveats,
+      headroom: headroomFor(best.range, userMax),
     }
   }
 
@@ -144,7 +161,7 @@ function budgetAssessment(answers, n) {
   const sizeKey = SIZE_KEY[answers.size] || 'one_bed'
   const range = n.rent_ranges?.[sizeKey]
   const fit = rangeFit(range, userMax)
-  if (fit === 'none') return { fit: 'none', points: 0, reason: null, caveats }
+  if (fit === 'none') return { fit: 'none', points: 0, reason: null, caveats, headroom: 0 }
 
   if (answers.size === 'three_plus') {
     caveats.push('3+ bedroom pricing is not in our data yet — these figures are for two-bedrooms.')
@@ -159,6 +176,7 @@ function budgetAssessment(answers, n) {
     points: fit === 'full' ? W.BUDGET_FULL : W.BUDGET_PARTIAL,
     reason,
     caveats,
+    headroom: headroomFor(range, userMax),
   }
 }
 
@@ -266,18 +284,29 @@ function scoreOne(answers, n) {
     score: Math.round(score * 10) / 10,
     reasons: reasons.slice(0, 4).map(r => r.text),
     caveats,
+    // Sort key only; stripped before the caller sees the result.
+    headroom: budget.headroom,
   }
 }
 
-// Ranked best-first. Ties break on id so the order is stable across runs.
+// Ranked best-first. See TIEBREAKS at the top of this file for how equal scores
+// are ordered; id remains the last resort so the order never varies between runs.
 export function matchNeighborhoods(answers = {}, neighborhoods = []) {
   const scored = []
   for (const n of neighborhoods) {
     const result = scoreOne(answers, n)
     if (result) scored.push(result)
   }
-  scored.sort((a, b) => b.score - a.score || a.neighborhood.id.localeCompare(b.neighborhood.id))
-  return scored
+  scored.sort((a, b) =>
+    b.score - a.score ||
+    b.headroom - a.headroom ||
+    (b.neighborhood.scores?.transit_access ?? 0) - (a.neighborhood.scores?.transit_access ?? 0) ||
+    a.neighborhood.id.localeCompare(b.neighborhood.id)
+  )
+  // headroom is internal bookkeeping; the public result shape is unchanged.
+  return scored.map(({ neighborhood, score, reasons, caveats }) => ({
+    neighborhood, score, reasons, caveats,
+  }))
 }
 
 // The rent or sale range the user actually asked about, for display on a card.
