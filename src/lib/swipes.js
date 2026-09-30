@@ -56,15 +56,6 @@ export async function setHidden(renterId, listingId, value) {
     }, { onConflict: 'renter_id,listing_id' })
 }
 
-// Deletes the row outright, which clears both flags.
-export async function removeSwipe(renterId, listingId) {
-  return supabase
-    .from('swipes')
-    .delete()
-    .eq('renter_id', renterId)
-    .eq('listing_id', listingId)
-}
-
 // The ONE place poster-side swipe access happens. Posters are meant to see
 // aggregate interest only, never who saved, so this selects listing_id and nothing
 // else, and the caller does the counting. This is where the planned RLS/RPC fix

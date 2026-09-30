@@ -66,11 +66,12 @@ also hide it from their feed; that row shows in both SwipeHistory tabs, on purpo
 The `direction` column is dead. It is kept only as a rollback safety net — never
 read or write it.
 
-Every write is an upsert with `onConflict: 'renter_id,listing_id'`; removal is a
-delete matching `renter_id` + `listing_id`. Each action touches ONLY its own
-flag: liking never changes `hidden`, and hiding never changes `liked`. Leaving
-the other flag out of the upsert payload is what preserves it, so don't
-"complete" the payload by adding it.
+Every write is an upsert with `onConflict: 'renter_id,listing_id'`. Nothing
+deletes swipe rows. The Saved page's Unsave clears liked only and Unhide clears
+hidden only; a row with both false is a normal, neutral listing. Each action
+touches ONLY its own flag: liking never changes `hidden`, and hiding never
+changes `liked`. Leaving the other flag out of the upsert payload is what
+preserves it, so don't "complete" the payload by adding it.
 
 All swipes reads and writes go through src/lib/swipes.js. Don't call
 supabase.from('swipes') anywhere else.

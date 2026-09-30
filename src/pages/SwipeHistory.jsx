@@ -4,9 +4,9 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import RequestTour from '../components/RequestTour'
-import { getMySwipes, setHidden, removeSwipe } from '../lib/swipes'
+import { getMySwipes, setHidden, setLiked } from '../lib/swipes'
 import toast from 'react-hot-toast'
-import { MapPin, BedDouble, Bath, RotateCcw, EyeOff, CalendarCheck } from 'lucide-react'
+import { MapPin, BedDouble, Bath, Heart, EyeOff, CalendarCheck } from 'lucide-react'
 
 export default function SwipeHistory() {
   const { user } = useAuth()
@@ -54,13 +54,15 @@ export default function SwipeHistory() {
     }
   }
 
-  async function handleRemoveSwipe(swipe) {
-    const { error } = await removeSwipe(user.id, swipe.listing_id)
+  // Mirror of handleSetHidden: only ever touches `liked`. Unsaving a listing that
+  // is also hidden leaves it hidden, so it stays in the Hidden tab.
+  async function handleUnsave(swipe) {
+    const { error } = await setLiked(user.id, swipe.listing_id, false)
     if (!error) {
-      setSwipes(prev => prev.filter(s => s.id !== swipe.id))
-      toast.success('Removed — it will show up in Discover again')
+      setSwipes(prev => prev.map(s => s.id === swipe.id ? { ...s, liked: false } : s))
+      toast.success('Removed from saved')
     } else {
-      toast.error('Could not remove')
+      toast.error('Could not unsave')
     }
   }
 
@@ -80,7 +82,7 @@ export default function SwipeHistory() {
           Saved
         </div>
         <div style={{ fontSize: '13px', color: 'var(--warm-gray)', marginTop: '2px' }}>
-          Listings you've saved or passed on
+          Listings you've saved or hidden
         </div>
       </div>
 
@@ -159,31 +161,46 @@ export default function SwipeHistory() {
                   Request a tour
                 </button>
               )}
-              <div style={{ display: 'flex', borderTop: '1px solid var(--sand-dark)' }}>
+              {tab === 'saved' ? (
+                <div style={{ display: 'flex', borderTop: '1px solid var(--sand-dark)' }}>
+                  <button
+                    onClick={() => handleSetHidden(swipe, !swipe.hidden)}
+                    style={{
+                      flex: 1, padding: '10px', background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: '12px', fontWeight: 600, color: 'var(--warm-gray)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                    }}
+                  >
+                    <EyeOff size={13} />
+                    {swipe.hidden ? 'Unhide' : 'Hide from feed'}
+                  </button>
+                  <div style={{ width: '1px', background: 'var(--sand-dark)' }} />
+                  <button
+                    onClick={() => handleUnsave(swipe)}
+                    style={{
+                      flex: 1, padding: '10px', background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: '12px', fontWeight: 600, color: 'var(--terracotta)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                    }}
+                  >
+                    <Heart size={13} />
+                    Unsave
+                  </button>
+                </div>
+              ) : (
                 <button
-                  onClick={() => handleSetHidden(swipe, tab === 'saved')}
+                  onClick={() => handleSetHidden(swipe, false)}
                   style={{
-                    flex: 1, padding: '10px', background: 'none', border: 'none', cursor: 'pointer',
+                    width: '100%', padding: '10px', background: 'none', border: 'none', cursor: 'pointer',
+                    borderTop: '1px solid var(--sand-dark)',
                     fontSize: '12px', fontWeight: 600, color: 'var(--warm-gray)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                   }}
                 >
                   <EyeOff size={13} />
-                  {tab === 'saved' ? 'Hide from feed' : 'Unhide'}
+                  Unhide
                 </button>
-                <div style={{ width: '1px', background: 'var(--sand-dark)' }} />
-                <button
-                  onClick={() => handleRemoveSwipe(swipe)}
-                  style={{
-                    flex: 1, padding: '10px', background: 'none', border: 'none', cursor: 'pointer',
-                    fontSize: '12px', fontWeight: 600, color: 'var(--terracotta)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                  }}
-                >
-                  <RotateCcw size={13} />
-                  Remove & re-discover
-                </button>
-              </div>
+              )}
             </div>
           )
         })}
