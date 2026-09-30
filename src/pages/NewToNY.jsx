@@ -192,7 +192,7 @@ export default function NewToNY() {
                 fontWeight: 500, lineHeight: 1.08,
                 color: 'var(--charcoal)', marginBottom: '20px',
               }}>
-                Looking in New York? Find your neighborhood.
+                Looking in New York?<br />Find your neighborhood.
               </h1>
               <p style={{
                 fontSize: '17px', color: 'var(--warm-gray)', lineHeight: 1.6,
