@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import {
   STORAGE_KEY,
   getVisibleQuestions,
@@ -49,10 +51,18 @@ const INTRO = -1
 
 export default function NewToNY() {
   const navigate = useNavigate()
+  const { user, profile } = useAuth()
   const [step, setStep] = useState(INTRO)
   const [answers, setAnswers] = useState({})
   const [saved, setSaved] = useState(null)
+  const [savedToAccount, setSavedToAccount] = useState(null)
   const advanceTimer = useRef(null)
+
+  // Which user's saved answers have already been loaded, and whether this
+  // visitor has started answering. Refs, not state: both are read inside an
+  // async callback and must reflect the value at call time.
+  const loadedSavedForUser = useRef(null)
+  const answersDirty = useRef(false)
 
   useEffect(() => {
     const found = loadSaved()
@@ -62,10 +72,52 @@ export default function NewToNY() {
   // Auto-advance runs on a timer so the tapped option is visibly selected first.
   useEffect(() => () => clearTimeout(advanceTimer.current), [])
 
+  // Load the renter's saved answers exactly ONCE per user. This effect calls
+  // setSavedToAccount(), and AuthContext hands down a NEW profile object on
+  // every auth event — a token refresh included — so without the identity guard
+  // it would re-run and could offer stale answers over ones already in progress.
+  // The deps array is not the guard; the refs are.
+  useEffect(() => {
+    if (!user?.id || profile?.role !== 'renter') return
+    if (loadedSavedForUser.current === user.id) return
+    if (answersDirty.current) return
+    loadedSavedForUser.current = user.id
+
+    let cancelled = false
+    async function loadSavedAnswers() {
+      const { data, error } = await supabase
+        .from('renter_profiles')
+        .select('quiz_answers')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (error) {
+        console.error('Saved answers fetch failed:', error)
+        return
+      }
+      // Never overwrite answers the visitor has started since the fetch began.
+      if (cancelled || answersDirty.current) return
+      const stored = data?.quiz_answers
+      if (stored && typeof stored === 'object' && Object.keys(stored).length > 0) {
+        setSavedToAccount(pruneAnswers(stored))
+      }
+    }
+    loadSavedAnswers()
+    return () => {
+      cancelled = true
+      // Release the one-shot guard on teardown. React StrictMode mounts, tears
+      // down and remounts in development: without this the first run would claim
+      // the guard, the cleanup would cancel its fetch, and the real mount would
+      // short-circuit — so the saved answers never arrived. Cleanup otherwise
+      // only fires when user or role genuinely changed, where refetching is right.
+      if (loadedSavedForUser.current === user.id) loadedSavedForUser.current = null
+    }
+  }, [user?.id, profile?.role])
+
   const visible = getVisibleQuestions(answers)
   const question = step >= 0 ? visible[step] : null
 
   function applyAnswer(questionId, value) {
+    answersDirty.current = true
     let next = { ...answers, [questionId]: value }
     // Budget options are generated from tenure, so a changed tenure invalidates
     // whatever budget band was picked under the old one.
@@ -124,8 +176,20 @@ export default function NewToNY() {
   function startFresh() {
     clearSaved()
     setSaved(null)
+    setSavedToAccount(null)
     setAnswers({})
     setStep(0)
+  }
+
+  // Reopen the answers stored on the account, landing on the first gap.
+  function useAccountAnswers() {
+    const restored = pruneAnswers(savedToAccount || {})
+    const restoredVisible = getVisibleQuestions(restored)
+    const firstGap = restoredVisible.findIndex(q => !isAnswered(q, restored))
+    setAnswers(restored)
+    save(restored, firstGap === -1 ? restoredVisible.length : firstGap)
+    setStep(firstGap === -1 ? restoredVisible.length - 1 : firstGap)
+    setSavedToAccount(null)
   }
 
   function resume() {
@@ -209,6 +273,19 @@ export default function NewToNY() {
                     onClick={resume}
                   >
                     Continue where you left off
+                  </button>
+                  <button className="btn-ghost" onClick={startFresh}>
+                    Start over
+                  </button>
+                </div>
+              ) : savedToAccount ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
+                  <button
+                    className="btn-primary"
+                    style={{ fontSize: '17px', padding: '16px 40px' }}
+                    onClick={useAccountAnswers}
+                  >
+                    Use your saved answers
                   </button>
                   <button className="btn-ghost" onClick={startFresh}>
                     Start over
