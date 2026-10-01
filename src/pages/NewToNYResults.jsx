@@ -1,6 +1,8 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Train, Clock, Check, Info, Mail, BedDouble, Bath } from 'lucide-react'
+import { Train, Clock, Check, Info, Mail, BedDouble, Bath, Lock } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import { STORAGE_KEY, describeAnswers } from '../lib/quizQuestions'
 import { NEIGHBORHOODS } from '../lib/neighborhoods'
 import { matchNeighborhoods, askedPriceRange } from '../lib/neighborhoodMatch'
@@ -11,6 +13,44 @@ const INQUIRY_EMAIL = 'Info@SLRGRP.com'
 // Top 3 get cards; the rest are candidates for "Nearby with listings".
 const SHOWN = 3
 const LOOKUP_DEPTH = 10
+const RESULTS_PATH = '/new-to-ny/results'
+
+// A save the visitor asked for before signing in. Survives the trip to /login
+// (and to /register, which lands them elsewhere) and completes on return.
+const PENDING_SAVE_KEY = 'cuna_newtony_pending_save'
+const PENDING_SAVE_TTL_MS = 60 * 60 * 1000 // 1 hour
+
+function readPendingSave() {
+  try {
+    const raw = window.localStorage.getItem(PENDING_SAVE_KEY)
+    if (!raw) return false
+    const parsed = JSON.parse(raw)
+    const at = Date.parse(parsed?.at || '')
+    if (!Number.isFinite(at) || Date.now() - at > PENDING_SAVE_TTL_MS) {
+      window.localStorage.removeItem(PENDING_SAVE_KEY)
+      return false
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
+function writePendingSave() {
+  try {
+    window.localStorage.setItem(PENDING_SAVE_KEY, JSON.stringify({ at: new Date().toISOString() }))
+  } catch {
+    // Storage blocked: the visitor just presses Save again after signing in.
+  }
+}
+
+function clearPendingSave() {
+  try {
+    window.localStorage.removeItem(PENDING_SAVE_KEY)
+  } catch {
+    // Nothing to do.
+  }
+}
 
 function loadAnswers() {
   try {
@@ -103,6 +143,30 @@ function ListingRow({ listing }) {
         </div>
       </div>
     </Link>
+  )
+}
+
+// Ranks 4-10 while signed out: the name and borough are blurred, so the row
+// shows that more matches exist without giving them away.
+function LockedRow({ result, rank }) {
+  const n = result.neighborhood
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '12px',
+      padding: '14px 16px', background: 'var(--white)',
+      border: '1px solid var(--sand-dark)', borderRadius: 'var(--radius-sm)',
+    }}>
+      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--warm-gray)', flexShrink: 0 }}>
+        #{rank}
+      </span>
+      <div aria-hidden="true" style={{ filter: 'blur(4px)', userSelect: 'none', flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, lineHeight: 1.2 }}>
+          {n.name}
+        </div>
+        <div style={{ fontSize: '12px', color: 'var(--warm-gray)' }}>{n.borough}</div>
+      </div>
+      <Lock size={15} color="var(--warm-gray)" style={{ flexShrink: 0 }} />
+    </div>
   )
 }
 
@@ -256,8 +320,12 @@ function NeighborhoodCard({ result, answers, rank, listings, listingsLoading, li
 
 export default function NewToNYResults() {
   const navigate = useNavigate()
+  const { user, profile } = useAuth()
   const [answers, setAnswers] = useState(null)
   const [loaded, setLoaded] = useState(false)
+  const [saveState, setSaveState] = useState('idle') // idle | saving | saved | error
+  // Guards the deferred save so it runs once, not on every re-render.
+  const autoSaveRan = useRef(false)
   const [listingsByHood, setListingsByHood] = useState({})
   const [listingsLoading, setListingsLoading] = useState(false)
   const [listingsError, setListingsError] = useState(false)
@@ -271,6 +339,29 @@ export default function NewToNYResults() {
     () => (answers ? matchNeighborhoods(answers, NEIGHBORHOODS) : []),
     [answers]
   )
+
+  // Completes a save the visitor asked for before signing in. Nothing is ever
+  // written without that earlier button press.
+  useEffect(() => {
+    if (autoSaveRan.current) return
+    if (!answers || !user || profile?.role !== 'renter') return
+    if (!readPendingSave()) return
+    autoSaveRan.current = true
+    clearPendingSave()
+    setSaveState('saving')
+    const now = new Date().toISOString()
+    supabase
+      .from('renter_profiles')
+      .upsert({ id: user.id, quiz_answers: answers, quiz_saved_at: now, updated_at: now })
+      .then(({ error }) => {
+        if (error) throw error
+        setSaveState('saved')
+      })
+      .catch(err => {
+        console.error('Saving quiz answers failed:', err)
+        setSaveState('error')
+      })
+  }, [answers, user, profile?.role])
 
   useEffect(() => {
     if (!answers || results.length === 0) return
@@ -288,6 +379,43 @@ export default function NewToNYResults() {
       .finally(() => { if (!cancelled) setListingsLoading(false) })
     return () => { cancelled = true }
   }, [answers, results])
+
+  const isPoster = profile?.role === 'poster'
+  const isRenter = profile?.role === 'renter'
+  // Posters get every result and no save option; everyone else may save.
+  const canSave = !user || isRenter
+
+  async function persist(toSave) {
+    setSaveState('saving')
+    try {
+      const now = new Date().toISOString()
+      // Same upsert shape Profile.jsx uses: the row's primary key is the user id.
+      const { error } = await supabase.from('renter_profiles').upsert({
+        id: user.id,
+        quiz_answers: toSave,
+        quiz_saved_at: now,
+        updated_at: now,
+      })
+      if (error) throw error
+      setSaveState('saved')
+    } catch (err) {
+      console.error('Saving quiz answers failed:', err)
+      setSaveState('error')
+    }
+  }
+
+  function handleSave() {
+    if (saveState === 'saving' || saveState === 'saved') return
+    if (!user) {
+      // Remember the intent, then use the app's existing sign-in round trip.
+      writePendingSave()
+      navigate(`/login?next=${encodeURIComponent(RESULTS_PATH)}`)
+      return
+    }
+    if (!isRenter) return
+    clearPendingSave()
+    persist(answers)
+  }
 
   if (!loaded) return <Shell>{null}</Shell>
 
@@ -331,9 +459,32 @@ export default function NewToNYResults() {
 
       {top.length > 0 ? (
         <>
-          <p style={{ fontSize: '15px', color: 'var(--warm-gray)', lineHeight: 1.6, marginBottom: '28px' }}>
+          <p style={{ fontSize: '15px', color: 'var(--warm-gray)', lineHeight: 1.6, marginBottom: '20px' }}>
             Based on what you told us, these {top.length === 1 ? 'is the closest fit' : `${top.length} fit best`}.
           </p>
+
+          {canSave && (
+            <div style={{ marginBottom: '28px' }}>
+              <button
+                className={saveState === 'saved' ? 'btn-secondary' : 'btn-primary'}
+                onClick={handleSave}
+                disabled={saveState === 'saving' || saveState === 'saved'}
+                style={{ opacity: saveState === 'saving' ? 0.7 : 1 }}
+              >
+                {saveState === 'saving'
+                  ? 'Saving…'
+                  : saveState === 'saved'
+                  ? 'Saved to your account'
+                  : 'Save my results'}
+              </button>
+              {saveState === 'error' && (
+                <p style={{ fontSize: '13px', color: 'var(--pass-red)', margin: '10px 0 0' }}>
+                  We couldn't save your results just now. Try again.
+                </p>
+              )}
+            </div>
+          )}
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {top.map((result, i) => (
               <NeighborhoodCard
@@ -348,6 +499,53 @@ export default function NewToNYResults() {
               />
             ))}
           </div>
+
+          {results.length > SHOWN && (
+            <div style={{ marginTop: '28px' }}>
+              <h2 style={{
+                fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 600,
+                margin: '0 0 12px',
+              }}>
+                See more neighborhoods
+              </h2>
+
+              {user ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {results.slice(SHOWN, LOOKUP_DEPTH).map((result, i) => (
+                    <NeighborhoodCard
+                      key={result.neighborhood.id}
+                      result={result}
+                      answers={answers}
+                      rank={SHOWN + i + 1}
+                      listings={listingsByHood[result.neighborhood.id] || []}
+                      listingsLoading={listingsLoading}
+                      listingsError={listingsError}
+                      nearby={withListings.filter(x => x.id !== result.neighborhood.id).slice(0, 4)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {results.slice(SHOWN, LOOKUP_DEPTH).map((result, i) => (
+                      <LockedRow key={result.neighborhood.id} result={result} rank={SHOWN + i + 1} />
+                    ))}
+                  </div>
+                  <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                    <p style={{ fontSize: '14px', color: 'var(--warm-gray)', margin: '0 0 12px', lineHeight: 1.5 }}>
+                      Sign in to see all your matches.
+                    </p>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => navigate(`/login?next=${encodeURIComponent(RESULTS_PATH)}`)}
+                    >
+                      Sign in
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </>
       ) : (
         <div className="card" style={{ textAlign: 'center' }}>
