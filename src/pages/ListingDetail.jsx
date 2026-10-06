@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { attachPosterContacts, hasPosterContact } from '../lib/posterContacts'
 import RequestTour from '../components/RequestTour'
 import FairHousingNotice from '../components/FairHousingNotice'
 import { petsPolicyLabel } from '../lib/petsPolicy'
@@ -26,7 +27,7 @@ export default function ListingDetail() {
     setLoading(true)
     const { data, error } = await supabase
       .from('listings')
-      .select('*, profiles(name, email, phone)')
+      .select('*')
       .eq('id', id)
       .maybeSingle()
     if (error || !data) {
@@ -34,7 +35,19 @@ export default function ListingDetail() {
       setLoading(false)
       return
     }
-    setListing(data)
+
+    const [withContacts] = await attachPosterContacts([data])
+
+    // The view only covers posters with an ACTIVE listing, so a poster viewing
+    // their own paused or delisted listing finds no row there. They are looking
+    // at their own listing, so their own profile is the correct source — and it
+    // avoids the page losing its contact block exactly when the owner needs it.
+    const isOwner = user && data.poster_id === user.id
+    if (isOwner && !withContacts.profiles && profile) {
+      withContacts.profiles = { name: profile.name, email: profile.email, phone: profile.phone }
+    }
+
+    setListing(withContacts)
     setLoading(false)
 
     supabase.rpc('increment_listing_views', { listing_uuid: id }).then(() => {})
@@ -69,9 +82,15 @@ export default function ListingDetail() {
     }
   }
 
+  // A tour needs a reachable poster. api/send-inquiry.js rejects a payload with
+  // no posterEmail, so the button is disabled rather than letting the renter
+  // fill the whole form and then fail on submit.
+  const canRequestTour = listing?.status === 'active' && hasPosterContact(listing)
+
   function handleRequestTour() {
     if (!user) { requireLogin(); return }
     if (profile?.role !== 'renter') { toast.error('Only renter accounts can request tours'); return }
+    if (!canRequestTour) { toast.error('This listing is no longer accepting tour requests'); return }
     setShowTour(true)
   }
 
@@ -287,9 +306,15 @@ export default function ListingDetail() {
         <button
           className="btn-primary"
           onClick={handleRequestTour}
-          style={{ flex: 2, padding: '14px', fontSize: '15px' }}
+          disabled={!canRequestTour}
+          title={canRequestTour ? undefined : 'This listing is no longer accepting tour requests'}
+          style={{
+            flex: 2, padding: '14px', fontSize: '15px',
+            opacity: canRequestTour ? 1 : 0.5,
+            cursor: canRequestTour ? 'pointer' : 'not-allowed',
+          }}
         >
-          Request a tour
+          {canRequestTour ? 'Request a tour' : 'No longer available'}
         </button>
       </div>
 
