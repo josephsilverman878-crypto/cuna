@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { attachPosterContacts, hasPosterContact } from '../lib/posterContacts'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import RequestTour from '../components/RequestTour'
@@ -29,12 +30,17 @@ export default function SwipeHistory() {
       const listingIds = [...new Set(swipeData.map(s => s.listing_id))]
       const { data: listingData } = await supabase
         .from('listings')
-        .select('*, profiles(name, email, phone)')
+        .select('*')
         .in('id', listingIds)
 
+      const withContacts = await attachPosterContacts(listingData || [])
+
+      // Keep the swipe even when its listing can no longer be read. After 2c a
+      // paused or delisted listing is not readable by a renter, and silently
+      // dropping the card would make a listing they deliberately saved vanish
+      // with no explanation. Render it as unavailable instead.
       enriched = swipeData
-        .map(s => ({ ...s, listing: listingData?.find(l => l.id === s.listing_id) || null }))
-        .filter(s => s.listing)
+        .map(s => ({ ...s, listing: withContacts.find(l => l.id === s.listing_id) || null }))
     }
 
     setSwipes(enriched)
@@ -115,6 +121,37 @@ export default function SwipeHistory() {
           </div>
         ) : filtered.map(swipe => {
           const listing = swipe.listing
+
+          // The listing row itself can be gone: delisted, or no longer readable
+          // once the broad read policy is removed. Show the saved item rather
+          // than dropping it, and offer only the action that still makes sense.
+          if (!listing) {
+            return (
+              <div key={swipe.id} className="card" style={{ padding: '18px' }}>
+                <div style={{ fontWeight: 600, fontSize: '15px', color: 'var(--warm-gray)' }}>
+                  This listing is no longer available
+                </div>
+                <div style={{ fontSize: '13px', color: 'var(--warm-gray)', marginTop: '4px' }}>
+                  It was taken down by the agent. You can remove it from your list.
+                </div>
+                <button
+                  onClick={() => handleRemoveSwipe(swipe)}
+                  style={{
+                    marginTop: '12px', padding: '9px 14px', background: 'none',
+                    border: '1px solid var(--sand-dark)', borderRadius: '8px', cursor: 'pointer',
+                    fontSize: '12px', fontWeight: 600, color: 'var(--terracotta)',
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                  }}
+                >
+                  <RotateCcw size={13} />
+                  Remove
+                </button>
+              </div>
+            )
+          }
+
+          const unavailable = listing.status !== 'active'
+          const canRequestTour = !unavailable && hasPosterContact(listing)
           const cover = listing.photos?.length > 0
             ? listing.photos[0]
             : 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80'
@@ -144,7 +181,16 @@ export default function SwipeHistory() {
                   </div>
                 </div>
               </div>
-              {tab === 'saved' && (
+              {tab === 'saved' && unavailable && (
+                <div style={{
+                  padding: '10px', borderTop: '1px solid var(--sand-dark)',
+                  background: 'rgba(155,142,136,0.08)', fontSize: '12px',
+                  color: 'var(--warm-gray)', textAlign: 'center',
+                }}>
+                  No longer available — the agent has taken this listing down.
+                </div>
+              )}
+              {tab === 'saved' && canRequestTour && (
                 <button
                   onClick={() => setTourListing(listing)}
                   style={{

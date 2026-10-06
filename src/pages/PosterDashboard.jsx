@@ -13,6 +13,7 @@ export default function PosterDashboard() {
   const [listings, setListings] = useState([])
   const [saves, setSaves] = useState({})
   const [inquiries, setInquiries] = useState([])
+  const [inquiriesError, setInquiriesError] = useState(false)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('listings')
 
@@ -44,25 +45,23 @@ export default function PosterDashboard() {
       setSaves(counts)
     }
 
-    const { data: inquiryData, error: inqError } = await supabase
-      .from('inquiries')
-      .select('*')
-      .eq('poster_id', user.id)
-      .order('created_at', { ascending: false })
+    // One call replaces the inquiries select plus the profiles lookup. The
+    // function is SECURITY DEFINER and pinned to auth.uid(), so it returns only
+    // inquiries on this poster's own listings. Renter name and email come from
+    // profiles inside the function; every other renter field is the inquiry's
+    // own shared_* snapshot, never a live read of renter_profiles.
+    const { data: inquiryData, error: inqError } =
+      await supabase.rpc('poster_inquiry_contacts')
 
+    // An RPC failure used to fall through to the "No tour requests yet" empty
+    // state, which tells a poster they have no interest when in fact the request
+    // failed. Track it so the tab can say so and offer a retry.
+    setInquiriesError(Boolean(inqError))
     if (inqError) console.error('Inquiries fetch error:', inqError)
 
     let enrichedInquiries = []
     if (inquiryData?.length > 0) {
-      const renterIds = [...new Set(inquiryData.map(i => i.renter_id))]
       const listingIds = [...new Set(inquiryData.map(i => i.listing_id))]
-
-      // Phone is deliberately not selected here — it comes from the inquiry's
-      // shared_phone snapshot only, so a renter who never shared it stays private.
-      const { data: renterData } = await supabase
-        .from('profiles')
-        .select('id, name, email')
-        .in('id', renterIds)
 
       const { data: inqListings } = await supabase
         .from('listings')
@@ -71,7 +70,9 @@ export default function PosterDashboard() {
 
       enrichedInquiries = inquiryData.map(i => ({
         ...i,
-        renter: renterData?.find(p => p.id === i.renter_id) || null,
+        // The function returns inquiry_id; the rest of this page expects `id`.
+        id: i.inquiry_id,
+        renter: { name: i.renter_name, email: i.renter_email },
         listing: inqListings?.find(l => l.id === i.listing_id) || null,
       }))
     }
@@ -366,7 +367,24 @@ export default function PosterDashboard() {
         )}
 
         {activeTab === 'inquiries' && (
-          inquiries.length === 0 ? (
+          inquiriesError ? (
+            <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--warm-gray)' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
+              <p style={{ fontWeight: 600, color: 'var(--charcoal)' }}>
+                Could not load your tour requests.
+              </p>
+              <p style={{ fontSize: '13px', marginTop: '6px' }}>
+                This is a loading problem, not an empty inbox — you may have requests waiting.
+              </p>
+              <button
+                className="btn-secondary"
+                onClick={() => { setInquiriesError(false); fetchData() }}
+                style={{ marginTop: '18px', padding: '10px 22px', fontSize: '14px' }}
+              >
+                Try again
+              </button>
+            </div>
+          ) : inquiries.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--warm-gray)' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>📩</div>
               <p>No tour requests yet.</p>

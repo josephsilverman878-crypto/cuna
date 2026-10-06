@@ -101,6 +101,15 @@ export default function RequestTour({ listing, onClose }) {
       toast.error('One of your preferred times is incomplete')
       return
     }
+    // Last line of defence. The callers disable their buttons when poster
+    // contact is missing, but this component is rendered from three places, so
+    // it refuses here too rather than sending a payload api/send-inquiry.js
+    // will reject with a 400 after the renter has filled the form.
+    if (!listing?.profiles?.email) {
+      toast.error('This listing is no longer accepting tour requests')
+      return
+    }
+
     setSending(true)
     try {
       const cleanTimes = times

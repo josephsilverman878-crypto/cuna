@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { attachPosterContacts } from '../lib/posterContacts'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import RequestTour from '../components/RequestTour'
@@ -282,7 +283,7 @@ export default function Feed() {
 
     let query = supabase
       .from('listings')
-      .select('*, profiles(name, email, phone)')
+      .select('*')
       .eq('status', 'active')
 
     // Only hidden listings are excluded. A liked listing stays in the feed.
@@ -324,7 +325,10 @@ export default function Feed() {
       return { rows: [], more: false }
     }
 
-    return { rows: data || [], more: (data || []).length === PAGE }
+    // hasMore is computed from the RAW row count, before contacts are attached,
+    // so it still reflects what the server returned.
+    const more = (data || []).length === PAGE
+    return { rows: await attachPosterContacts(data || []), more }
   }
 
   async function loadMore() {

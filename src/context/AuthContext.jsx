@@ -38,7 +38,17 @@ export function AuthProvider({ children }) {
     const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) throw error
     if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
+      // upsert, not insert. Stage 2b-trigger adds handle_new_user on auth.users,
+      // which creates this row server-side; an insert would then hit a duplicate
+      // key, throw, and break signup. upsert works both before and after that
+      // trigger exists, so the two changes can ship separately.
+      //
+      // `role` is still sent here because no trigger owns it yet. The change
+      // that adds handle_new_user must REMOVE role from this payload: once the
+      // trigger writes it, this upsert becomes an UPDATE, and sending a role
+      // that differs from the trigger's is rejected by the profiles guard
+      // ("role cannot be changed once set").
+      const { error: profileError } = await supabase.from('profiles').upsert({
         id: data.user.id,
         name,
         email,
@@ -52,9 +62,12 @@ export function AuthProvider({ children }) {
       })
       if (profileError) throw profileError
       if (role === 'renter') {
+        // Also upsert: handle_new_user will create this row too, and a duplicate
+        // must not surface as an error. Kept non-fatal on purpose — a missing
+        // renter_profiles row is recoverable, a failed signup is not.
         const { error: renterError } = await supabase
           .from('renter_profiles')
-          .insert({ id: data.user.id })
+          .upsert({ id: data.user.id }, { onConflict: 'id' })
         if (renterError) console.error('Renter profile creation failed:', renterError)
       }
       await fetchProfile(data.user.id)

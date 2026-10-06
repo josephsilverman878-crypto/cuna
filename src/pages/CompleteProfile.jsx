@@ -19,6 +19,10 @@ export default function CompleteProfile() {
     if (!accepted) { toast.error('Please accept the Terms of Service and Privacy Policy'); return }
     setLoading(true)
     try {
+      // Already an upsert, so handle_new_user does not break it. Same caveat as
+      // AuthContext.signUp: when the trigger lands, `role` must come out of this
+      // payload, because by then the row exists and the guard rejects a role
+      // change on an existing row.
       const { error } = await supabase.from('profiles').upsert({
         id: user.id,
         name: form.name.trim(),
@@ -32,7 +36,7 @@ export default function CompleteProfile() {
       if (form.role === 'renter') {
         const { error: renterError } = await supabase
           .from('renter_profiles')
-          .upsert({ id: user.id })
+          .upsert({ id: user.id }, { onConflict: 'id' })
         if (renterError) console.error('Renter profile creation failed:', renterError)
       }
 
