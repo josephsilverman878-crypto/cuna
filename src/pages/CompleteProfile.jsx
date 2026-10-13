@@ -19,10 +19,11 @@ export default function CompleteProfile() {
     if (!accepted) { toast.error('Please accept the Terms of Service and Privacy Policy'); return }
     setLoading(true)
     try {
-      // Already an upsert, so handle_new_user does not break it. Same caveat as
-      // AuthContext.signUp: when the trigger lands, `role` must come out of this
-      // payload, because by then the row exists and the guard rejects a role
-      // change on an existing row.
+      // `role` STAYS in this payload, unlike AuthContext.signUp. This page only
+      // renders when there is no profile row (src/main.jsx:41), so the upsert
+      // is an INSERT and the guard allows role on insert. These users have no
+      // signup metadata for handle_new_user to have read -- that is why they
+      // have no row -- so this is the only place their role can come from.
       const { error } = await supabase.from('profiles').upsert({
         id: user.id,
         name: form.name.trim(),
