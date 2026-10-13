@@ -39,15 +39,19 @@ export function AuthProvider({ children }) {
       email,
       password,
       options: {
-        // Stage 2b-trigger, phase A. handle_new_user() does not exist yet, so
-        // nothing reads this. It lands in auth.users.raw_user_meta_data and
-        // becomes the trigger's only input once it ships, which is why this
-        // goes out first: the metadata shape can be confirmed in the database
-        // before the trigger that depends on it is written.
+        // This lands in auth.users.raw_user_meta_data and is the ONLY input to
+        // handle_new_user(), the trigger on auth.users that now writes the
+        // profiles row. Change a key name here and the trigger stops seeing
+        // that field: name and phone go missing and it declines to create the
+        // row at all, sending the user to CompleteProfile instead.
         //
         // Attacker-controlled by definition -- anyone can call signUp with any
         // options.data. is_admin and verified are deliberately absent, and the
-        // trigger must never read them from here even if a caller adds them.
+        // trigger never reads them from here even if a caller adds them.
+        //
+        // GoTrue also injects email, email_verified, phone_verified and sub
+        // into the same object, so the trigger takes the email and the id from
+        // auth.users itself, not from here.
         //
         // This also lands in the user's own JWT as user_metadata, so it holds
         // only what they typed about themselves.
@@ -64,41 +68,23 @@ export function AuthProvider({ children }) {
       },
     })
     if (error) throw error
-    if (data.user) {
-      // upsert, not insert. Stage 2b-trigger adds handle_new_user on auth.users,
-      // which creates this row server-side; an insert would then hit a duplicate
-      // key, throw, and break signup. upsert works both before and after that
-      // trigger exists, so the two changes can ship separately.
-      //
-      // `role` is still sent here because no trigger owns it yet. The change
-      // that adds handle_new_user must REMOVE role from this payload: once the
-      // trigger writes it, this upsert becomes an UPDATE, and sending a role
-      // that differs from the trigger's is rejected by the profiles guard
-      // ("role cannot be changed once set").
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: data.user.id,
-        name,
-        email,
-        phone,
-        role,
-        accepted_terms_at: accepted_terms_at || new Date().toISOString(),
-        license_name: license_name || null,
-        license_number: license_number || null,
-        license_type: license_type || null,
-        brokerage_name: brokerage_name || null,
-      })
-      if (profileError) throw profileError
-      if (role === 'renter') {
-        // Also upsert: handle_new_user will create this row too, and a duplicate
-        // must not surface as an error. Kept non-fatal on purpose — a missing
-        // renter_profiles row is recoverable, a failed signup is not.
-        const { error: renterError } = await supabase
-          .from('renter_profiles')
-          .upsert({ id: data.user.id }, { onConflict: 'id' })
-        if (renterError) console.error('Renter profile creation failed:', renterError)
-      }
-      await fetchProfile(data.user.id)
-    }
+
+    // No profiles write here. handle_new_user() on auth.users creates the row
+    // -- and renter_profiles for renters -- inside the signup transaction,
+    // from the metadata above, so it already exists by the time signUp
+    // resolves. Verified on production 2026-10-13: the trigger-written row's
+    // created_at matched the auth.users row to within 2ms, where the previous
+    // client-written one lagged by 931ms.
+    //
+    // The write was removed rather than kept as a harmless upsert: with the
+    // trigger owning the row, an upsert is an UPDATE, and sending a `role`
+    // that differs from the one the trigger derived is rejected by
+    // guard_profile_privileges ("role cannot be changed once set"). Deleting
+    // the second writer removes the failure mode instead of coordinating it.
+    //
+    // If the row is somehow absent, `user && !profile` routes to
+    // CompleteProfile (src/main.jsx:41) -- the same safety net as before.
+    if (data.user) await fetchProfile(data.user.id)
     return data
   }
 
