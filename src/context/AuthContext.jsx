@@ -35,7 +35,34 @@ export function AuthProvider({ children }) {
   }
 
   async function signUp({ email, password, name, phone, role, accepted_terms_at, license_name, license_number, license_type, brokerage_name }) {
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        // Stage 2b-trigger, phase A. handle_new_user() does not exist yet, so
+        // nothing reads this. It lands in auth.users.raw_user_meta_data and
+        // becomes the trigger's only input once it ships, which is why this
+        // goes out first: the metadata shape can be confirmed in the database
+        // before the trigger that depends on it is written.
+        //
+        // Attacker-controlled by definition -- anyone can call signUp with any
+        // options.data. is_admin and verified are deliberately absent, and the
+        // trigger must never read them from here even if a caller adds them.
+        //
+        // This also lands in the user's own JWT as user_metadata, so it holds
+        // only what they typed about themselves.
+        data: {
+          role,
+          name,
+          phone,
+          accepted_terms_at: accepted_terms_at || new Date().toISOString(),
+          license_name: license_name || null,
+          license_number: license_number || null,
+          license_type: license_type || null,
+          brokerage_name: brokerage_name || null,
+        },
+      },
+    })
     if (error) throw error
     if (data.user) {
       // upsert, not insert. Stage 2b-trigger adds handle_new_user on auth.users,
