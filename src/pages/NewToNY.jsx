@@ -4,54 +4,24 @@ import { ChevronLeft } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import {
-  STORAGE_KEY,
   getVisibleQuestions,
   getOptions,
   getHelper,
   isAnswered,
   pruneAnswers,
 } from '../lib/quizQuestions'
-
-// Every localStorage touch is wrapped: Safari private mode and blocked-cookie
-// settings throw on access, and the quiz has to keep working without it.
-function loadSaved() {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== 'object' || !parsed.answers) return null
-    return parsed
-  } catch {
-    return null
-  }
-}
-
-function save(answers, step) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      version: 1,
-      savedAt: new Date().toISOString(),
-      step,
-      answers,
-    }))
-  } catch {
-    // Storage unavailable — the quiz still runs, it just won't resume later.
-  }
-}
-
-function clearSaved() {
-  try {
-    window.localStorage.removeItem(STORAGE_KEY)
-  } catch {
-    // Nothing to do; in-memory state is still correct.
-  }
-}
+import {
+  quizOwnerId,
+  loadQuizDraft,
+  saveQuizDraft,
+  clearQuizDraft,
+} from '../lib/quizStorage'
 
 const INTRO = -1
 
 export default function NewToNY() {
   const navigate = useNavigate()
-  const { user, profile } = useAuth()
+  const { user, profile, loading } = useAuth()
   const [step, setStep] = useState(INTRO)
   const [answers, setAnswers] = useState({})
   const [saved, setSaved] = useState(null)
@@ -64,10 +34,16 @@ export default function NewToNY() {
   const loadedSavedForUser = useRef(null)
   const answersDirty = useRef(false)
 
+  // Who any draft read or written below belongs to. Waits for auth to resolve:
+  // during AuthContext's initial load `user` is null even for a signed-in
+  // visitor, and reading as 'anon' then would hide their own draft from them.
+  const ownerId = quizOwnerId(user)
+
   useEffect(() => {
-    const found = loadSaved()
+    if (loading) return
+    const found = loadQuizDraft(ownerId)
     if (found && Object.keys(found.answers || {}).length > 0) setSaved(found)
-  }, [])
+  }, [loading, ownerId])
 
   // Auto-advance runs on a timer so the tapped option is visibly selected first.
   useEffect(() => () => clearTimeout(advanceTimer.current), [])
@@ -126,14 +102,14 @@ export default function NewToNY() {
     }
     next = pruneAnswers(next)
     setAnswers(next)
-    save(next, step)
+    saveQuizDraft(ownerId, next, step)
     return next
   }
 
   function advance(nextAnswers) {
     const nextVisible = getVisibleQuestions(nextAnswers)
     if (step >= nextVisible.length - 1) {
-      save(nextAnswers, nextVisible.length)
+      saveQuizDraft(ownerId, nextAnswers, nextVisible.length)
       navigate('/new-to-ny/results')
     } else {
       setStep(step + 1)
@@ -174,7 +150,7 @@ export default function NewToNY() {
   }
 
   function startFresh() {
-    clearSaved()
+    clearQuizDraft()
     setSaved(null)
     setSavedToAccount(null)
     setAnswers({})
@@ -187,7 +163,7 @@ export default function NewToNY() {
     const restoredVisible = getVisibleQuestions(restored)
     const firstGap = restoredVisible.findIndex(q => !isAnswered(q, restored))
     setAnswers(restored)
-    save(restored, firstGap === -1 ? restoredVisible.length : firstGap)
+    saveQuizDraft(ownerId, restored, firstGap === -1 ? restoredVisible.length : firstGap)
     setStep(firstGap === -1 ? restoredVisible.length - 1 : firstGap)
     setSavedToAccount(null)
   }
