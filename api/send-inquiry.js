@@ -96,7 +96,7 @@ export default async function handler(req, res) {
     })
 
     const brokerResp = await send({
-      from: 'Cuna <onboarding@resend.dev>',
+      from: 'Cuna <hello@hellocuna.com>',
       to: [brokerTo],
       reply_to: renterEmail,
       subject: renterName + ' requested a tour — ' + listingAddress,
@@ -104,7 +104,7 @@ export default async function handler(req, res) {
     })
 
     const renterResp = await send({
-      from: 'Cuna <onboarding@resend.dev>',
+      from: 'Cuna <hello@hellocuna.com>',
       to: [renterTo],
       reply_to: posterEmail,
       subject: 'Your tour request was sent — ' + listingAddress,
