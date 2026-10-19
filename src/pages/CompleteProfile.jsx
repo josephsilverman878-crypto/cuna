@@ -19,12 +19,23 @@ export default function CompleteProfile() {
     if (!accepted) { toast.error('Please accept the Terms of Service and Privacy Policy'); return }
     setLoading(true)
     try {
-      // `role` STAYS in this payload, unlike AuthContext.signUp. This page only
-      // renders when there is no profile row (src/main.jsx:41), so the upsert
-      // is an INSERT and the guard allows role on insert. These users have no
-      // signup metadata for handle_new_user to have read -- that is why they
-      // have no row -- so this is the only place their role can come from.
-      const { error } = await supabase.from('profiles').upsert({
+      // A plain INSERT, deliberately not an upsert.
+      //
+      // PostgREST compiles `.upsert()` into
+      //   INSERT ... ON CONFLICT (id) DO UPDATE SET <every payload column>
+      // and Postgres checks UPDATE privilege on every column in that SET list
+      // when it plans the statement -- whether or not any row actually
+      // conflicts. Stage 2c narrows the `authenticated` UPDATE grant on
+      // profiles to exclude id, email, role and accepted_terms_at, so the
+      // upsert form would fail with 42501 on EVERY submit once 2c lands, not
+      // just on a conflict. A plain INSERT needs only INSERT privilege on the
+      // columns it names, which 2c grants, so this works before and after.
+      //
+      // `role` stays in the payload. This page renders only when there is no
+      // profile row (src/main.jsx:41), so this is an insert, the guard allows
+      // role on insert, and these users have no signup metadata for
+      // handle_new_user to have read -- which is exactly why they have no row.
+      const { error } = await supabase.from('profiles').insert({
         id: user.id,
         name: form.name.trim(),
         email: user.email,
@@ -32,9 +43,23 @@ export default function CompleteProfile() {
         role: form.role,
         accepted_terms_at: new Date().toISOString(),
       })
-      if (error) throw error
+      // 23505 unique_violation means the row already exists, which is a
+      // success for this page, not a failure: it means CompleteProfile was
+      // shown to someone who DOES have a profile. That happens in the ~400ms
+      // window after sign-in while fetchProfile is still in flight and
+      // main.jsx:41 sees `user && !profile` (followup 10). Their row is
+      // already correct -- load it and carry on rather than showing them an
+      // error for a race they did not cause.
+      const alreadyExisted = error?.code === '23505'
+      if (error && !alreadyExisted) throw error
 
-      if (form.role === 'renter') {
+      // Only when WE created the profile row. If it already existed, so does
+      // whatever renter_profiles row belongs with it -- handle_new_user
+      // creates the pair together, and an earlier submit of this form would
+      // have too. Re-running the upsert in that case would be a write on
+      // behalf of someone whose setup is already finished, during a race they
+      // did not cause. Nothing needs repairing, so nothing is written.
+      if (!alreadyExisted && form.role === 'renter') {
         const { error: renterError } = await supabase
           .from('renter_profiles')
           .upsert({ id: user.id }, { onConflict: 'id' })
