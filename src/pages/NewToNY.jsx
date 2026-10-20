@@ -1,0 +1,403 @@
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import { ChevronLeft } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
+import {
+  getVisibleQuestions,
+  getOptions,
+  getHelper,
+  isAnswered,
+  pruneAnswers,
+} from '../lib/quizQuestions'
+import {
+  quizOwnerId,
+  loadQuizDraft,
+  saveQuizDraft,
+  clearQuizDraft,
+} from '../lib/quizStorage'
+
+const INTRO = -1
+
+export default function NewToNY() {
+  const navigate = useNavigate()
+  const { user, profile, loading } = useAuth()
+  const [step, setStep] = useState(INTRO)
+  const [answers, setAnswers] = useState({})
+  const [saved, setSaved] = useState(null)
+  const [savedToAccount, setSavedToAccount] = useState(null)
+  const advanceTimer = useRef(null)
+
+  // Which user's saved answers have already been loaded, and whether this
+  // visitor has started answering. Refs, not state: both are read inside an
+  // async callback and must reflect the value at call time.
+  const loadedSavedForUser = useRef(null)
+  const answersDirty = useRef(false)
+
+  // Who any draft read or written below belongs to. Waits for auth to resolve:
+  // during AuthContext's initial load `user` is null even for a signed-in
+  // visitor, and reading as 'anon' then would hide their own draft from them.
+  const ownerId = quizOwnerId(user)
+
+  useEffect(() => {
+    if (loading) return
+    const found = loadQuizDraft(ownerId)
+    if (found && Object.keys(found.answers || {}).length > 0) setSaved(found)
+  }, [loading, ownerId])
+
+  // Auto-advance runs on a timer so the tapped option is visibly selected first.
+  useEffect(() => () => clearTimeout(advanceTimer.current), [])
+
+  // Load the renter's saved answers exactly ONCE per user. This effect calls
+  // setSavedToAccount(), and AuthContext hands down a NEW profile object on
+  // every auth event — a token refresh included — so without the identity guard
+  // it would re-run and could offer stale answers over ones already in progress.
+  // The deps array is not the guard; the refs are.
+  useEffect(() => {
+    if (!user?.id || profile?.role !== 'renter') return
+    if (loadedSavedForUser.current === user.id) return
+    if (answersDirty.current) return
+    loadedSavedForUser.current = user.id
+
+    let cancelled = false
+    async function loadSavedAnswers() {
+      const { data, error } = await supabase
+        .from('renter_profiles')
+        .select('quiz_answers')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (error) {
+        console.error('Saved answers fetch failed:', error)
+        return
+      }
+      // Never overwrite answers the visitor has started since the fetch began.
+      if (cancelled || answersDirty.current) return
+      const stored = data?.quiz_answers
+      if (stored && typeof stored === 'object' && Object.keys(stored).length > 0) {
+        setSavedToAccount(pruneAnswers(stored))
+      }
+    }
+    loadSavedAnswers()
+    return () => {
+      cancelled = true
+      // Release the one-shot guard on teardown. React StrictMode mounts, tears
+      // down and remounts in development: without this the first run would claim
+      // the guard, the cleanup would cancel its fetch, and the real mount would
+      // short-circuit — so the saved answers never arrived. Cleanup otherwise
+      // only fires when user or role genuinely changed, where refetching is right.
+      if (loadedSavedForUser.current === user.id) loadedSavedForUser.current = null
+    }
+  }, [user?.id, profile?.role])
+
+  const visible = getVisibleQuestions(answers)
+  const question = step >= 0 ? visible[step] : null
+
+  function applyAnswer(questionId, value) {
+    answersDirty.current = true
+    let next = { ...answers, [questionId]: value }
+    // Budget options are generated from tenure, so a changed tenure invalidates
+    // whatever budget band was picked under the old one.
+    if (questionId === 'tenure' && answers.tenure && answers.tenure !== value) {
+      delete next.budget
+    }
+    next = pruneAnswers(next)
+    setAnswers(next)
+    saveQuizDraft(ownerId, next, step)
+    return next
+  }
+
+  function advance(nextAnswers) {
+    const nextVisible = getVisibleQuestions(nextAnswers)
+    if (step >= nextVisible.length - 1) {
+      saveQuizDraft(ownerId, nextAnswers, nextVisible.length)
+      navigate('/new-to-ny/results')
+    } else {
+      setStep(step + 1)
+    }
+  }
+
+  function handleSingle(q, option) {
+    const value = option.value ? { id: option.id, ...option.value } : option.id
+    const next = applyAnswer(q.id, value)
+    clearTimeout(advanceTimer.current)
+    advanceTimer.current = setTimeout(() => advance(next), 160)
+  }
+
+  function toggleMulti(q, option) {
+    const current = Array.isArray(answers[q.id]) ? answers[q.id] : []
+    const options = getOptions(q, answers)
+    let next
+    if (current.includes(option.id)) {
+      next = current.filter(id => id !== option.id)
+    } else if (option.exclusive) {
+      next = [option.id]
+    } else {
+      // Picking a real option clears any "not sure" / "no preference" choice.
+      const exclusiveIds = options.filter(o => o.exclusive).map(o => o.id)
+      next = [...current.filter(id => !exclusiveIds.includes(id)), option.id]
+    }
+    applyAnswer(q.id, next)
+  }
+
+  function setMatrixRow(q, rowId, optionId) {
+    const current = answers[q.id] && typeof answers[q.id] === 'object' ? answers[q.id] : {}
+    applyAnswer(q.id, { ...current, [rowId]: optionId })
+  }
+
+  function goBack() {
+    clearTimeout(advanceTimer.current)
+    setStep(s => (s <= 0 ? INTRO : s - 1))
+  }
+
+  function startFresh() {
+    clearQuizDraft()
+    setSaved(null)
+    setSavedToAccount(null)
+    setAnswers({})
+    setStep(0)
+  }
+
+  // Reopen the answers stored on the account, landing on the first gap.
+  function useAccountAnswers() {
+    const restored = pruneAnswers(savedToAccount || {})
+    const restoredVisible = getVisibleQuestions(restored)
+    const firstGap = restoredVisible.findIndex(q => !isAnswered(q, restored))
+    setAnswers(restored)
+    saveQuizDraft(ownerId, restored, firstGap === -1 ? restoredVisible.length : firstGap)
+    setStep(firstGap === -1 ? restoredVisible.length - 1 : firstGap)
+    setSavedToAccount(null)
+  }
+
+  function resume() {
+    const restored = pruneAnswers(saved.answers || {})
+    const restoredVisible = getVisibleQuestions(restored)
+    // Land on the first unanswered question, or the last one if all are done.
+    const firstGap = restoredVisible.findIndex(q => !isAnswered(q, restored))
+    setAnswers(restored)
+    setStep(firstGap === -1 ? restoredVisible.length - 1 : firstGap)
+    setSaved(null)
+  }
+
+  const selected = question ? answers[question.id] : undefined
+  const canContinue = question ? isAnswered(question, answers) : false
+
+  return (
+    <div style={{
+      minHeight: '100dvh',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'linear-gradient(160deg, #F5F0E8 0%, #EDE6D6 100%)',
+    }}>
+      <header style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '20px 24px', gap: '12px',
+      }}>
+        <Link to="/" style={{
+          fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 600,
+          color: 'var(--terracotta)',
+        }}>
+          cuna
+        </Link>
+        {question && (
+          <span style={{ fontSize: '13px', color: 'var(--warm-gray)' }}>
+            {answers.tenure ? `${step + 1} of ${visible.length}` : `Question ${step + 1}`}
+          </span>
+        )}
+      </header>
+
+      {question && (
+        <div style={{ padding: '0 24px' }}>
+          <div style={{
+            height: '4px', borderRadius: '2px', background: 'var(--sand-dark)', overflow: 'hidden',
+          }}>
+            <div style={{
+              width: `${((step + 1) / visible.length) * 100}%`,
+              height: '100%', background: 'var(--terracotta)', transition: 'width 0.3s ease',
+            }} />
+          </div>
+        </div>
+      )}
+
+      <main style={{
+        flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center',
+        padding: '32px 24px 48px',
+      }}>
+        <div style={{ width: '100%', maxWidth: '520px', margin: '0 auto' }}>
+
+          {step === INTRO ? (
+            <div style={{ textAlign: 'center' }}>
+              <h1 style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 'clamp(34px, 7.5vw, 54px)',
+                fontWeight: 500, lineHeight: 1.08,
+                color: 'var(--charcoal)', marginBottom: '20px',
+              }}>
+                Looking in New York?<br />Find your neighborhood.
+              </h1>
+              <p style={{
+                fontSize: '17px', color: 'var(--warm-gray)', lineHeight: 1.6,
+                maxWidth: '460px', margin: '0 auto 36px', fontWeight: 300,
+              }}>
+                Rent or buy, new to the city or not. Tell us how you want to live and we'll show you the neighborhoods that fit.
+              </p>
+
+              {saved ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
+                  <button
+                    className="btn-primary"
+                    style={{ fontSize: '17px', padding: '16px 40px' }}
+                    onClick={resume}
+                  >
+                    Continue where you left off
+                  </button>
+                  <button className="btn-ghost" onClick={startFresh}>
+                    Start over
+                  </button>
+                </div>
+              ) : savedToAccount ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
+                  <button
+                    className="btn-primary"
+                    style={{ fontSize: '17px', padding: '16px 40px' }}
+                    onClick={useAccountAnswers}
+                  >
+                    Use your saved answers
+                  </button>
+                  <button className="btn-ghost" onClick={startFresh}>
+                    Start over
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="btn-primary"
+                  style={{ fontSize: '17px', padding: '16px 40px' }}
+                  onClick={() => setStep(0)}
+                >
+                  Start
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <h2 style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 'clamp(28px, 6vw, 38px)',
+                fontWeight: 500, lineHeight: 1.15,
+                color: 'var(--charcoal)', marginBottom: '8px',
+              }}>
+                {question.prompt}
+              </h2>
+              {getHelper(question, answers) && (
+                <p style={{ fontSize: '15px', color: 'var(--warm-gray)', marginBottom: '24px', lineHeight: 1.5 }}>
+                  {getHelper(question, answers)}
+                </p>
+              )}
+              <div style={{ height: getHelper(question, answers) ? 0 : '24px' }} />
+
+              {question.type === 'matrix' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                  {question.rows.map(row => (
+                    <div key={row.id}>
+                      <div style={{
+                        fontSize: '15px', fontWeight: 500, color: 'var(--charcoal)', marginBottom: '8px',
+                      }}>
+                        {row.label}
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {question.options.map(option => {
+                          const on = (answers[question.id] || {})[row.id] === option.id
+                          return (
+                            <button
+                              key={option.id}
+                              aria-pressed={on}
+                              onClick={() => setMatrixRow(question, row.id, option.id)}
+                              style={{
+                                flex: 1, padding: '10px 4px', borderRadius: '10px',
+                                fontSize: '13px', fontWeight: on ? 600 : 400,
+                                border: `1.5px solid ${on ? 'var(--terracotta)' : 'var(--sand-dark)'}`,
+                                background: on ? 'rgba(196,113,74,0.08)' : 'var(--white)',
+                                color: on ? 'var(--terracotta)' : 'var(--charcoal-soft)',
+                              }}
+                            >
+                              {option.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {getOptions(question, answers).map(option => {
+                    const on = question.type === 'multi'
+                      ? Array.isArray(selected) && selected.includes(option.id)
+                      : (selected && typeof selected === 'object' ? selected.id : selected) === option.id
+                    return (
+                      <button
+                        key={option.id}
+                        aria-pressed={on}
+                        onClick={() =>
+                          question.type === 'multi'
+                            ? toggleMulti(question, option)
+                            : handleSingle(question, option)
+                        }
+                        style={{
+                          width: '100%', textAlign: 'left',
+                          padding: '16px 18px', borderRadius: 'var(--radius-sm)',
+                          border: `1.5px solid ${on ? 'var(--terracotta)' : 'var(--sand-dark)'}`,
+                          background: on ? 'rgba(196,113,74,0.08)' : 'var(--white)',
+                          boxShadow: 'var(--shadow-sm)',
+                        }}
+                      >
+                        <span style={{
+                          display: 'block', fontSize: '16px', fontWeight: on ? 600 : 400,
+                          color: on ? 'var(--terracotta)' : 'var(--charcoal)',
+                        }}>
+                          {option.label}
+                        </span>
+                        {option.helper && (
+                          <span style={{
+                            display: 'block', marginTop: '4px',
+                            fontSize: '13px', lineHeight: 1.45, color: 'var(--warm-gray)',
+                          }}>
+                            {option.helper}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                gap: '12px', marginTop: '28px',
+              }}>
+                <button
+                  className="btn-ghost"
+                  onClick={goBack}
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px', paddingLeft: '10px' }}
+                >
+                  <ChevronLeft size={16} />
+                  Back
+                </button>
+
+                {question.type !== 'single' && (
+                  <button
+                    className="btn-primary"
+                    onClick={() => advance(answers)}
+                    disabled={!canContinue}
+                    style={{ opacity: canContinue ? 1 : 0.5, cursor: canContinue ? 'pointer' : 'default' }}
+                  >
+                    {step === visible.length - 1 ? 'See neighborhoods' : 'Next'}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </main>
+    </div>
+  )
+}
