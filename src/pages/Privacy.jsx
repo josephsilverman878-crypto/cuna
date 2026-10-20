@@ -95,7 +95,11 @@ export default function Privacy() {
             There is no messaging or matching on Cuna. The only way your details reach a Poster is
             when you press "Request a tour" on a listing and submit the form.
           </P>
-          <P>When you do, we send one email to the person who posted that listing. It contains:</P>
+          <P>
+            When you do, we send two emails from <strong>hello@hellocuna.com</strong>: one to the
+            person who posted that listing, and a copy to you at the email address on your account.
+            The email to the Poster contains:
+          </P>
           <UL>
             <li>Your name and the email address on your account;</li>
             <li>The listing you are asking about, its address and price, and a link to it;</li>
@@ -109,6 +113,12 @@ export default function Privacy() {
             is left out of the email entirely rather than sent as "not provided."
           </P>
           <P>
+            Your copy confirms what was sent. Each email is addressed so that a reply goes straight
+            to the other party: the Poster's email carries your address as its reply-to, and your
+            copy carries the Poster's address as its reply-to. If either of you replies, that reply
+            travels between the two of you by ordinary email and does not pass through Cuna.
+          </P>
+          <P>
             We keep a record of each tour request, including a snapshot of exactly what was shared at
             the moment you sent it. That snapshot does not change afterwards: if you later switch a
             detail off, requests you already sent still show what you shared at the time, because the
@@ -116,10 +126,11 @@ export default function Privacy() {
             requests.
           </P>
           <P>
-            These emails are delivered by <strong>Resend</strong>, our email provider, acting on our
-            behalf. Resend processes the contents of the email in order to deliver it. Email is not
-            an encrypted medium, and once an email reaches a Poster it is in their inbox and outside
-            our control — we cannot recall it or delete it for them.
+            These emails are sent from <strong>hello@hellocuna.com</strong> and delivered by{' '}
+            <strong>Resend</strong>, our email provider, acting on our behalf. Resend processes the
+            contents of each email in order to deliver it. Email is not an encrypted medium, and
+            once an email reaches the Poster's inbox it is outside our control — we cannot recall it
+            or delete it for them.
           </P>
 
           <H>5. Poster Licence Information</H>
