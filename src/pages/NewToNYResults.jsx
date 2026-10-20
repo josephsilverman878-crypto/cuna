@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Train, Clock, Check, Info, Mail, BedDouble, Bath, Lock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import { STORAGE_KEY, describeAnswers } from '../lib/quizQuestions'
+import { describeAnswers } from '../lib/quizQuestions'
+import { quizOwnerId, loadQuizDraft } from '../lib/quizStorage'
 import { NEIGHBORHOODS } from '../lib/neighborhoods'
 import { matchNeighborhoods, askedPriceRange } from '../lib/neighborhoodMatch'
 import { fetchListingsForNeighborhoods } from '../lib/listingsForNeighborhood'
@@ -49,17 +50,6 @@ function clearPendingSave() {
     window.localStorage.removeItem(PENDING_SAVE_KEY)
   } catch {
     // Nothing to do.
-  }
-}
-
-function loadAnswers() {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    return parsed && parsed.answers && Object.keys(parsed.answers).length ? parsed.answers : null
-  } catch {
-    return null
   }
 }
 
@@ -320,7 +310,7 @@ function NeighborhoodCard({ result, answers, rank, listings, listingsLoading, li
 
 export default function NewToNYResults() {
   const navigate = useNavigate()
-  const { user, profile } = useAuth()
+  const { user, profile, loading } = useAuth()
   const [answers, setAnswers] = useState(null)
   const [loaded, setLoaded] = useState(false)
   const [saveState, setSaveState] = useState('idle') // idle | saving | saved | error
@@ -330,10 +320,18 @@ export default function NewToNYResults() {
   const [listingsLoading, setListingsLoading] = useState(false)
   const [listingsError, setListingsError] = useState(false)
 
+  // Same owner rule as the quiz itself: wait for auth to resolve, then read
+  // only a draft this visitor is allowed to see. Reading while `loading` is
+  // true would evaluate a signed-in user as 'anon' and hide their own draft.
+  const ownerId = quizOwnerId(user)
+
   useEffect(() => {
-    setAnswers(loadAnswers())
+    if (loading) return
+    const draft = loadQuizDraft(ownerId)
+    const found = draft?.answers
+    setAnswers(found && Object.keys(found).length ? found : null)
     setLoaded(true)
-  }, [])
+  }, [loading, ownerId])
 
   const results = useMemo(
     () => (answers ? matchNeighborhoods(answers, NEIGHBORHOODS) : []),
