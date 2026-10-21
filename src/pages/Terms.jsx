@@ -54,9 +54,10 @@ export default function Terms() {
           <P>
             Cuna is a platform that connects people looking for rental apartments ("Renters") with
             people offering rental apartments ("Posters"), including licensed real estate agents and
-            landlords. Renters browse listings and, when they want to see one, send a tour request
-            that Cuna emails to the Poster. Cuna also offers an optional neighborhood guide (the
-            "New to NY" quiz) built from public data.
+            landlords. Renters browse listings and, when they want to see one or know more, send a
+            tour request or a question that Cuna emails to the Poster. Renters can save listings and
+            be told when a saved listing changes. Cuna also offers an optional neighborhood guide
+            (the "New to NY" quiz) built from public data.
           </P>
           <P><strong>Cuna is a listing and introduction platform only.</strong> Cuna:</P>
           <UL>
@@ -105,8 +106,9 @@ export default function Terms() {
             </li>
             <li>Your listing is for a residential rental with a lease term of at least 30 days. Short-term rentals, vacation rentals, and offers of individual rooms for periods under 30 days are not permitted;</li>
             <li>You will not post more than one active listing for the same unit at the same time;</li>
-            <li>You will promptly pause, de-list or delete any listing that is no longer available or accurate;</li>
-            <li>You will use the contact details a Renter sends you in a tour request only to respond to that request.</li>
+            <li><strong>You will keep each listing's status current</strong> — Active, In contract, Rented, Off-market or De-listed — and change it as soon as the facts change. Listings cannot be deleted: De-listed is the final state, and every listing remains viewable at its own link with its status, the date it changed, its days on market and its last price change;</li>
+            <li>Open house times you post are public. You will keep them accurate and cancel any that will not take place; cancelled times stay on record, marked cancelled;</li>
+            <li>You will use the contact details a Renter sends you in a tour request or a question only to respond to that request or question.</li>
           </UL>
           <P>
             Cuna provides fields for disclosing fees (such as security deposit, application fee, and
@@ -115,7 +117,7 @@ export default function Terms() {
             other law.</strong> You are responsible for your own compliance.
           </P>
 
-          <H>5. Renter Responsibilities and Tour Requests</H>
+          <H>5. Renter Responsibilities, Tour Requests and Questions</H>
           <P>If you use the Service as a Renter, you agree that:</P>
           <UL>
             <li>Information you provide in your profile and preferences is accurate;</li>
@@ -123,12 +125,18 @@ export default function Terms() {
             <li>Cuna's display of listing information, including any fee breakdowns or totals, reflects information provided by the Poster and is not verified by Cuna.</li>
           </UL>
           <P>
-            <strong>Tour requests.</strong> When you send a tour request, Cuna emails the Poster your
-            name, the email address on your account, your tour preferences and message, and any
-            optional details whose sharing switch you have turned on, and sends you a confirmation
-            copy. The emails are addressed so that replies go directly between you and the Poster by
-            ordinary email, outside Cuna. Once sent, an email cannot be recalled. The Privacy Policy
-            describes exactly what is included.
+            <strong>Tour requests and questions.</strong> When you send a tour request, Cuna emails
+            the Poster your name, the email address on your account, your tour preferences and
+            message, and any optional details whose sharing switch you have turned on, and sends you
+            a confirmation copy. When you ask a question, Cuna emails the Poster your name, your
+            email address and the question, and sends you a copy. The emails are addressed so that
+            replies go directly between you and the Poster by ordinary email, outside Cuna. Once
+            sent, an email cannot be recalled. The Privacy Policy describes exactly what is included.
+          </P>
+          <P>
+            <strong>Limits.</strong> To protect Posters from floods, Cuna will not send more than 10
+            tour requests and questions from one account in an hour, or more than 3 for the same
+            listing in a day. A request over the limit is refused and nothing is sent.
           </P>
 
           <H>6. Neighborhood Guide, Public Data and Estimates</H>
@@ -147,13 +155,24 @@ export default function Terms() {
             at any time, and nobody is obliged to act on a result.
           </P>
 
-          <H>7. Acceptable Use</H>
+          <H>7. Saved Listings and Notifications</H>
+          <P>
+            Saving a listing is a private bookmark; the Poster sees only how many people saved a
+            listing, never who. When a listing you saved changes status or price, or an open house
+            is added, changed or cancelled, Cuna tells you under the bell in the app. If "Email me
+            about saved listings" is on in your profile (it is on by default) and saved-listing
+            emails are switched on for the Service, you also get a summary by email, with an
+            unsubscribe link in every such email. Notifications are informational: they are not a
+            promise that a listing is or will be available, and we may change or discontinue them.
+          </P>
+
+          <H>8. Acceptable Use</H>
           <P>You agree not to:</P>
           <UL>
             <li>Post false, misleading, discriminatory, or unlawful content, including listings that violate fair housing laws;</li>
             <li>Advertise a property you are not authorized to advertise;</li>
-            <li>Harass, threaten, or abuse other users, including in a tour request, in a listing, or in email replies that begin with a tour request;</li>
-            <li>Use tour requests, or the contact details received through them, to send spam or unsolicited commercial messages;</li>
+            <li>Harass, threaten, or abuse other users, including in a tour request, a question, a listing, an open house time, or in email replies that begin with a tour request or question;</li>
+            <li>Use tour requests or questions, or the contact details received through them, to send spam or unsolicited commercial messages, or try to get around the sending limits;</li>
             <li>Scrape, copy, or harvest data, listings, or user information from the Service;</li>
             <li>Attempt to circumvent security measures, access other users' accounts, or interfere with the operation of the Service;</li>
             <li>Impersonate any person or misrepresent your affiliation with any person or entity;</li>
@@ -164,10 +183,10 @@ export default function Terms() {
             discretion, with or without notice.
           </P>
 
-          <H>8. Content You Submit</H>
+          <H>9. Content You Submit</H>
           <P>
             You retain ownership of the content you submit to the Service (listings, photos,
-            descriptions, tour-request messages, profile information). By submitting content, you
+            descriptions, open house times, tour-request messages, questions, profile information). By submitting content, you
             grant Cuna a non-exclusive, worldwide, royalty-free license to host, store, display, and
             distribute that content as needed to operate and promote the Service.
           </P>
@@ -176,16 +195,16 @@ export default function Terms() {
             that it does not infringe anyone else's rights.
           </P>
 
-          <H>9. Third-Party Services and Content</H>
+          <H>10. Third-Party Services and Content</H>
           <P>
             The Service is built on third-party infrastructure (hosting, database, sign-in, email
-            delivery, and fonts), named in the Privacy Policy. The Service links to outside sites,
+            delivery, a scheduled job for summary emails, and fonts), named in the Privacy Policy. The Service links to outside sites,
             such as the New York City Department of Education's school search, and the "Tell us what
             you're looking for" button opens your own email application. Links do not imply
             endorsement, and those sites and services have their own terms.
           </P>
 
-          <H>10. Disclaimers</H>
+          <H>11. Disclaimers</H>
           <P>
             THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE," WITHOUT WARRANTIES OF ANY KIND, EXPRESS
             OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
@@ -195,7 +214,7 @@ export default function Terms() {
           </P>
           <P>Nothing in the Service constitutes legal, financial, or real estate advice.</P>
 
-          <H>11. Limitation of Liability</H>
+          <H>12. Limitation of Liability</H>
           <P>
             TO THE MAXIMUM EXTENT PERMITTED BY LAW, CUNA WILL NOT BE LIABLE FOR ANY INDIRECT,
             INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, DATA, OR
@@ -210,7 +229,7 @@ export default function Terms() {
           </P>
           <P>Some jurisdictions do not allow certain limitations, so some of the above may not apply to you.</P>
 
-          <H>12. Indemnification</H>
+          <H>13. Indemnification</H>
           <P>
             You agree to indemnify and hold harmless Cuna LLC and its members, managers, affiliates,
             and personnel from any claims, damages, liabilities, and expenses (including reasonable
@@ -220,16 +239,16 @@ export default function Terms() {
             user.
           </P>
 
-          <H>13. Termination</H>
+          <H>14. Termination</H>
           <P>
             You may stop using the Service at any time, and you may request deletion of your account
             and associated data by emailing <strong>hello@hellocuna.com</strong>. We may suspend or
             terminate your access at any time, with or without cause or notice, including for
             violations of these Terms. Sections that by their nature should survive termination
-            (including Sections 8 and 10–15) will survive.
+            (including Sections 9 and 11–16) will survive.
           </P>
 
-          <H>14. Changes to the Service or Terms</H>
+          <H>15. Changes to the Service or Terms</H>
           <P>
             We may modify the Service or these Terms at any time. If we make material changes to these
             Terms, we will provide notice (for example, by posting the updated Terms in the app with a
@@ -237,7 +256,7 @@ export default function Terms() {
             effect constitutes acceptance of the updated Terms.
           </P>
 
-          <H>15. Governing Law and Disputes</H>
+          <H>16. Governing Law and Disputes</H>
           <P>
             These Terms are governed by the laws of the State of New York, without regard to
             conflict-of-laws principles. Any dispute arising out of these Terms or the Service will be
@@ -245,7 +264,7 @@ export default function Terms() {
             County, New York, and you consent to the jurisdiction of those courts.
           </P>
 
-          <H>16. Miscellaneous</H>
+          <H>17. Miscellaneous</H>
           <P>
             These Terms, together with the Privacy Policy, are the entire agreement between you and
             Cuna regarding the Service. If any provision is found unenforceable, the rest remain in
@@ -253,7 +272,7 @@ export default function Terms() {
             Terms without our consent; we may assign them to a successor to our business.
           </P>
 
-          <H>17. Contact</H>
+          <H>18. Contact</H>
           <P>Questions about these Terms:</P>
           <P>
             Cuna LLC<br />
