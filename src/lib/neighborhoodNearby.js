@@ -22,7 +22,10 @@
 //     downloaded 2026-10-21T16:45Z) matched by location code, and are absent
 //     for schools opened since (Pre-K Centers show "PK", which is their name);
 //     where the shapefile cuts a name at 50 characters the 2019-20 full name
-//     is used. Excluded as not being schools with regular enrolment: Alternate
+//     is used. Where DOE gives one school two location codes at the same point
+//     with one name inside the other ("The Children's School" and "P.S. 372
+//     -The Children's School"), one entry is kept, preferring the one with a
+//     grade span. Excluded as not being schools with regular enrolment: Alternate
 //     Learning Centers (ATS district 88), District 79 alternative programs,
 //     home- and hospital-instruction entries, DOE offices and stray program /
 //     daycare records (ATS 33, 64, 93).
@@ -32,9 +35,11 @@
 //   Hospitals: NYS Department of Health, "Health Facility General Information"
 //     (health.data.ny.gov vn5v-hh5r) joined to "Health Facility Certification
 //     Information" (2g9y-7kqm); a general hospital = an Article 28 hospital
-//     certified for Medical / Surgical beds. Downloaded 2026-10-21T16:43Z.
-//     Clinics, extension clinics, psychiatric-only and specialty hospitals
-//     without medical/surgical beds are excluded.
+//     certified for at least 25 Medical / Surgical beds. Downloaded
+//     2026-10-21T16:43Z. Clinics, extension clinics, psychiatric-only and
+//     specialty hospitals without medical/surgical beds are excluded, and the
+//     25-bed floor keeps out hospital-licensed ambulatory sites and
+//     freestanding emergency departments.
 //   Neighborhood boundaries: NYC Department of City Planning, "2020
 //     Neighborhood Tabulation Areas (NTAs)" (NYC Open Data 9nt8-h7nd),
 //     https://data.cityofnewyork.us/d/9nt8-h7nd, downloaded 2026-10-21T16:43Z,
@@ -114,7 +119,7 @@ export const NEIGHBORHOOD_NEARBY = {
     schools: [
       { name: "P.S. 029 John M. Harrigan", grades: "PK–5", kind: "public", district: 15 },
     ],
-    hospitals: ["NYU Langone Hospital - Joseph S. and Diane H. Steinberg Ambulatory Care Center"],
+    hospitals: [],
   },
   "gowanus": {
     boundary: "streets",
@@ -126,7 +131,6 @@ export const NEIGHBORHOOD_NEARBY = {
     schools: [
       { name: "P.S. 032 Samuel Mills Sprole", grades: "PK–5", kind: "public", district: 15 },
       { name: "P.S. 372 -The Children's School", grades: "K–8", kind: "public", district: 15 },
-      { name: "The Children's School", grades: null, kind: "public", district: 15 },
     ],
     hospitals: [],
   },
@@ -232,7 +236,6 @@ export const NEIGHBORHOOD_NEARBY = {
       { name: "Bedford Academy High School", grades: "9–12", kind: "public", district: 13 },
       { name: "Bedford Stuyvesant Collegiate Charter School", grades: "5–12", kind: "charter", district: 16 },
       { name: "Bedford Stuyvesant New Beginnings Charter School", grades: "K–8", kind: "charter", district: 16 },
-      { name: "Bedford Stuyvesant New Beginnings Charter School I", grades: null, kind: "charter", district: 16 },
       { name: "Boys and Girls High School", grades: "9–12", kind: "public", district: 16 },
       { name: "Brighter Choice Community School", grades: "PK–5", kind: "public", district: 16 },
       { name: "Brooklyn Academy High School", grades: "9–12", kind: "public", district: 13 },
@@ -526,7 +529,7 @@ export const NEIGHBORHOOD_NEARBY = {
       { name: "P.S. 041 Greenwich Village", grades: "PK–5", kind: "public", district: 2 },
       { name: "P.S. M721 - Manhattan Occupational Training Center", grades: "9–12", kind: "public", district: 2 },
     ],
-    hospitals: ["Northwell Greenwich Village Hospital"],
+    hospitals: [],
   },
   "lower-east-side": {
     boundary: "nta",
@@ -631,7 +634,7 @@ export const NEIGHBORHOOD_NEARBY = {
       { name: "Yorkville Community School", grades: "K–5", kind: "public", district: 2 },
       { name: "Yorkville East Middle School", grades: "6–8", kind: "public", district: 2 },
     ],
-    hospitals: ["David H. Koch Center For Cancer Care", "Hospital for Special Surgery", "Lenox Hill Hospital", "Memorial Hospital for Cancer and Allied Diseases", "New York-Presbyterian Hospital - New York Weill Cornell Center"],
+    hospitals: ["Hospital for Special Surgery", "Lenox Hill Hospital", "Memorial Hospital for Cancer and Allied Diseases", "New York-Presbyterian Hospital - New York Weill Cornell Center"],
   },
   "harlem": {
     boundary: "streets",
