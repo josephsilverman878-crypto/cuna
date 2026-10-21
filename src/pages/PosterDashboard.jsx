@@ -362,7 +362,7 @@ export default function PosterDashboard() {
             <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--warm-gray)' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
               <p style={{ fontWeight: 600, color: 'var(--charcoal)' }}>
-                Could not load your tour requests.
+                Could not load your tour requests and questions.
               </p>
               <p style={{ fontSize: '13px', marginTop: '6px' }}>
                 This is a loading problem, not an empty inbox — you may have requests waiting.
@@ -378,7 +378,7 @@ export default function PosterDashboard() {
           ) : inquiries.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--warm-gray)' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>📩</div>
-              <p>No tour requests yet.</p>
+              <p>No tour requests or questions yet.</p>
             </div>
           ) : inquiries.map(inq => (
             <div key={inq.id} className="card" style={{ padding: '18px' }}>
@@ -394,9 +394,10 @@ export default function PosterDashboard() {
                 </div>
                 <span style={{
                   fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '20px',
-                  background: 'rgba(180,74,54,0.1)', color: 'var(--terracotta)', flexShrink: 0,
+                  background: inq.kind === 'question' ? 'rgba(76,175,125,0.15)' : 'rgba(180,74,54,0.1)',
+                  color: inq.kind === 'question' ? 'var(--like-green)' : 'var(--terracotta)', flexShrink: 0,
                 }}>
-                  {inq.tour_type === 'video' ? 'Video chat' : 'In person'}
+                  {inq.kind === 'question' ? 'Question' : inq.tour_type === 'video' ? 'Video chat' : 'In person'}
                 </span>
               </div>
 
