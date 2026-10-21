@@ -8,7 +8,7 @@ import { quizOwnerId, loadQuizDraft } from '../lib/quizStorage'
 import { NEIGHBORHOODS } from '../lib/neighborhoods'
 import { matchNeighborhoods, askedPriceRange } from '../lib/neighborhoodMatch'
 import { fetchListingsForNeighborhoods } from '../lib/listingsForNeighborhood'
-import { nearbyFor, NYC_SCHOOL_SEARCH_URL } from '../lib/neighborhoodNearby'
+import { nearbyFor, NYC_SCHOOL_SEARCH_URL, SCHOOL_LIST_SCHOOL_YEAR } from '../lib/neighborhoodNearby'
 
 const FALLBACK_PHOTO = 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80'
 const INQUIRY_EMAIL = 'Info@SLRGRP.com'
@@ -273,6 +273,7 @@ function NearbySection({ neighborhoodId }) {
                     ))}
                   </ul>
                   <p style={{ fontSize: '12px', color: 'var(--warm-gray)', lineHeight: 1.5, margin: '10px 0 0' }}>
+                    School list as of the {SCHOOL_LIST_SCHOOL_YEAR} school year.{' '}
                     School assignment depends on your exact address. Check it on{' '}
                     <a
                       href={NYC_SCHOOL_SEARCH_URL}
