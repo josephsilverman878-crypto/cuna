@@ -11,7 +11,7 @@ import { fetchListingsForNeighborhoods } from '../lib/listingsForNeighborhood'
 import { nearbyFor, NYC_SCHOOL_SEARCH_URL, SCHOOL_LIST_SCHOOL_YEAR } from '../lib/neighborhoodNearby'
 
 const FALLBACK_PHOTO = 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80'
-const INQUIRY_EMAIL = 'Info@SLRGRP.com'
+const INQUIRY_EMAIL = 'hello@hellocuna.com'
 // Top 3 get cards; the rest are candidates for "Nearby with listings".
 const SHOWN = 3
 const LOOKUP_DEPTH = 10
@@ -361,7 +361,7 @@ function NeighborhoodCard({ result, answers, rank, listings, listingsLoading, li
       <NearbySection neighborhoodId={n.id} />
 
       <div style={{ padding: '18px 20px 0' }}>
-        <div className="label" style={{ marginBottom: '8px' }}>Available with Silver Line</div>
+        <div className="label" style={{ marginBottom: '8px' }}>Available on Cuna</div>
         {listingsLoading ? (
           <p style={{ fontSize: '13px', color: 'var(--warm-gray)', margin: 0 }}>Checking listings…</p>
         ) : listingsError ? (

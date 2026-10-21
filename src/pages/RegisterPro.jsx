@@ -117,7 +117,7 @@ export default function RegisterPro() {
                 </div>
                 <div>
                   <label className="label">Brokerage</label>
-                  <input placeholder="Silverline Realty Group"
+                  <input placeholder="Your brokerage name"
                     value={form.brokerage_name} onChange={e => update('brokerage_name', e.target.value)} />
                 </div>
               </div>

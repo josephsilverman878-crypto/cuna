@@ -260,7 +260,7 @@ export default function Profile() {
 
               <div>
                 <label className="label">Brokerage</label>
-                <input placeholder="Silverline Realty Group" value={posterForm.brokerage_name}
+                <input placeholder="Your brokerage name" value={posterForm.brokerage_name}
                   onChange={e => updatePoster('brokerage_name', e.target.value)} style={{ marginTop: '6px' }} />
               </div>
 
