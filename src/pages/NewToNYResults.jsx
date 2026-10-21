@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Train, Clock, Check, Info, Mail, BedDouble, Bath, Lock } from 'lucide-react'
+import { Train, Clock, Check, Info, Mail, BedDouble, Bath, Lock, School, Cross, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { describeAnswers } from '../lib/quizQuestions'
@@ -8,6 +8,7 @@ import { quizOwnerId, loadQuizDraft } from '../lib/quizStorage'
 import { NEIGHBORHOODS } from '../lib/neighborhoods'
 import { matchNeighborhoods, askedPriceRange } from '../lib/neighborhoodMatch'
 import { fetchListingsForNeighborhoods } from '../lib/listingsForNeighborhood'
+import { nearbyFor, NYC_SCHOOL_SEARCH_URL } from '../lib/neighborhoodNearby'
 
 const FALLBACK_PHOTO = 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80'
 const INQUIRY_EMAIL = 'Info@SLRGRP.com'
@@ -200,6 +201,109 @@ function Fallback({ neighborhood, answers, nearby, isBuyer }) {
   )
 }
 
+// Schools, districts and general hospitals inside the neighborhood, from
+// src/lib/neighborhoodNearby.js (official NYC/NYS data, static). FAIR HOUSING:
+// this section states what is there and nothing about how good it is. Names,
+// grade spans, public/charter and district numbers only -- never ratings,
+// scores, rankings or demographics. Keep it that way.
+function districtLine(nearby) {
+  const { primary_district: primary, other_districts: others } = nearby
+  if (!primary) return null
+  if (!others || others.length === 0) return `School district: District ${primary}`
+  const rest = others.length === 1
+    ? `District ${others[0]}`
+    : `Districts ${others.slice(0, -1).join(', ')} and ${others[others.length - 1]}`
+  return `Mostly District ${primary}, part ${rest}`
+}
+
+function plural(n, word) {
+  return `${n} ${word}${n === 1 ? '' : 's'}`
+}
+
+function NearbySection({ neighborhoodId }) {
+  const [open, setOpen] = useState(false)
+  const nearby = nearbyFor(neighborhoodId)
+  if (!nearby) return null
+
+  const schoolCount = nearby.schools.length
+  const hospitalCount = nearby.hospitals.length
+  const district = districtLine(nearby)
+  if (!district && schoolCount === 0 && hospitalCount === 0) return null
+
+  const summary = [plural(schoolCount, 'public school')]
+  if (hospitalCount > 0) summary.push(plural(hospitalCount, 'hospital'))
+
+  return (
+    <div style={{ padding: '16px 20px 0' }}>
+      {district && (
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '13px', color: 'var(--charcoal)' }}>
+          <School size={14} color="var(--warm-gray)" style={{ flexShrink: 0 }} />
+          <span>{district}</span>
+        </div>
+      )}
+
+      {(schoolCount > 0 || hospitalCount > 0) && (
+        <>
+          <button
+            type="button"
+            onClick={() => setOpen(o => !o)}
+            aria-expanded={open}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px', marginTop: district ? '8px' : 0,
+              background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+              fontSize: '13px', color: 'var(--charcoal-soft)', textAlign: 'left',
+            }}
+          >
+            <span>In this neighborhood: {summary.join(' · ')}</span>
+            {open ? <ChevronUp size={14} color="var(--warm-gray)" /> : <ChevronDown size={14} color="var(--warm-gray)" />}
+          </button>
+
+          {open && (
+            <div style={{ marginTop: '10px' }}>
+              {schoolCount > 0 && (
+                <>
+                  <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    {nearby.schools.map(s => (
+                      <li key={`${s.name}-${s.district}`} style={{ fontSize: '13px', lineHeight: 1.45, color: 'var(--charcoal)' }}>
+                        {s.name}
+                        <span style={{ color: 'var(--warm-gray)' }}>
+                          {s.grades ? ` · ${s.grades}` : ''} · {s.kind} · District {s.district}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p style={{ fontSize: '12px', color: 'var(--warm-gray)', lineHeight: 1.5, margin: '10px 0 0' }}>
+                    School assignment depends on your exact address. Check it on{' '}
+                    <a
+                      href={NYC_SCHOOL_SEARCH_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: 'var(--terracotta)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                    >
+                      the city's school search
+                      <ExternalLink size={11} />
+                    </a>.
+                  </p>
+                </>
+              )}
+              {hospitalCount > 0 && (
+                <ul style={{ margin: schoolCount > 0 ? '12px 0 0' : 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {nearby.hospitals.map(h => (
+                    <li key={h} style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '13px', color: 'var(--charcoal)' }}>
+                      <Cross size={12} color="var(--warm-gray)" style={{ flexShrink: 0 }} />
+                      <span>{h}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 function NeighborhoodCard({ result, answers, rank, listings, listingsLoading, listingsError, nearby }) {
   const n = result.neighborhood
   const priced = askedPriceRange(answers, n)
@@ -252,6 +356,8 @@ function NeighborhoodCard({ result, answers, rank, listings, listingsLoading, li
           </ul>
         </div>
       )}
+
+      <NearbySection neighborhoodId={n.id} />
 
       <div style={{ padding: '18px 20px 0' }}>
         <div className="label" style={{ marginBottom: '8px' }}>Available with Silver Line</div>
