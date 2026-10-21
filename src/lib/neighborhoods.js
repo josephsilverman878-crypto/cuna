@@ -9,11 +9,21 @@
 // committing: scanDescription() from ./fairHousing plus a grep for the banned
 // vocabulary above.
 //
-// ACCURACY — rents, sale prices and commute times are rough estimates for broker
-// review, deliberately kept as wide ranges rather than false precision. Values
-// marked // REVIEW are the least certain and should be checked first.
+// ACCURACY — commute times are rough estimates for broker review. Rent and sale
+// ranges were rewritten on 2026-10-21 from public data (see comp-report.md):
+//   Sales: NYC Department of Finance, Rolling Calendar Sales (NYC Open Data
+//     usep-8jbt, updated 2026-10-15), sales dated Oct 2025–Sep 2026. Condo =
+//     DOF classes 04/12/13/15; co-op = 09/10/17; townhouse_multifamily = 01/02/03
+//     (1–3 family). Sales under $100k and bulk-deed duplicates dropped. Each
+//     range is the 25th–75th percentile, rounded to the nearest $25,000.
+//   Rents: StreetEasy Data Dashboard, median asking rent by neighborhood and
+//     bedroom count, Oct 2025–Sep 2026. StreetEasy publishes medians only, so
+//     each range is the 12-month median −15% to +15%, rounded to the nearest $50.
+// Groups with fewer than 5 sales, or with no StreetEasy area, keep the earlier
+// estimate and are marked // REVIEW: low data. Every rewritten value carries its
+// source inline. Values marked // REVIEW are the least certain.
 
-const DATA_NOTE = 'Estimates; verify current market conditions'
+const DATA_NOTE = 'Sales: NYC DOF recorded sales, Oct 2025–Sep 2026. Rents: StreetEasy asking rents, same period. Verify current conditions.'
 
 // The scored fields, for building quiz questions and comparison UI.
 // `on: 'scores'` lives under neighborhood.scores; `on: 'root'` is a top-level key.
@@ -79,14 +89,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 2,
     housing_stock: ['brownstone_rowhouse', 'prewar', 'walkup', 'coop', 'condo', 'two_three_family'],
     rent_ranges: {
-      studio: { min: 2200, max: 3000 },
-      one_bed: { min: 2800, max: 3800 },
-      two_bed: { min: 3800, max: 5500 },
+      studio: { min: 2750, max: 3750 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,250 ±15%
+      one_bed: { min: 3200, max: 4350 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,775 ±15%
+      two_bed: { min: 4150, max: 5600 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $4,875 ±15%
     },
     sale_ranges: {
-      condo: { min: 900000, max: 2000000 },
-      coop: { min: 600000, max: 1400000 },
-      townhouse_multifamily: { min: 2500000, max: 6000000 },
+      condo: { min: 1325000, max: 2325000 }, // DOF sales Oct 2025–Sep 2026, n=258, p25–p75
+      coop: { min: 675000, max: 1600000 }, // DOF sales Oct 2025–Sep 2026, n=188, p25–p75
+      townhouse_multifamily: { min: 2725000, max: 5000000 }, // DOF sales Oct 2025–Sep 2026, n=151, p25–p75
     },
     subway_lines: ['F', 'G', 'R', '2', '3', 'B', 'Q'],
     commute_minutes: { midtown: 35, downtown_fidi: 30 },
@@ -109,14 +119,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 3,
     housing_stock: ['brownstone_rowhouse', 'prewar', 'two_three_family', 'walkup', 'condo'],
     rent_ranges: {
-      studio: { min: 2200, max: 2900 },
-      one_bed: { min: 2900, max: 3900 },
-      two_bed: { min: 3800, max: 5200 },
+      studio: { min: 2700, max: 3700 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,197 ±15%
+      one_bed: { min: 3300, max: 4500 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,900 ±15%
+      two_bed: { min: 4700, max: 6400 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $5,549 ±15%
     },
     sale_ranges: {
-      condo: { min: 900000, max: 1800000 },
-      coop: { min: 550000, max: 1100000 },
-      townhouse_multifamily: { min: 2200000, max: 5000000 },
+      condo: { min: 1450000, max: 2575000 }, // DOF sales Oct 2025–Sep 2026, n=56, p25–p75
+      coop: { min: 925000, max: 2100000 }, // DOF sales Oct 2025–Sep 2026, n=16, p25–p75
+      townhouse_multifamily: { min: 3000000, max: 5000000 }, // DOF sales Oct 2025–Sep 2026, n=41, p25–p75
     },
     subway_lines: ['F', 'G'],
     commute_minutes: { midtown: 35, downtown_fidi: 25 },
@@ -139,14 +149,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 3,
     housing_stock: ['brownstone_rowhouse', 'prewar', 'walkup', 'coop', 'condo'],
     rent_ranges: {
-      studio: { min: 2300, max: 3000 },
-      one_bed: { min: 3000, max: 4000 },
-      two_bed: { min: 4000, max: 5500 },
+      studio: { min: 2800, max: 3800 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,300 ±15%
+      one_bed: { min: 3350, max: 4500 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,925 ±15%
+      two_bed: { min: 4700, max: 6300 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $5,500 ±15%
     },
     sale_ranges: {
-      condo: { min: 900000, max: 2000000 },
-      coop: { min: 600000, max: 1200000 },
-      townhouse_multifamily: { min: 2500000, max: 5500000 },
+      condo: { min: 925000, max: 2300000 }, // DOF sales Oct 2025–Sep 2026, n=61, p25–p75
+      coop: { min: 675000, max: 950000 }, // DOF sales Oct 2025–Sep 2026, n=31, p25–p75
+      townhouse_multifamily: { min: 2575000, max: 7950000 }, // DOF sales Oct 2025–Sep 2026, n=25, p25–p75
     },
     subway_lines: ['F', 'G', 'R', '2', '3', '4', '5'],
     commute_minutes: { midtown: 32, downtown_fidi: 22 },
@@ -169,14 +179,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 2,
     housing_stock: ['brownstone_rowhouse', 'prewar', 'coop', 'condo', 'elevator_building', 'townhouse'],
     rent_ranges: {
-      studio: { min: 2400, max: 3200 },
-      one_bed: { min: 3200, max: 4500 },
-      two_bed: { min: 4500, max: 6500 },
+      studio: { min: 2700, max: 3700 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,200 ±15%
+      one_bed: { min: 3800, max: 5200 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $4,500 ±15%
+      two_bed: { min: 6000, max: 8100 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $7,039 ±15%
     },
     sale_ranges: {
-      condo: { min: 950000, max: 2500000 },
-      coop: { min: 600000, max: 1500000 },
-      townhouse_multifamily: { min: 3000000, max: 8000000 },
+      condo: { min: 1825000, max: 3750000 }, // DOF sales Oct 2025–Sep 2026, n=67, p25–p75
+      coop: { min: 450000, max: 1375000 }, // DOF sales Oct 2025–Sep 2026, n=183, p25–p75
+      townhouse_multifamily: { min: 5575000, max: 9400000 }, // DOF sales Oct 2025–Sep 2026, n=25, p25–p75
     },
     subway_lines: ['2', '3', '4', '5', 'R', 'A', 'C', 'F'],
     commute_minutes: { midtown: 28, downtown_fidi: 18 },
@@ -199,14 +209,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 2,
     housing_stock: ['new_construction', 'condo', 'walkup', 'elevator_building', 'two_three_family', 'prewar'],
     rent_ranges: {
-      studio: { min: 2800, max: 3800 },
-      one_bed: { min: 3500, max: 4800 },
-      two_bed: { min: 4500, max: 7000 },
+      studio: { min: 3300, max: 4450 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,886 ±15%
+      one_bed: { min: 3900, max: 5300 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $4,598 ±15%
+      two_bed: { min: 4450, max: 6050 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $5,250 ±15%
     },
     sale_ranges: {
-      condo: { min: 950000, max: 2500000 },
-      coop: { min: 500000, max: 900000 }, // REVIEW — co-ops are a small slice of this market
-      townhouse_multifamily: { min: 2000000, max: 4500000 },
+      condo: { min: 1000000, max: 2175000 }, // DOF sales Oct 2025–Sep 2026, n=517, p25–p75
+      coop: { min: 400000, max: 600000 }, // DOF sales Oct 2025–Sep 2026, n=36, p25–p75
+      townhouse_multifamily: { min: 2075000, max: 3500000 }, // DOF sales Oct 2025–Sep 2026, n=84, p25–p75
     },
     subway_lines: ['L', 'G', 'J', 'M', 'Z'],
     commute_minutes: { midtown: 30, downtown_fidi: 30 },
@@ -229,14 +239,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 3,
     housing_stock: ['two_three_family', 'walkup', 'new_construction', 'condo', 'prewar'],
     rent_ranges: {
-      studio: { min: 2500, max: 3200 },
-      one_bed: { min: 3000, max: 4200 },
-      two_bed: { min: 4000, max: 5800 },
+      studio: { min: 3150, max: 4250 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,690 ±15%
+      one_bed: { min: 3800, max: 5200 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $4,500 ±15%
+      two_bed: { min: 4850, max: 6550 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $5,700 ±15%
     },
     sale_ranges: {
-      condo: { min: 800000, max: 1800000 },
-      coop: { min: 450000, max: 850000 },
-      townhouse_multifamily: { min: 1500000, max: 3500000 },
+      condo: { min: 1225000, max: 2250000 }, // DOF sales Oct 2025–Sep 2026, n=143, p25–p75
+      coop: { min: 450000, max: 850000 }, // REVIEW: low data (n=4 sales DOF sales Oct 2025–Sep 2026); kept
+      townhouse_multifamily: { min: 1825000, max: 3250000 }, // DOF sales Oct 2025–Sep 2026, n=54, p25–p75
     },
     subway_lines: ['G', 'L'],
     commute_minutes: { midtown: 35, downtown_fidi: 40 },
@@ -259,14 +269,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 3,
     housing_stock: ['two_three_family', 'walkup', 'new_construction', 'condo'],
     rent_ranges: {
-      studio: { min: 2000, max: 2600 },
-      one_bed: { min: 2400, max: 3200 },
-      two_bed: { min: 2900, max: 4200 },
+      studio: { min: 2350, max: 3150 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $2,750 ±15%
+      one_bed: { min: 2700, max: 3600 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,150 ±15%
+      two_bed: { min: 2950, max: 4000 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,495 ±15%
     },
     sale_ranges: {
-      condo: { min: 600000, max: 1100000 },
-      coop: null, // REVIEW — co-ops are rare here; confirm before showing a range
-      townhouse_multifamily: { min: 1200000, max: 2500000 },
+      condo: { min: 625000, max: 950000 }, // DOF sales Oct 2025–Sep 2026, n=111, p25–p75
+      coop: { min: 425000, max: 475000 }, // DOF sales Oct 2025–Sep 2026, n=5, p25–p75
+      townhouse_multifamily: { min: 1050000, max: 1750000 }, // DOF sales Oct 2025–Sep 2026, n=158, p25–p75
     },
     subway_lines: ['L', 'J', 'M', 'Z'],
     commute_minutes: { midtown: 40, downtown_fidi: 40 },
@@ -289,14 +299,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 3,
     housing_stock: ['brownstone_rowhouse', 'two_three_family', 'prewar', 'walkup', 'condo'],
     rent_ranges: {
-      studio: { min: 1900, max: 2500 },
-      one_bed: { min: 2400, max: 3200 },
-      two_bed: { min: 3000, max: 4200 },
+      studio: { min: 2300, max: 3100 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $2,699 ±15%
+      one_bed: { min: 2700, max: 3650 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,172 ±15%
+      two_bed: { min: 2950, max: 4000 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,474 ±15%
     },
     sale_ranges: {
-      condo: { min: 650000, max: 1200000 },
-      coop: null, // REVIEW — very limited co-op stock
-      townhouse_multifamily: { min: 1300000, max: 2800000 },
+      condo: { min: 750000, max: 1325000 }, // DOF sales Oct 2025–Sep 2026, n=245, p25–p75
+      coop: null, // REVIEW: low data (n=3 sales DOF sales Oct 2025–Sep 2026); kept
+      townhouse_multifamily: { min: 1400000, max: 2525000 }, // DOF sales Oct 2025–Sep 2026, n=330, p25–p75
     },
     subway_lines: ['A', 'C', 'G', 'J', 'M', 'Z'],
     commute_minutes: { midtown: 40, downtown_fidi: 35 },
@@ -319,14 +329,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 3,
     housing_stock: ['prewar', 'brownstone_rowhouse', 'walkup', 'coop', 'condo', 'two_three_family'],
     rent_ranges: {
-      studio: { min: 1900, max: 2500 },
-      one_bed: { min: 2300, max: 3100 },
-      two_bed: { min: 2900, max: 4000 },
+      studio: { min: 2550, max: 3450 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $2,994 ±15%
+      one_bed: { min: 2800, max: 3800 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,308 ±15%
+      two_bed: { min: 3200, max: 4350 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,779 ±15%
     },
     sale_ranges: {
-      condo: { min: 600000, max: 1100000 },
-      coop: { min: 350000, max: 700000 },
-      townhouse_multifamily: { min: 1200000, max: 2500000 },
+      condo: { min: 800000, max: 1525000 }, // DOF sales Oct 2025–Sep 2026, n=190, p25–p75
+      coop: { min: 400000, max: 575000 }, // DOF sales Oct 2025–Sep 2026, n=27, p25–p75
+      townhouse_multifamily: { min: 1225000, max: 2250000 }, // DOF sales Oct 2025–Sep 2026, n=150, p25–p75
     },
     subway_lines: ['2', '3', '4', '5', 'A', 'C', 'S'],
     commute_minutes: { midtown: 40, downtown_fidi: 35 },
@@ -349,14 +359,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 2,
     housing_stock: ['brownstone_rowhouse', 'prewar', 'walkup', 'coop', 'condo', 'new_construction'],
     rent_ranges: {
-      studio: { min: 2200, max: 2900 },
-      one_bed: { min: 2800, max: 3800 },
-      two_bed: { min: 3600, max: 5000 },
+      studio: { min: 2950, max: 4000 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,495 ±15%
+      one_bed: { min: 3800, max: 5150 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $4,497 ±15%
+      two_bed: { min: 4250, max: 5750 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $4,997 ±15%
     },
     sale_ranges: {
-      condo: { min: 800000, max: 1600000 },
-      coop: { min: 500000, max: 950000 },
-      townhouse_multifamily: { min: 1800000, max: 3800000 },
+      condo: { min: 975000, max: 2425000 }, // DOF sales Oct 2025–Sep 2026, n=67, p25–p75
+      coop: { min: 700000, max: 1450000 }, // DOF sales Oct 2025–Sep 2026, n=67, p25–p75
+      townhouse_multifamily: { min: 2125000, max: 4875000 }, // DOF sales Oct 2025–Sep 2026, n=15, p25–p75
     },
     subway_lines: ['2', '3', '4', '5', 'B', 'Q', 'D', 'N', 'R', 'S'],
     commute_minutes: { midtown: 35, downtown_fidi: 30 },
@@ -379,14 +389,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 2,
     housing_stock: ['brownstone_rowhouse', 'prewar', 'coop', 'condo', 'elevator_building', 'walkup'],
     rent_ranges: {
-      studio: { min: 2300, max: 3000 },
-      one_bed: { min: 2900, max: 3900 },
-      two_bed: { min: 3800, max: 5200 },
+      studio: { min: 3050, max: 4100 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,562 ±15%
+      one_bed: { min: 3700, max: 5050 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $4,381 ±15%
+      two_bed: { min: 5300, max: 7150 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $6,215 ±15%
     },
     sale_ranges: {
-      condo: { min: 850000, max: 1800000 },
-      coop: { min: 500000, max: 1000000 },
-      townhouse_multifamily: { min: 2000000, max: 4500000 },
+      condo: { min: 1225000, max: 2325000 }, // DOF sales Oct 2025–Sep 2026, n=68, p25–p75
+      coop: { min: 575000, max: 925000 }, // DOF sales Oct 2025–Sep 2026, n=33, p25–p75
+      townhouse_multifamily: { min: 2300000, max: 5275000 }, // DOF sales Oct 2025–Sep 2026, n=33, p25–p75
     },
     subway_lines: ['B', 'D', 'N', 'Q', 'R', '2', '3', '4', '5', 'G', 'C'],
     commute_minutes: { midtown: 30, downtown_fidi: 25 },
@@ -409,14 +419,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 3,
     housing_stock: ['brownstone_rowhouse', 'prewar', 'townhouse', 'coop', 'condo', 'walkup'],
     rent_ranges: {
-      studio: { min: 2100, max: 2800 },
-      one_bed: { min: 2700, max: 3600 },
-      two_bed: { min: 3400, max: 4800 },
+      studio: { min: 2650, max: 3600 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,132 ±15%
+      one_bed: { min: 3250, max: 4400 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,837 ±15%
+      two_bed: { min: 4350, max: 5900 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $5,117 ±15%
     },
     sale_ranges: {
-      condo: { min: 700000, max: 1400000 },
-      coop: { min: 450000, max: 850000 },
-      townhouse_multifamily: { min: 1600000, max: 3500000 },
+      condo: { min: 825000, max: 1600000 }, // DOF sales Oct 2025–Sep 2026, n=99, p25–p75
+      coop: { min: 625000, max: 925000 }, // DOF sales Oct 2025–Sep 2026, n=92, p25–p75
+      townhouse_multifamily: { min: 2525000, max: 4100000 }, // DOF sales Oct 2025–Sep 2026, n=35, p25–p75
     },
     subway_lines: ['G', 'C', 'A'],
     commute_minutes: { midtown: 35, downtown_fidi: 30 },
@@ -439,14 +449,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 4,
     housing_stock: ['two_three_family', 'townhouse', 'prewar', 'postwar', 'coop', 'elevator_building'],
     rent_ranges: {
-      studio: { min: 1600, max: 2100 },
-      one_bed: { min: 2000, max: 2700 },
-      two_bed: { min: 2500, max: 3500 },
+      studio: { min: 1550, max: 2100 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $1,825 ±15%
+      one_bed: { min: 1850, max: 2550 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $2,200 ±15%
+      two_bed: { min: 2450, max: 3350 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $2,900 ±15%
     },
     sale_ranges: {
-      condo: { min: 450000, max: 900000 },
-      coop: { min: 250000, max: 550000 },
-      townhouse_multifamily: { min: 900000, max: 1800000 },
+      condo: { min: 700000, max: 1000000 }, // DOF sales Oct 2025–Sep 2026, n=35, p25–p75
+      coop: { min: 300000, max: 475000 }, // DOF sales Oct 2025–Sep 2026, n=195, p25–p75
+      townhouse_multifamily: { min: 1175000, max: 1775000 }, // DOF sales Oct 2025–Sep 2026, n=230, p25–p75
     },
     subway_lines: ['R'],
     commute_minutes: { midtown: 55, downtown_fidi: 45 }, // REVIEW — R train only; express bus differs
@@ -469,14 +479,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 3,
     housing_stock: ['two_three_family', 'walkup', 'prewar', 'townhouse', 'condo'],
     rent_ranges: {
-      studio: { min: 1600, max: 2100 },
-      one_bed: { min: 1900, max: 2600 },
-      two_bed: { min: 2400, max: 3300 },
+      studio: { min: 1650, max: 2250 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $1,948 ±15%
+      one_bed: { min: 2100, max: 2800 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $2,450 ±15%
+      two_bed: { min: 2400, max: 3250 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $2,825 ±15%
     },
     sale_ranges: {
-      condo: { min: 500000, max: 950000 }, // REVIEW — thin condo market, few comparables
-      coop: { min: 300000, max: 600000 },
-      townhouse_multifamily: { min: 900000, max: 1700000 },
+      condo: { min: 525000, max: 1325000 }, // DOF sales Oct 2025–Sep 2026, n=124, p25–p75
+      coop: { min: 375000, max: 700000 }, // DOF sales Oct 2025–Sep 2026, n=21, p25–p75
+      townhouse_multifamily: { min: 1325000, max: 1700000 }, // DOF sales Oct 2025–Sep 2026, n=152, p25–p75
     },
     subway_lines: ['R', 'D', 'N'],
     commute_minutes: { midtown: 45, downtown_fidi: 35 },
@@ -499,14 +509,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 4,
     housing_stock: ['townhouse', 'two_three_family', 'prewar', 'coop', 'walkup', 'elevator_building'],
     rent_ranges: {
-      studio: { min: 1600, max: 2100 },
-      one_bed: { min: 2000, max: 2700 },
-      two_bed: { min: 2500, max: 3500 },
+      studio: { min: 1850, max: 2500 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $2,175 ±15%
+      one_bed: { min: 2250, max: 3050 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $2,662 ±15%
+      two_bed: { min: 2550, max: 3400 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $2,974 ±15%
     },
     sale_ranges: {
-      condo: { min: 400000, max: 800000 },
-      coop: { min: 250000, max: 550000 },
-      townhouse_multifamily: { min: 900000, max: 2000000 }, // REVIEW — freestanding Victorians span a much wider range
+      condo: { min: 500000, max: 775000 }, // DOF sales Oct 2025–Sep 2026, n=54, p25–p75
+      coop: { min: 400000, max: 625000 }, // DOF sales Oct 2025–Sep 2026, n=105, p25–p75
+      townhouse_multifamily: { min: 1000000, max: 2050000 }, // DOF sales Oct 2025–Sep 2026, n=124, p25–p75
     },
     subway_lines: ['Q', 'B', '2', '5'],
     commute_minutes: { midtown: 50, downtown_fidi: 45 },
@@ -529,14 +539,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 2,
     housing_stock: ['new_construction', 'condo', 'elevator_building', 'prewar'],
     rent_ranges: {
-      studio: { min: 3000, max: 4000 },
-      one_bed: { min: 3800, max: 5200 },
-      two_bed: { min: 5000, max: 8000 },
+      studio: { min: 3300, max: 4500 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,911 ±15%
+      one_bed: { min: 4350, max: 5900 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $5,135 ±15%
+      two_bed: { min: 5900, max: 7950 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $6,922 ±15%
     },
     sale_ranges: {
-      condo: { min: 1000000, max: 3000000 },
-      coop: null, // REVIEW — effectively no co-op stock
-      townhouse_multifamily: null, // REVIEW — effectively no row house stock
+      condo: { min: 1400000, max: 2700000 }, // DOF sales Oct 2025–Sep 2026, n=144, p25–p75
+      coop: null, // REVIEW: low data (n=3 sales DOF sales Oct 2025–Sep 2026); kept
+      townhouse_multifamily: null, // REVIEW: low data (n=1 sales DOF sales Oct 2025–Sep 2026); kept
     },
     subway_lines: ['F', 'A', 'C'],
     commute_minutes: { midtown: 30, downtown_fidi: 20 },
@@ -559,14 +569,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 3,
     housing_stock: ['new_construction', 'condo', 'brownstone_rowhouse', 'walkup', 'two_three_family'],
     rent_ranges: {
-      studio: { min: 2300, max: 3000 },
-      one_bed: { min: 2900, max: 3900 },
-      two_bed: { min: 3800, max: 5200 },
+      studio: { min: 2950, max: 4000 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,475 ±15%
+      one_bed: { min: 3700, max: 5000 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $4,355 ±15%
+      two_bed: { min: 5400, max: 7350 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $6,370 ±15%
     },
     sale_ranges: {
-      condo: { min: 800000, max: 1600000 },
-      coop: null, // REVIEW — very limited co-op stock
-      townhouse_multifamily: { min: 1500000, max: 3000000 },
+      condo: { min: 850000, max: 1525000 }, // DOF sales Oct 2025–Sep 2026, n=40, p25–p75
+      coop: null, // REVIEW: low data (n=1 sales DOF sales Oct 2025–Sep 2026); kept
+      townhouse_multifamily: { min: 1725000, max: 2975000 }, // DOF sales Oct 2025–Sep 2026, n=33, p25–p75
     },
     subway_lines: ['F', 'G', 'R'],
     commute_minutes: { midtown: 35, downtown_fidi: 28 },
@@ -589,14 +599,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 2,
     housing_stock: ['new_construction', 'elevator_building', 'condo', 'coop'],
     rent_ranges: {
-      studio: { min: 2800, max: 3600 },
-      one_bed: { min: 3400, max: 4500 },
-      two_bed: { min: 4500, max: 6500 },
+      studio: { min: 3100, max: 4150 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,630 ±15%
+      one_bed: { min: 3900, max: 5300 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $4,612 ±15%
+      two_bed: { min: 5300, max: 7150 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $6,212 ±15%
     },
     sale_ranges: {
-      condo: { min: 800000, max: 1800000 },
-      coop: { min: 400000, max: 750000 },
-      townhouse_multifamily: null, // REVIEW — effectively no row house stock in the core
+      condo: { min: 975000, max: 1950000 }, // DOF sales Oct 2025–Sep 2026, n=113, p25–p75
+      coop: { min: 500000, max: 1100000 }, // DOF sales Oct 2025–Sep 2026, n=71, p25–p75
+      townhouse_multifamily: null, // REVIEW: low data (n=4 sales DOF sales Oct 2025–Sep 2026); kept
     },
     subway_lines: ['A', 'C', 'F', 'R', '2', '3', '4', '5', 'B', 'Q', 'D', 'N', 'G'],
     commute_minutes: { midtown: 28, downtown_fidi: 20 },
@@ -621,14 +631,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 1,
     housing_stock: ['walkup', 'prewar', 'coop', 'condo', 'elevator_building'],
     rent_ranges: {
-      studio: { min: 2600, max: 3400 },
-      one_bed: { min: 3200, max: 4500 },
-      two_bed: { min: 4500, max: 6500 },
+      studio: { min: 2850, max: 3850 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,362 ±15%
+      one_bed: { min: 3400, max: 4600 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $4,000 ±15%
+      two_bed: { min: 4650, max: 6300 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $5,495 ±15%
     },
     sale_ranges: {
-      condo: { min: 900000, max: 2000000 },
-      coop: { min: 500000, max: 1100000 },
-      townhouse_multifamily: { min: 3000000, max: 7000000 },
+      condo: { min: 1075000, max: 2025000 }, // DOF sales Oct 2025–Sep 2026, n=76, p25–p75
+      coop: { min: 525000, max: 950000 }, // DOF sales Oct 2025–Sep 2026, n=107, p25–p75
+      townhouse_multifamily: { min: 3000000, max: 7000000 }, // REVIEW: low data (n=2 sales DOF sales Oct 2025–Sep 2026); kept
     },
     subway_lines: ['L', '6', 'F', 'M', 'N', 'Q', 'R', 'W'],
     commute_minutes: { midtown: 20, downtown_fidi: 20 },
@@ -651,14 +661,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 1,
     housing_stock: ['brownstone_rowhouse', 'townhouse', 'walkup', 'prewar', 'coop', 'condo'],
     rent_ranges: {
-      studio: { min: 3000, max: 4000 },
-      one_bed: { min: 4000, max: 5500 },
-      two_bed: { min: 5500, max: 9000 },
+      studio: { min: 3700, max: 5000 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $4,347 ±15%
+      one_bed: { min: 4650, max: 6300 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $5,495 ±15%
+      two_bed: { min: 6150, max: 8300 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $7,225 ±15%
     },
     sale_ranges: {
-      condo: { min: 1300000, max: 3500000 },
-      coop: { min: 750000, max: 1800000 },
-      townhouse_multifamily: { min: 5000000, max: 15000000 },
+      condo: { min: 1850000, max: 5875000 }, // DOF sales Oct 2025–Sep 2026, n=175, p25–p75
+      coop: { min: 675000, max: 1725000 }, // DOF sales Oct 2025–Sep 2026, n=274, p25–p75
+      townhouse_multifamily: { min: 7400000, max: 17125000 }, // DOF sales Oct 2025–Sep 2026, n=31, p25–p75
     },
     subway_lines: ['1', '2', '3', 'A', 'C', 'E', 'B', 'D', 'F', 'M', 'L'],
     commute_minutes: { midtown: 18, downtown_fidi: 20 },
@@ -681,14 +691,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 1,
     housing_stock: ['walkup', 'prewar', 'coop', 'condo', 'new_construction'],
     rent_ranges: {
-      studio: { min: 2500, max: 3300 },
-      one_bed: { min: 3100, max: 4300 },
-      two_bed: { min: 4200, max: 6200 },
+      studio: { min: 3250, max: 4400 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,822 ±15%
+      one_bed: { min: 3600, max: 4850 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $4,222 ±15%
+      two_bed: { min: 4500, max: 6050 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $5,272 ±15%
     },
     sale_ranges: {
-      condo: { min: 900000, max: 2000000 },
-      coop: { min: 450000, max: 1000000 },
-      townhouse_multifamily: { min: 2500000, max: 6000000 },
+      condo: { min: 1100000, max: 2175000 }, // DOF sales Oct 2025–Sep 2026, n=113, p25–p75
+      coop: { min: 575000, max: 1000000 }, // DOF sales Oct 2025–Sep 2026, n=113, p25–p75
+      townhouse_multifamily: { min: 2500000, max: 6000000 }, // REVIEW: low data (no sales DOF sales Oct 2025–Sep 2026); kept
     },
     subway_lines: ['F', 'J', 'M', 'Z', 'B', 'D'],
     commute_minutes: { midtown: 25, downtown_fidi: 15 },
@@ -711,14 +721,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 2,
     housing_stock: ['prewar', 'coop', 'condo', 'elevator_building', 'brownstone_rowhouse', 'postwar'],
     rent_ranges: {
-      studio: { min: 2600, max: 3400 },
-      one_bed: { min: 3400, max: 4800 },
-      two_bed: { min: 5000, max: 8000 },
+      studio: { min: 2850, max: 3850 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,361 ±15%
+      one_bed: { min: 4050, max: 5450 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $4,752 ±15%
+      two_bed: { min: 5600, max: 7600 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $6,597 ±15%
     },
     sale_ranges: {
-      condo: { min: 1000000, max: 2800000 },
-      coop: { min: 600000, max: 1600000 },
-      townhouse_multifamily: { min: 3500000, max: 9000000 },
+      condo: { min: 1050000, max: 3500000 }, // DOF sales Oct 2025–Sep 2026, n=939, p25–p75
+      coop: { min: 650000, max: 1825000 }, // DOF sales Oct 2025–Sep 2026, n=1333, p25–p75
+      townhouse_multifamily: { min: 5150000, max: 6800000 }, // DOF sales Oct 2025–Sep 2026, n=26, p25–p75
     },
     subway_lines: ['1', '2', '3', 'A', 'B', 'C', 'D'],
     commute_minutes: { midtown: 15, downtown_fidi: 30 },
@@ -741,14 +751,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 2,
     housing_stock: ['prewar', 'coop', 'condo', 'elevator_building', 'townhouse', 'postwar'],
     rent_ranges: {
-      studio: { min: 2400, max: 3200 },
-      one_bed: { min: 3100, max: 4400 },
-      two_bed: { min: 4500, max: 7500 },
+      studio: { min: 2600, max: 3550 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,075 ±15%
+      one_bed: { min: 3550, max: 4800 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $4,187 ±15%
+      two_bed: { min: 4800, max: 6550 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $5,675 ±15%
     },
     sale_ranges: {
-      condo: { min: 950000, max: 2800000 },
-      coop: { min: 500000, max: 1500000 },
-      townhouse_multifamily: { min: 4000000, max: 12000000 },
+      condo: { min: 950000, max: 3650000 }, // DOF sales Oct 2025–Sep 2026, n=800, p25–p75
+      coop: { min: 600000, max: 2300000 }, // DOF sales Oct 2025–Sep 2026, n=1888, p25–p75
+      townhouse_multifamily: { min: 5700000, max: 15125000 }, // DOF sales Oct 2025–Sep 2026, n=60, p25–p75
     },
     subway_lines: ['4', '5', '6', 'Q', 'F'],
     commute_minutes: { midtown: 15, downtown_fidi: 30 },
@@ -771,14 +781,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 3,
     housing_stock: ['brownstone_rowhouse', 'prewar', 'walkup', 'coop', 'condo', 'new_construction'],
     rent_ranges: {
-      studio: { min: 1900, max: 2500 },
-      one_bed: { min: 2400, max: 3300 },
-      two_bed: { min: 3000, max: 4500 },
+      studio: { min: 2200, max: 2950 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $2,572 ±15%
+      one_bed: { min: 2750, max: 3700 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,225 ±15%
+      two_bed: { min: 3250, max: 4350 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,800 ±15%
     },
     sale_ranges: {
-      condo: { min: 600000, max: 1300000 },
-      coop: { min: 350000, max: 800000 },
-      townhouse_multifamily: { min: 1500000, max: 3500000 }, // REVIEW — spread is wide across sub-areas
+      condo: { min: 625000, max: 1150000 }, // DOF sales Oct 2025–Sep 2026, n=208, p25–p75
+      coop: { min: 275000, max: 575000 }, // DOF sales Oct 2025–Sep 2026, n=119, p25–p75
+      townhouse_multifamily: { min: 1800000, max: 2500000 }, // DOF sales Oct 2025–Sep 2026, n=56, p25–p75
     },
     subway_lines: ['2', '3', 'A', 'B', 'C', 'D', '4', '5', '6', '1'],
     commute_minutes: { midtown: 25, downtown_fidi: 40 },
@@ -801,14 +811,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 1,
     housing_stock: ['prewar', 'postwar', 'condo', 'coop', 'elevator_building', 'brownstone_rowhouse'],
     rent_ranges: {
-      studio: { min: 3000, max: 3900 },
-      one_bed: { min: 3800, max: 5200 },
-      two_bed: { min: 5500, max: 8500 },
+      studio: { min: 3800, max: 5150 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $4,484 ±15%
+      one_bed: { min: 5250, max: 7100 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $6,181 ±15%
+      two_bed: { min: 6900, max: 9350 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $8,123 ±15%
     },
     sale_ranges: {
-      condo: { min: 1200000, max: 3200000 },
-      coop: { min: 650000, max: 1500000 },
-      townhouse_multifamily: { min: 4000000, max: 10000000 },
+      condo: { min: 1450000, max: 3650000 }, // DOF sales Oct 2025–Sep 2026, n=324, p25–p75
+      coop: { min: 550000, max: 1500000 }, // DOF sales Oct 2025–Sep 2026, n=281, p25–p75
+      townhouse_multifamily: { min: 5275000, max: 11900000 }, // DOF sales Oct 2025–Sep 2026, n=14, p25–p75
     },
     subway_lines: ['A', 'C', 'E', '1', '2', '3', 'F', 'M', 'L'],
     commute_minutes: { midtown: 12, downtown_fidi: 20 },
@@ -831,14 +841,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 2,
     housing_stock: ['postwar', 'prewar', 'walkup', 'elevator_building', 'coop', 'condo', 'brownstone_rowhouse'],
     rent_ranges: {
-      studio: { min: 2600, max: 3400 },
-      one_bed: { min: 3300, max: 4500 },
-      two_bed: { min: 4500, max: 6800 },
+      studio: { min: 2600, max: 3400 }, // REVIEW: low data (no StreetEasy area/figure)
+      one_bed: { min: 3300, max: 4500 }, // REVIEW: low data (no StreetEasy area/figure)
+      two_bed: { min: 4500, max: 6800 }, // REVIEW: low data (no StreetEasy area/figure)
     },
     sale_ranges: {
-      condo: { min: 900000, max: 2200000 },
-      coop: { min: 450000, max: 1100000 },
-      townhouse_multifamily: { min: 3000000, max: 7000000 },
+      condo: { min: 975000, max: 1950000 }, // DOF sales Oct 2025–Sep 2026, n=221, p25–p75
+      coop: { min: 425000, max: 775000 }, // DOF sales Oct 2025–Sep 2026, n=237, p25–p75
+      townhouse_multifamily: { min: 4050000, max: 6500000 }, // DOF sales Oct 2025–Sep 2026, n=5, p25–p75
     },
     subway_lines: ['4', '5', '6', '7', 'S'],
     commute_minutes: { midtown: 10, downtown_fidi: 20 },
@@ -861,14 +871,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 2,
     housing_stock: ['new_construction', 'condo', 'elevator_building', 'prewar', 'coop'],
     rent_ranges: {
-      studio: { min: 2800, max: 3600 },
-      one_bed: { min: 3400, max: 4800 },
-      two_bed: { min: 4800, max: 7500 },
+      studio: { min: 3500, max: 4750 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $4,130 ±15%
+      one_bed: { min: 4500, max: 6100 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $5,292 ±15%
+      two_bed: { min: 6400, max: 8650 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $7,538 ±15%
     },
     sale_ranges: {
-      condo: { min: 800000, max: 2000000 },
-      coop: { min: 450000, max: 1000000 },
-      townhouse_multifamily: null, // REVIEW — effectively no row house stock
+      condo: { min: 825000, max: 1975000 }, // DOF sales Oct 2025–Sep 2026, n=367, p25–p75
+      coop: { min: 600000, max: 875000 }, // DOF sales Oct 2025–Sep 2026, n=45, p25–p75
+      townhouse_multifamily: null, // REVIEW: low data (no sales DOF sales Oct 2025–Sep 2026); kept
     },
     subway_lines: ['1', '2', '3', '4', '5', 'A', 'C', 'E', 'J', 'Z', 'R', 'W'],
     commute_minutes: { midtown: 20, downtown_fidi: 5 },
@@ -893,14 +903,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 4,
     housing_stock: ['two_three_family', 'walkup', 'prewar', 'postwar', 'coop', 'condo', 'elevator_building'],
     rent_ranges: {
-      studio: { min: 1900, max: 2500 },
-      one_bed: { min: 2300, max: 3200 },
-      two_bed: { min: 2900, max: 4000 },
+      studio: { min: 2150, max: 2950 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $2,548 ±15%
+      one_bed: { min: 2500, max: 3400 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $2,965 ±15%
+      two_bed: { min: 3000, max: 4000 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,500 ±15%
     },
     sale_ranges: {
-      condo: { min: 500000, max: 1000000 },
-      coop: { min: 300000, max: 650000 },
-      townhouse_multifamily: { min: 900000, max: 1800000 },
+      condo: { min: 675000, max: 1075000 }, // DOF sales Oct 2025–Sep 2026, n=222, p25–p75
+      coop: { min: 375000, max: 625000 }, // DOF sales Oct 2025–Sep 2026, n=85, p25–p75
+      townhouse_multifamily: { min: 1100000, max: 1600000 }, // DOF sales Oct 2025–Sep 2026, n=238, p25–p75
     },
     subway_lines: ['N', 'W', 'M', 'R', 'F'],
     commute_minutes: { midtown: 25, downtown_fidi: 40 },
@@ -923,14 +933,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 3,
     housing_stock: ['new_construction', 'condo', 'elevator_building', 'coop', 'two_three_family'],
     rent_ranges: {
-      studio: { min: 2600, max: 3400 },
-      one_bed: { min: 3200, max: 4300 },
-      two_bed: { min: 4200, max: 6000 },
+      studio: { min: 3050, max: 4100 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,583 ±15%
+      one_bed: { min: 3700, max: 5000 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $4,347 ±15%
+      two_bed: { min: 5350, max: 7250 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $6,284 ±15%
     },
     sale_ranges: {
-      condo: { min: 700000, max: 1600000 },
-      coop: { min: 400000, max: 800000 },
-      townhouse_multifamily: { min: 1200000, max: 2200000 }, // REVIEW — small row house pocket in Hunters Point only
+      condo: { min: 875000, max: 1500000 }, // DOF sales Oct 2025–Sep 2026, n=316, p25–p75
+      coop: { min: 575000, max: 800000 }, // DOF sales Oct 2025–Sep 2026, n=21, p25–p75
+      townhouse_multifamily: { min: 1000000, max: 1875000 }, // DOF sales Oct 2025–Sep 2026, n=25, p25–p75
     },
     subway_lines: ['7', 'E', 'M', 'G', 'N', 'W', 'F'],
     commute_minutes: { midtown: 15, downtown_fidi: 30 },
@@ -953,14 +963,14 @@ export const NEIGHBORHOODS = [
     car_friendly: 4,
     housing_stock: ['coop', 'prewar', 'postwar', 'elevator_building', 'townhouse', 'two_three_family'],
     rent_ranges: {
-      studio: { min: 1700, max: 2200 },
-      one_bed: { min: 2100, max: 2800 },
-      two_bed: { min: 2700, max: 3700 },
+      studio: { min: 1850, max: 2500 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $2,187 ±15%
+      one_bed: { min: 2250, max: 3100 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $2,675 ±15%
+      two_bed: { min: 2800, max: 3800 }, // StreetEasy median asking rent Oct 2025–Sep 2026, median $3,297 ±15%
     },
     sale_ranges: {
-      condo: { min: 400000, max: 800000 },
-      coop: { min: 250000, max: 550000 },
-      townhouse_multifamily: { min: 900000, max: 2000000 },
+      condo: { min: 675000, max: 1400000 }, // DOF sales Oct 2025–Sep 2026, n=103, p25–p75
+      coop: { min: 275000, max: 475000 }, // DOF sales Oct 2025–Sep 2026, n=499, p25–p75
+      townhouse_multifamily: { min: 1125000, max: 1900000 }, // DOF sales Oct 2025–Sep 2026, n=145, p25–p75
     },
     subway_lines: ['E', 'F', 'M', 'R'],
     commute_minutes: { midtown: 35, downtown_fidi: 50 }, // REVIEW — LIRR cuts the Midtown figure to about 20
