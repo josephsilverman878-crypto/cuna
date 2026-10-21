@@ -8,7 +8,7 @@ import { PETS_POLICY_OPTIONS, PETS_POLICY_NOTE, petsPolicyLabel } from '../lib/p
 import toast from 'react-hot-toast'
 import { Loader, ChevronLeft, X, Upload, ChevronRight, AlertTriangle } from 'lucide-react'
 import { LISTING_STATUSES, statusLabel } from '../lib/listingStatus'
-import { getOpenHousesForListing, addOpenHouse, updateOpenHouse, cancelOpenHouse, formatOpenHouse, isUpcoming } from '../lib/openHouses'
+import { getOpenHousesForListing, addOpenHouse, updateOpenHouse, cancelOpenHouse, formatOpenHouse, isUpcoming, nyWallClockToIso, isoToNyFields } from '../lib/openHouses'
 
 const TABS = ['Details', 'Costs & Fees', 'Amenities', 'Photos', 'Review']
 
@@ -381,7 +381,8 @@ export default function EditListing() {
         <label className="label">Open houses</label>
         <p style={{ fontSize: '12px', color: 'var(--warm-gray)', lineHeight: 1.55, margin: '6px 0 12px' }}>
           Shown on the listing page and as a tag in the feed. Renters who saved this listing are
-          notified when you add, change or cancel one. Times are New York time.
+          notified when you add, change or cancel one. Enter times as New York time; they are
+          stored and shown that way no matter what clock this computer uses.
         </p>
         {openHouses.filter(isUpcoming).length === 0 && (
           <p style={{ fontSize: '13px', color: 'var(--warm-gray)', margin: '0 0 12px' }}>No upcoming open houses.</p>
@@ -404,7 +405,7 @@ export default function EditListing() {
           ))}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: '8px' }}>
-          <input type="date" aria-label="Open house date" value={ohForm.date} onChange={e => setOhForm(f => ({ ...f, date: e.target.value }))} />
+          <input type="date" aria-label="Open house date (New York)" value={ohForm.date} onChange={e => setOhForm(f => ({ ...f, date: e.target.value }))} />
           <input type="time" aria-label="Start time" value={ohForm.start} onChange={e => setOhForm(f => ({ ...f, start: e.target.value }))} />
           <input type="time" aria-label="End time" value={ohForm.end} onChange={e => setOhForm(f => ({ ...f, end: e.target.value }))} />
         </div>
@@ -718,14 +719,13 @@ export default function EditListing() {
     </div>,
   ]
 
-  // Open houses: add, edit and cancel slots on this listing. Times are typed in
-  // the poster's local clock and shown back in New York time; NYC agents are
-  // assumed to be on New York time. Cancel sets cancelled_at -- nothing is
-  // ever deleted. Every failure is shown with its reason.
+  // Open houses: add, edit and cancel slots on this listing. The date and time
+  // typed here ARE New York times, whatever this computer's clock is set to:
+  // nyWallClockToIso converts through America/New_York (DST included) and
+  // isoToNyFields converts back for editing. Cancel sets cancelled_at --
+  // nothing is ever deleted. Every failure is shown with its reason.
   function ohToIso(date, time) {
-    if (!date || !time) return null
-    const d = new Date(`${date}T${time}`)
-    return Number.isNaN(d.getTime()) ? null : d.toISOString()
+    return nyWallClockToIso(date, time)
   }
   async function saveOpenHouse() {
     const startsAt = ohToIso(ohForm.date, ohForm.start)
@@ -746,14 +746,8 @@ export default function EditListing() {
     toast.success(ohForm.id ? 'Open house updated' : 'Open house added')
   }
   function editOpenHouse(oh) {
-    const s = new Date(oh.starts_at), e = new Date(oh.ends_at)
-    const pad = n => String(n).padStart(2, '0')
-    setOhForm({
-      id: oh.id,
-      date: `${s.getFullYear()}-${pad(s.getMonth() + 1)}-${pad(s.getDate())}`,
-      start: `${pad(s.getHours())}:${pad(s.getMinutes())}`,
-      end: `${pad(e.getHours())}:${pad(e.getMinutes())}`,
-    })
+    const s = isoToNyFields(oh.starts_at), e = isoToNyFields(oh.ends_at)
+    setOhForm({ id: oh.id, date: s.date, start: s.time, end: e.time })
   }
   async function handleCancelOpenHouse(oh) {
     if (!window.confirm(`Cancel the open house on ${formatOpenHouse(oh.starts_at, oh.ends_at)}? Renters who saved this listing will be told.`)) return
