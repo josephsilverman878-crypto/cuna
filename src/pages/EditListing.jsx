@@ -6,7 +6,8 @@ import BottomNav from '../components/BottomNav'
 import { scanDescription } from '../lib/fairHousing'
 import { PETS_POLICY_OPTIONS, PETS_POLICY_NOTE, petsPolicyLabel } from '../lib/petsPolicy'
 import toast from 'react-hot-toast'
-import { Loader, ChevronLeft, X, Upload, ChevronRight, Trash2, ArchiveX, AlertTriangle } from 'lucide-react'
+import { Loader, ChevronLeft, X, Upload, ChevronRight, AlertTriangle } from 'lucide-react'
+import { LISTING_STATUSES, statusLabel } from '../lib/listingStatus'
 
 const TABS = ['Details', 'Costs & Fees', 'Amenities', 'Photos', 'Review']
 
@@ -22,6 +23,8 @@ export default function EditListing() {
   const [existingPhotos, setExistingPhotos] = useState([])
   const [dragging, setDragging] = useState(false)
   const [fhAck, setFhAck] = useState(false)
+  const [status, setStatus] = useState('active')
+  const [statusSaving, setStatusSaving] = useState(false)
   const fileInputRef = useRef()
 
   const [form, setForm] = useState({
@@ -47,6 +50,7 @@ export default function EditListing() {
 
     const amenities = data.amenities || []
     setExistingPhotos(data.photos || [])
+    setStatus(data.status || 'active')
     setForm({
       address: data.address || '',
       city: data.city || '',
@@ -346,33 +350,24 @@ export default function EditListing() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-        <button
-          type="button"
-          onClick={delistListing}
-          style={{
-            flex: 1, padding: '12px', background: 'rgba(155,142,136,0.15)',
-            border: 'none', borderRadius: '12px',
-            fontWeight: 600, fontSize: '13px', cursor: 'pointer',
-            color: 'var(--warm-gray)', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', gap: '6px',
-          }}
+      <div className="card" style={{ marginTop: '16px' }}>
+        <label className="label" htmlFor="listing-status">Status</label>
+        <select
+          id="listing-status"
+          value={status}
+          disabled={statusSaving}
+          onChange={e => changeStatus(e.target.value)}
+          style={{ ...inputStyle, cursor: 'pointer', fontWeight: 600 }}
         >
-          <ArchiveX size={14} /> Delist
-        </button>
-        <button
-          type="button"
-          onClick={deleteListing}
-          style={{
-            flex: 1, padding: '12px', background: 'rgba(229,62,62,0.15)',
-            border: 'none', borderRadius: '12px',
-            fontWeight: 600, fontSize: '13px', cursor: 'pointer',
-            color: '#e53e3e', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', gap: '6px',
-          }}
-        >
-          <Trash2 size={14} /> Delete
-        </button>
+          {LISTING_STATUSES.map(st => (
+            <option key={st.id} value={st.id}>{st.label}</option>
+          ))}
+        </select>
+        <p style={{ fontSize: '12px', color: 'var(--warm-gray)', lineHeight: 1.55, margin: '8px 0 0' }}>
+          Saved as soon as you pick it. Only Active and In contract appear in the feed and
+          search; the listing stays viewable at its own link in every status, and renters can
+          still request a tour. You can switch back to Active at any time.
+        </p>
       </div>
     </div>,
 
@@ -673,23 +668,23 @@ export default function EditListing() {
     </div>,
   ]
 
-  async function delistListing() {
-    const { error } = await supabase
-      .from('listings').update({ status: 'delisted' }).eq('id', id)
-    if (!error) {
-      toast.success('Listing delisted')
-      navigate('/dashboard')
-    }
-  }
-
-  async function deleteListing() {
-    if (!window.confirm('Delete this listing? This cannot be undone.')) return
-    const { error } = await supabase
-      .from('listings').delete().eq('id', id)
-    if (!error) {
-      toast.success('Listing deleted')
-      navigate('/dashboard')
-    }
+  // Status is saved on its own, immediately, separate from the form: a poster
+  // marking a place rented should not have to re-submit the whole listing.
+  // There is no delete. Every failure is shown with its reason.
+  async function changeStatus(newStatus) {
+    if (!newStatus || newStatus === status) return
+    setStatusSaving(true)
+    const { data, error } = await supabase
+      .from('listings')
+      .update({ status: newStatus })
+      .eq('id', id)
+      .select('status')
+      .maybeSingle()
+    setStatusSaving(false)
+    if (error) { toast.error(`Could not change status: ${error.message}`); return }
+    if (!data) { toast.error('Could not change status: the listing was not updated'); return }
+    setStatus(data.status)
+    toast.success(`Marked ${statusLabel(data.status).toLowerCase()}`)
   }
 
   if (loading) return <div className="center" style={{ height: '100dvh' }}><div className="spinner" /></div>

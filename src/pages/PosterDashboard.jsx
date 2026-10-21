@@ -5,7 +5,8 @@ import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import { getSaveCounts } from '../lib/swipes'
 import toast from 'react-hot-toast'
-import { Plus, Users, Eye, EyeOff, BedDouble, Bath, Pencil, Trash2, ArchiveX, ShieldCheck, CalendarCheck, Mail, Phone } from 'lucide-react'
+import { Plus, Users, Eye, BedDouble, Bath, Pencil, ShieldCheck, CalendarCheck, Mail, Phone } from 'lucide-react'
+import { LISTING_STATUSES, statusLabel, isPublicStatus } from '../lib/listingStatus'
 
 export default function PosterDashboard() {
   const { user, profile } = useAuth()
@@ -81,33 +82,28 @@ export default function PosterDashboard() {
     setLoading(false)
   }
 
-  async function toggleStatus(listing) {
-    const newStatus = listing.status === 'active' ? 'paused' : 'active'
-    const { error } = await supabase
-      .from('listings').update({ status: newStatus }).eq('id', listing.id)
-    if (!error) {
-      setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: newStatus } : l))
-      toast.success(`Listing ${newStatus === 'active' ? 'activated' : 'paused'}`)
+  // Posters move a listing between the five statuses here, including back to
+  // active. There is no delete: a listing is a record, and "De-listed" is the
+  // end of the road. Every failure is shown -- the old handlers swallowed
+  // errors and left the poster looking at a status that had not changed.
+  async function setStatus(listing, newStatus) {
+    if (!newStatus || newStatus === listing.status) return
+    const { data, error } = await supabase
+      .from('listings')
+      .update({ status: newStatus })
+      .eq('id', listing.id)
+      .select('id, status, status_changed_at, listed_at')
+      .maybeSingle()
+    if (error) {
+      toast.error(`Could not change status: ${error.message}`)
+      return
     }
-  }
-
-  async function delistListing(listing) {
-    const { error } = await supabase
-      .from('listings').update({ status: 'delisted' }).eq('id', listing.id)
-    if (!error) {
-      setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'delisted' } : l))
-      toast.success('Listing delisted')
+    if (!data) {
+      toast.error('Could not change status: the listing was not updated')
+      return
     }
-  }
-
-  async function deleteListing(listing) {
-    if (!window.confirm(`Delete ${listing.address}? This cannot be undone.`)) return
-    const { error } = await supabase
-      .from('listings').delete().eq('id', listing.id)
-    if (!error) {
-      setListings(prev => prev.filter(l => l.id !== listing.id))
-      toast.success('Listing deleted')
-    }
+    setListings(prev => prev.map(l => l.id === listing.id ? { ...l, ...data } : l))
+    toast.success(`Marked ${statusLabel(newStatus).toLowerCase()}`)
   }
 
   if (loading) return <div className="center" style={{ height: '100dvh' }}><div className="spinner" /></div>
@@ -244,10 +240,12 @@ export default function PosterDashboard() {
                 </div>
                 <div style={{
                   padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 600,
-                  background: listing.status === 'active' ? 'rgba(76,175,125,0.15)' : 'rgba(155,142,136,0.15)',
-                  color: listing.status === 'active' ? 'var(--like-green)' : 'var(--warm-gray)',
+                  background: listing.status === 'active' ? 'rgba(76,175,125,0.15)'
+                    : isPublicStatus(listing.status) ? 'rgba(180,74,54,0.12)' : 'rgba(155,142,136,0.15)',
+                  color: listing.status === 'active' ? 'var(--like-green)'
+                    : isPublicStatus(listing.status) ? 'var(--terracotta)' : 'var(--warm-gray)',
                 }}>
-                  {listing.status}
+                  {statusLabel(listing.status)}
                 </div>
               </div>
 
@@ -279,37 +277,30 @@ export default function PosterDashboard() {
                 </span>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => toggleStatus(listing)}
-                  className="btn-ghost"
-                  style={{ fontSize: '13px', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  {listing.status === 'active' ? <EyeOff size={14} /> : <Eye size={14} />}
-                  {listing.status === 'active' ? 'Pause' : 'Activate'}
-                </button>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--charcoal-soft)' }}>
+                  <span>Status</span>
+                  <select
+                    value={listing.status}
+                    onChange={e => setStatus(listing, e.target.value)}
+                    aria-label={`Status for ${listing.address}`}
+                    style={{
+                      padding: '8px 10px', borderRadius: '10px', fontSize: '13px', fontWeight: 600,
+                      border: '1px solid var(--sand-dark)', background: 'var(--white)', color: 'var(--charcoal)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {LISTING_STATUSES.map(st => (
+                      <option key={st.id} value={st.id}>{st.label}</option>
+                    ))}
+                  </select>
+                </label>
                 <button
                   onClick={() => navigate(`/edit-listing/${listing.id}`)}
                   className="btn-ghost"
                   style={{ fontSize: '13px', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
                   <Pencil size={14} /> Edit
-                </button>
-                {listing.status !== 'delisted' && (
-                  <button
-                    onClick={() => delistListing(listing)}
-                    className="btn-ghost"
-                    style={{ fontSize: '13px', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--warm-gray)' }}
-                  >
-                    <ArchiveX size={14} /> Delist
-                  </button>
-                )}
-                <button
-                  onClick={() => deleteListing(listing)}
-                  className="btn-ghost"
-                  style={{ fontSize: '13px', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '6px', color: '#e53e3e' }}
-                >
-                  <Trash2 size={14} /> Delete
                 </button>
               </div>
             </div>

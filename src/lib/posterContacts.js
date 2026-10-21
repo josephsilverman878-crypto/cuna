@@ -7,16 +7,17 @@ import { supabase } from './supabase'
 // Stage 2c removes that blanket read.
 //
 // `listing_poster_contacts` is the replacement: a view exposing exactly
-// poster_id, name, email and phone, and only for posters with at least one
-// ACTIVE listing. A view is not a foreign-key target, so it cannot be embedded.
+// poster_id, name, email and phone, for posters with at least one listing in
+// ANY status (33-listing-status widened it from active-only so tour requests
+// work on off-market listings). A view is not a foreign-key target, so it cannot be embedded.
 // Hence one extra query, joined here, on every page that needs it.
 //
 // The result is attached under the `profiles` key so that callers — notably
 // RequestTour, which reads listing.profiles?.email — keep working unchanged.
 //
-// A listing whose poster is not in the view gets `profiles: null`. That is the
-// expected state for a paused or delisted listing, and callers must handle it
-// rather than assume a poster is always present.
+// A listing whose poster is not in the view gets `profiles: null`. That should
+// no longer happen for any listing that still has a poster, but callers must
+// still handle it rather than assume a poster is always present.
 
 export async function attachPosterContacts(listings) {
   if (!Array.isArray(listings) || listings.length === 0) return listings || []
