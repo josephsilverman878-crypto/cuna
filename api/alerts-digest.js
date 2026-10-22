@@ -20,7 +20,7 @@
 //   RESEND_API_KEY              already set for tour emails
 //   ALERT_UNSUBSCRIBE_SECRET    HMAC key for the one-click unsubscribe token
 //   INQUIRY_TEST_RECIPIENT      on Preview: every email goes here instead
-//   PUBLIC_BASE_URL             e.g. https://cuna-xi.vercel.app (links)
+//   PUBLIC_BASE_URL             e.g. https://hellocuna.com (links)
 import { createClient } from '@supabase/supabase-js'
 import { unsubscribeToken } from './_alerts-token.js'
 

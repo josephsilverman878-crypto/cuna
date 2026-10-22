@@ -10,7 +10,7 @@ Discovery is the Instagram-style scroll-and-like feed in src/pages/Feed.jsx, at
 
 ## Stack
 React + Vite on Vercel · Supabase (Postgres + Auth + Storage) · Resend for email
-Live: cuna-xi.vercel.app
+Live: hellocuna.com (the Vercel project also answers at cuna-xi.vercel.app)
 
 ## Workflow
 Work happens on `fix/`, `feature/`, `chore/` and `refactor/` branches — never
