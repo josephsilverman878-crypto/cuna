@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import RequestTour from '../components/RequestTour'
 import { getMySwipes, setHidden, removeSwipe } from '../lib/swipes'
+import { isPublicStatus, statusLabel } from '../lib/listingStatus'
 import toast from 'react-hot-toast'
 import { MapPin, BedDouble, Bath, RotateCcw, EyeOff, CalendarCheck } from 'lucide-react'
 
@@ -132,8 +133,18 @@ export default function SwipeHistory() {
                   This listing is no longer available
                 </div>
                 <div style={{ fontSize: '13px', color: 'var(--warm-gray)', marginTop: '4px' }}>
-                  It was taken down by the agent. You can remove it from your list.
+                  It is rented, off-market or de-listed. You can still open it, or remove it from your list.
                 </div>
+                <button
+                  onClick={() => navigate('/listing/' + swipe.listing_id)}
+                  style={{
+                    marginTop: '12px', marginRight: '8px', padding: '9px 14px', background: 'none',
+                    border: '1px solid var(--sand-dark)', borderRadius: '8px', cursor: 'pointer',
+                    fontSize: '12px', fontWeight: 600, color: 'var(--charcoal)',
+                  }}
+                >
+                  View listing
+                </button>
                 <button
                   onClick={() => handleRemoveSwipe(swipe)}
                   style={{
@@ -150,8 +161,11 @@ export default function SwipeHistory() {
             )
           }
 
-          const unavailable = listing.status !== 'active'
-          const canRequestTour = !unavailable && hasPosterContact(listing)
+          // Rented / off-market / de-listed rows are not readable from the table
+          // (they arrive as null and take the branch above); a saved in-contract
+          // listing is still open to tour requests.
+          const unavailable = !isPublicStatus(listing.status)
+          const canRequestTour = hasPosterContact(listing)
           const cover = listing.photos?.length > 0
             ? listing.photos[0]
             : 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80'
@@ -181,13 +195,22 @@ export default function SwipeHistory() {
                   </div>
                 </div>
               </div>
+              {tab === 'saved' && listing.status === 'in_contract' && (
+                <div style={{
+                  padding: '8px 10px', borderTop: '1px solid var(--sand-dark)',
+                  background: 'rgba(180,74,54,0.06)', fontSize: '12px', fontWeight: 600,
+                  color: 'var(--terracotta)', textAlign: 'center',
+                }}>
+                  {statusLabel(listing.status)}
+                </div>
+              )}
               {tab === 'saved' && unavailable && (
                 <div style={{
                   padding: '10px', borderTop: '1px solid var(--sand-dark)',
                   background: 'rgba(155,142,136,0.08)', fontSize: '12px',
                   color: 'var(--warm-gray)', textAlign: 'center',
                 }}>
-                  No longer available — the agent has taken this listing down.
+                  {statusLabel(listing.status)} — not currently available.
                 </div>
               )}
               {tab === 'saved' && canRequestTour && (

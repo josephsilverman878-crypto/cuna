@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { attachPosterContacts, hasPosterContact } from '../lib/posterContacts'
+import { hasPosterContact } from '../lib/posterContacts'
+import { statusBadge, availabilityBox, lastPriceChangeText, formatPriceDelta, withinDays } from '../lib/listingStatus'
 import RequestTour from '../components/RequestTour'
 import FairHousingNotice from '../components/FairHousingNotice'
 import { petsPolicyLabel } from '../lib/petsPolicy'
 import { getMySwipe, setLiked } from '../lib/swipes'
 import toast from 'react-hot-toast'
-import { MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Heart } from 'lucide-react'
+import { MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Heart, CalendarDays, Clock, TrendingUp } from 'lucide-react'
 
 export default function ListingDetail() {
   const { id } = useParams()
@@ -25,23 +26,23 @@ export default function ListingDetail() {
 
   async function fetchListing() {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('listings')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle()
+    // get_listing_public() returns ONE listing by id in ANY status, with the
+    // public columns plus days_on_market, last_price_change and the poster's
+    // contact. The table itself only shows active and in-contract rows to the
+    // public, so this page must not read the table directly.
+    const { data, error } = await supabase.rpc('get_listing_public', { p_id: id })
     if (error || !data) {
+      if (error) console.error('get_listing_public failed:', error)
       setListing(null)
       setLoading(false)
       return
     }
 
-    const [withContacts] = await attachPosterContacts([data])
+    // RequestTour and hasPosterContact read listing.profiles.{name,email,phone}.
+    const withContacts = { ...data, profiles: data.poster?.email ? data.poster : null }
 
-    // The view only covers posters with an ACTIVE listing, so a poster viewing
-    // their own paused or delisted listing finds no row there. They are looking
-    // at their own listing, so their own profile is the correct source — and it
-    // avoids the page losing its contact block exactly when the owner needs it.
+    // The owner looking at their own listing: their own profile is the
+    // authoritative contact, and it keeps the block even if the view lags.
     const isOwner = user && data.poster_id === user.id
     if (isOwner && !withContacts.profiles && profile) {
       withContacts.profiles = { name: profile.name, email: profile.email, phone: profile.phone }
@@ -84,13 +85,14 @@ export default function ListingDetail() {
 
   // A tour needs a reachable poster. api/send-inquiry.js rejects a payload with
   // no posterEmail, so the button is disabled rather than letting the renter
-  // fill the whole form and then fail on submit.
-  const canRequestTour = listing?.status === 'active' && hasPosterContact(listing)
+  // fill the whole form and then fail on submit. Status is NOT a condition:
+  // tour requests stay on in every status (rented, off-market, de-listed).
+  const canRequestTour = hasPosterContact(listing)
 
   function handleRequestTour() {
     if (!user) { requireLogin(); return }
     if (profile?.role !== 'renter') { toast.error('Only renter accounts can request tours'); return }
-    if (!canRequestTour) { toast.error('This listing is no longer accepting tour requests'); return }
+    if (!canRequestTour) { toast.error('The agent for this listing cannot be reached right now'); return }
     setShowTour(true)
   }
 
@@ -169,12 +171,54 @@ export default function ListingDetail() {
             )}
           </div>
 
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px',
+            background: 'var(--sand-dark)', borderBottom: '1px solid var(--sand-dark)',
+          }}>
+            {[
+              { icon: CalendarDays, ...availabilityBox(listing) },
+              { icon: Clock, label: 'Days on market', value: `${listing.days_on_market ?? 0} ${listing.days_on_market === 1 ? 'day' : 'days'}` },
+              { icon: TrendingUp, label: 'Last price change', value: lastPriceChangeText(listing.last_price_change) },
+            ].map(box => (
+              <div key={box.label} style={{ background: 'var(--white)', padding: '12px 10px', textAlign: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '5px', alignItems: 'center', fontSize: '11px', color: 'var(--warm-gray)' }}>
+                  <box.icon size={12} /> {box.label}
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 600, marginTop: '4px', color: 'var(--charcoal)', lineHeight: 1.3 }}>
+                  {box.value}
+                </div>
+              </div>
+            ))}
+          </div>
+
           <div style={{ padding: '24px' }}>
-            <div style={{
-              fontFamily: 'var(--font-display)', fontSize: '30px', fontWeight: 600, color: 'var(--terracotta)',
-            }}>
-              ${listing.price?.toLocaleString()}<span style={{ fontSize: '16px', color: 'var(--warm-gray)' }}>/mo</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{
+                fontFamily: 'var(--font-display)', fontSize: '30px', fontWeight: 600, color: 'var(--terracotta)',
+              }}>
+                ${listing.price?.toLocaleString()}<span style={{ fontSize: '16px', color: 'var(--warm-gray)' }}>/mo</span>
+              </div>
+              {listing.last_price_change && withinDays(listing.last_price_change.date, 30) && formatPriceDelta(listing.last_price_change.amount) && (
+                <span
+                  title={lastPriceChangeText(listing.last_price_change)}
+                  style={{
+                    fontSize: '12px', fontWeight: 600, padding: '3px 9px', borderRadius: '12px',
+                    background: Number(listing.last_price_change.amount) < 0 ? 'rgba(76,175,125,0.15)' : 'rgba(180,74,54,0.12)',
+                    color: Number(listing.last_price_change.amount) < 0 ? 'var(--like-green)' : 'var(--terracotta)',
+                  }}
+                >
+                  {formatPriceDelta(listing.last_price_change.amount)}
+                </span>
+              )}
             </div>
+            {statusBadge(listing) && (
+              <div style={{
+                display: 'inline-block', marginTop: '6px', padding: '4px 10px', borderRadius: '12px',
+                background: 'rgba(155,142,136,0.15)', color: 'var(--warm-gray)', fontSize: '12px', fontWeight: 600,
+              }}>
+                {statusBadge(listing)}
+              </div>
+            )}
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 600, margin: '6px 0 4px' }}>
               {listing.address}
             </h1>
@@ -307,14 +351,14 @@ export default function ListingDetail() {
           className="btn-primary"
           onClick={handleRequestTour}
           disabled={!canRequestTour}
-          title={canRequestTour ? undefined : 'This listing is no longer accepting tour requests'}
+          title={canRequestTour ? undefined : 'The agent for this listing cannot be reached right now'}
           style={{
             flex: 2, padding: '14px', fontSize: '15px',
             opacity: canRequestTour ? 1 : 0.5,
             cursor: canRequestTour ? 'pointer' : 'not-allowed',
           }}
         >
-          {canRequestTour ? 'Request a tour' : 'No longer available'}
+          {canRequestTour ? 'Request a tour' : 'Agent not reachable'}
         </button>
       </div>
 

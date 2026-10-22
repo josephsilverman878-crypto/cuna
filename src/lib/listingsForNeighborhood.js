@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { PUBLIC_STATUSES } from './listingStatus'
 import { matchListingToNeighborhood } from './neighborhoodAliases'
 
 // Listings for the neighborhoods on the results page.
@@ -32,7 +33,7 @@ export async function fetchListingsForNeighborhoods(neighborhoodIds = [], answer
   let query = supabase
     .from('listings')
     .select('id, address, city, state, neighborhood, zip_code, price, bedrooms, bathrooms, photos')
-    .eq('status', 'active')
+    .in('status', PUBLIC_STATUSES)
 
   // Budget is applied as a ceiling only, the same way the matcher treats it.
   // Filtering out listings below the band would hide cheaper places the renter

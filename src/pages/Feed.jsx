@@ -8,6 +8,7 @@ import RequestTour from '../components/RequestTour'
 import FairHousingNotice from '../components/FairHousingNotice'
 import { petsPolicyLabel } from '../lib/petsPolicy'
 import { getMySwipes, setLiked, setHidden } from '../lib/swipes'
+import { PUBLIC_STATUSES } from '../lib/listingStatus'
 import toast from 'react-hot-toast'
 import { MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Heart, MoreVertical, EyeOff, Filter } from 'lucide-react'
 
@@ -80,6 +81,16 @@ function FeedCard({ listing, liked, onToggleLike, onHide, onRequestTour, onOpen 
         }}>
           ${listing.price?.toLocaleString()}/mo
         </div>
+
+        {listing.status === 'in_contract' && (
+          <div style={{
+            position: 'absolute', bottom: '14px', left: '16px',
+            background: 'rgba(44,36,32,0.82)', color: 'white',
+            padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600,
+          }}>
+            In contract
+          </div>
+        )}
 
         <button
           onClick={() => setMenuOpen(o => !o)}
@@ -281,10 +292,12 @@ export default function Feed() {
     const PAGE = 10
     const from = pageNum * PAGE
 
+    // Active and in-contract listings are the public inventory; rented,
+    // off-market and de-listed ones stay reachable at /listing/:id only.
     let query = supabase
       .from('listings')
       .select('*')
-      .eq('status', 'active')
+      .in('status', PUBLIC_STATUSES)
 
     // Only hidden listings are excluded. A liked listing stays in the feed.
     if (hidden.length > 0) {
