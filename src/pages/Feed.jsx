@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import RequestTour from '../components/RequestTour'
 import FairHousingNotice from '../components/FairHousingNotice'
+import NotificationBell from '../components/NotificationBell'
+import { getNextOpenHouses, openHouseDayTag } from '../lib/openHouses'
 import { petsPolicyLabel } from '../lib/petsPolicy'
 import { getMySwipes, setLiked, setHidden } from '../lib/swipes'
 import { PUBLIC_STATUSES } from '../lib/listingStatus'
@@ -81,6 +83,16 @@ function FeedCard({ listing, liked, onToggleLike, onHide, onRequestTour, onOpen 
         }}>
           ${listing.price?.toLocaleString()}/mo
         </div>
+
+        {listing.next_open_house && (
+          <div style={{
+            position: 'absolute', bottom: '14px', right: '16px',
+            background: 'rgba(255,255,255,0.92)', color: 'var(--charcoal)',
+            padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600,
+          }}>
+            {openHouseDayTag(listing.next_open_house.starts_at)}
+          </div>
+        )}
 
         {listing.status === 'in_contract' && (
           <div style={{
@@ -341,7 +353,10 @@ export default function Feed() {
     // hasMore is computed from the RAW row count, before contacts are attached,
     // so it still reflects what the server returned.
     const more = (data || []).length === PAGE
-    return { rows: await attachPosterContacts(data || []), more }
+    const withContacts = await attachPosterContacts(data || [])
+    // Next upcoming open house per card, for the "Open house Sat" tag.
+    const nextOpenHouse = await getNextOpenHouses(withContacts.map(l => l.id))
+    return { rows: withContacts.map(l => ({ ...l, next_open_house: nextOpenHouse[l.id] || null })), more }
   }
 
   async function loadMore() {
@@ -443,6 +458,8 @@ export default function Feed() {
           cuna
         </div>
 
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <NotificationBell />
         {hasPrefs && (
           <button
             onClick={toggleFilters}
@@ -459,6 +476,7 @@ export default function Feed() {
             My filters
           </button>
         )}
+        </div>
       </div>
 
       <div style={{ maxWidth: '520px', margin: '0 auto', padding: '20px 24px' }}>

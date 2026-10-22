@@ -105,6 +105,11 @@ page that filters down to fewer than 10 rows does not end the feed early.
 - api/send-inquiry.js has an `esc()` HTML-escaping helper. It is a security fix,
   not debug instrumentation — never remove it.
 - `preferred_times` in `inquiries` is jsonb, not a Postgres array.
+- `inquiries.kind` is 'tour' (default) or 'question' (34-saved-alerts.sql). A
+  question has a message and no tour_type.
+- `listing_events`, `notifications`, `listing_open_houses` are written or gated
+  by database triggers (33/34 scripts). Never insert into listing_events or
+  notifications from the client; cancel an open house by setting cancelled_at.
 
 ## Debugging lesson
 Failures in this project are usually SILENT: a missing RLS policy returning zero
@@ -117,11 +122,13 @@ usually means the database is restoring, not a code bug.
 
 A specific shape of this to watch for: an await whose error is logged but never
 rethrown, sitting inside a try that then sets a success state. The user sees
-"Request sent" while the write silently failed. RequestTour.jsx's `inquiries`
-insert still does this on purpose — the email has already gone out by then, so
-failing the whole action would be a lie in the other direction. But it means a
-successful-looking tour request does NOT prove the row was written. Check the
-table.
+"Request sent" while the write silently failed. RequestTour.jsx used to do this
+on purpose (email first, then a best-effort row). Since feature/saved-alerts the
+order is reversed: the `inquiries` row is inserted FIRST, so the database rate
+limit (inquiries_rate_limit, 34-saved-alerts.sql) can refuse it before any email
+leaves; a refused row means no email, and a failed email leaves a row the
+poster still sees on the dashboard. AskQuestion.jsx (kind = 'question') works
+the same way.
 
 Read the actual file before answering questions about behavior. Reasoning about
 what the code probably does is what made the privacy-toggle debug take as long

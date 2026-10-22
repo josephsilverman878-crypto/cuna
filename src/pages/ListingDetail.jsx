@@ -5,11 +5,14 @@ import { useAuth } from '../context/AuthContext'
 import { hasPosterContact } from '../lib/posterContacts'
 import { statusBadge, availabilityBox, lastPriceChangeText, formatPriceDelta, withinDays } from '../lib/listingStatus'
 import RequestTour from '../components/RequestTour'
+import AskQuestion from '../components/AskQuestion'
+import NotificationBell from '../components/NotificationBell'
+import { formatOpenHouse } from '../lib/openHouses'
 import FairHousingNotice from '../components/FairHousingNotice'
 import { petsPolicyLabel } from '../lib/petsPolicy'
 import { getMySwipe, setLiked } from '../lib/swipes'
 import toast from 'react-hot-toast'
-import { MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Heart, CalendarDays, Clock, TrendingUp } from 'lucide-react'
+import { MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Heart, CalendarDays, Clock, TrendingUp, MessageCircle, CalendarClock } from 'lucide-react'
 
 export default function ListingDetail() {
   const { id } = useParams()
@@ -19,6 +22,7 @@ export default function ListingDetail() {
   const [loading, setLoading] = useState(true)
   const [photoIndex, setPhotoIndex] = useState(0)
   const [showTour, setShowTour] = useState(false)
+  const [showQuestion, setShowQuestion] = useState(false)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -96,6 +100,14 @@ export default function ListingDetail() {
     setShowTour(true)
   }
 
+  // Same gates as a tour: signed in, renter, reachable agent. Any status.
+  function handleAskQuestion() {
+    if (!user) { requireLogin(); return }
+    if (profile?.role !== 'renter') { toast.error('Only renter accounts can ask questions'); return }
+    if (!canRequestTour) { toast.error('The agent for this listing cannot be reached right now'); return }
+    setShowQuestion(true)
+  }
+
   function totalDueAtSigning(l) {
     if (!l) return 0
     const other = (l.other_fees || []).reduce((sum, f) => sum + (parseInt(f.amount) || 0), 0)
@@ -117,7 +129,7 @@ export default function ListingDetail() {
     : ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80']
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--sand)', paddingBottom: '120px' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--sand)', paddingBottom: '170px' }}>
       <div style={{
         background: 'var(--white)', borderBottom: '1px solid var(--sand-dark)',
         padding: '14px 24px', position: 'sticky', top: 0, zIndex: 50,
@@ -128,9 +140,10 @@ export default function ListingDetail() {
         }}>
           <ChevronLeft size={22} />
         </button>
-        <span style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, color: 'var(--terracotta)' }}>
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, color: 'var(--terracotta)', flex: 1 }}>
           cuna
         </span>
+        <NotificationBell />
       </div>
 
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '24px' }}>
@@ -262,6 +275,21 @@ export default function ListingDetail() {
               </div>
             )}
 
+            {listing.open_houses?.length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <p style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>Open houses</p>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {listing.open_houses.map(oh => (
+                    <li key={oh.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: 'var(--charcoal)' }}>
+                      <CalendarClock size={15} color="var(--terracotta)" />
+                      <span>{formatOpenHouse(oh.starts_at, oh.ends_at)}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p style={{ fontSize: '12px', color: 'var(--warm-gray)', margin: '8px 0 0' }}>Times are New York time. No appointment needed.</p>
+              </div>
+            )}
+
             {listing.amenities?.length > 0 && (
               <div style={{ marginBottom: '20px' }}>
                 <p style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>Amenities</p>
@@ -329,7 +357,7 @@ export default function ListingDetail() {
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: 'var(--white)', borderTop: '1px solid var(--sand-dark)',
-        padding: '12px 24px', display: 'flex', gap: '12px', zIndex: 99,
+        padding: '12px 24px', display: 'flex', flexWrap: 'wrap', gap: '12px', zIndex: 99,
       }}>
         <button
           onClick={handleSave}
@@ -360,10 +388,28 @@ export default function ListingDetail() {
         >
           {canRequestTour ? 'Request a tour' : 'Agent not reachable'}
         </button>
+        {(!user || profile?.role === 'renter') && (
+          <button
+            onClick={handleAskQuestion}
+            disabled={!canRequestTour}
+            style={{
+              flexBasis: '100%', padding: '11px', borderRadius: '12px', fontWeight: 600, fontSize: '14px',
+              background: 'var(--white)', border: '1px solid var(--sand-dark)', color: 'var(--charcoal)',
+              cursor: canRequestTour ? 'pointer' : 'not-allowed', opacity: canRequestTour ? 1 : 0.5,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            }}
+          >
+            <MessageCircle size={16} />
+            Ask a question
+          </button>
+        )}
       </div>
 
       {showTour && (
         <RequestTour listing={listing} onClose={() => setShowTour(false)} />
+      )}
+      {showQuestion && (
+        <AskQuestion listing={listing} onClose={() => setShowQuestion(false)} />
       )}
     </div>
   )

@@ -5,6 +5,7 @@ import { attachPosterContacts, hasPosterContact } from '../lib/posterContacts'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import RequestTour from '../components/RequestTour'
+import NotificationBell from '../components/NotificationBell'
 import { getMySwipes, setHidden, removeSwipe } from '../lib/swipes'
 import { isPublicStatus, statusLabel } from '../lib/listingStatus'
 import toast from 'react-hot-toast'
@@ -81,14 +82,17 @@ export default function SwipeHistory() {
     <div style={{ minHeight: '100dvh', background: 'var(--sand)', paddingBottom: '80px' }}>
       <div style={{
         background: 'var(--white)', borderBottom: '1px solid var(--sand-dark)',
-        padding: '20px 24px',
+        padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px',
       }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 600, color: 'var(--terracotta)' }}>
-          Saved
+        <div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 600, color: 'var(--terracotta)' }}>
+            Saved
+          </div>
+          <div style={{ fontSize: '13px', color: 'var(--warm-gray)', marginTop: '2px' }}>
+            Listings you've saved or passed on
+          </div>
         </div>
-        <div style={{ fontSize: '13px', color: 'var(--warm-gray)', marginTop: '2px' }}>
-          Listings you've saved or passed on
-        </div>
+        <NotificationBell />
       </div>
 
       <div style={{ display: 'flex', padding: '20px 24px 0', gap: '8px' }}>

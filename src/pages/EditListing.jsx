@@ -8,6 +8,7 @@ import { PETS_POLICY_OPTIONS, PETS_POLICY_NOTE, petsPolicyLabel } from '../lib/p
 import toast from 'react-hot-toast'
 import { Loader, ChevronLeft, X, Upload, ChevronRight, AlertTriangle } from 'lucide-react'
 import { LISTING_STATUSES, statusLabel } from '../lib/listingStatus'
+import { getOpenHousesForListing, addOpenHouse, updateOpenHouse, cancelOpenHouse, formatOpenHouse, isUpcoming, nyWallClockToIso, isoToNyFields } from '../lib/openHouses'
 
 const TABS = ['Details', 'Costs & Fees', 'Amenities', 'Photos', 'Review']
 
@@ -25,6 +26,9 @@ export default function EditListing() {
   const [fhAck, setFhAck] = useState(false)
   const [status, setStatus] = useState('active')
   const [statusSaving, setStatusSaving] = useState(false)
+  const [openHouses, setOpenHouses] = useState([])
+  const [ohForm, setOhForm] = useState({ id: null, date: '', start: '', end: '' })
+  const [ohSaving, setOhSaving] = useState(false)
   const fileInputRef = useRef()
 
   const [form, setForm] = useState({
@@ -51,6 +55,9 @@ export default function EditListing() {
     const amenities = data.amenities || []
     setExistingPhotos(data.photos || [])
     setStatus(data.status || 'active')
+    const { data: ohRows, error: ohError } = await getOpenHousesForListing(id)
+    if (ohError) console.error('Open houses fetch failed:', ohError)
+    setOpenHouses(ohRows || [])
     setForm({
       address: data.address || '',
       city: data.city || '',
@@ -369,6 +376,50 @@ export default function EditListing() {
           still request a tour. You can switch back to Active at any time.
         </p>
       </div>
+
+      <div className="card" style={{ marginTop: '16px' }}>
+        <label className="label">Open houses</label>
+        <p style={{ fontSize: '12px', color: 'var(--warm-gray)', lineHeight: 1.55, margin: '6px 0 12px' }}>
+          Shown on the listing page and as a tag in the feed. Renters who saved this listing are
+          notified when you add, change or cancel one. Enter times as New York time; they are
+          stored and shown that way no matter what clock this computer uses.
+        </p>
+        {openHouses.filter(isUpcoming).length === 0 && (
+          <p style={{ fontSize: '13px', color: 'var(--warm-gray)', margin: '0 0 12px' }}>No upcoming open houses.</p>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+          {openHouses.filter(o => new Date(o.ends_at).getTime() > Date.now()).map(oh => (
+            <div key={oh.id} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px',
+              padding: '10px 12px', borderRadius: '10px', background: 'var(--sand)',
+              textDecoration: oh.cancelled_at ? 'line-through' : 'none', color: oh.cancelled_at ? 'var(--warm-gray)' : 'var(--charcoal)',
+            }}>
+              <span style={{ fontSize: '14px' }}>{formatOpenHouse(oh.starts_at, oh.ends_at)}{oh.cancelled_at ? ' (cancelled)' : ''}</span>
+              {!oh.cancelled_at && (
+                <span style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                  <button type="button" className="btn-ghost" onClick={() => editOpenHouse(oh)} style={{ fontSize: '12px', padding: '6px 10px' }}>Edit</button>
+                  <button type="button" className="btn-ghost" onClick={() => handleCancelOpenHouse(oh)} style={{ fontSize: '12px', padding: '6px 10px', color: 'var(--warm-gray)' }}>Cancel</button>
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: '8px' }}>
+          <input type="date" aria-label="Open house date (New York)" value={ohForm.date} onChange={e => setOhForm(f => ({ ...f, date: e.target.value }))} />
+          <input type="time" aria-label="Start time" value={ohForm.start} onChange={e => setOhForm(f => ({ ...f, start: e.target.value }))} />
+          <input type="time" aria-label="End time" value={ohForm.end} onChange={e => setOhForm(f => ({ ...f, end: e.target.value }))} />
+        </div>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+          <button type="button" className="btn-secondary" onClick={saveOpenHouse} disabled={ohSaving} style={{ fontSize: '13px', padding: '10px 16px' }}>
+            {ohSaving ? 'Saving…' : ohForm.id ? 'Save changes' : 'Add open house'}
+          </button>
+          {ohForm.id && (
+            <button type="button" className="btn-ghost" onClick={() => setOhForm({ id: null, date: '', start: '', end: '' })} style={{ fontSize: '13px', padding: '10px 14px' }}>
+              Stop editing
+            </button>
+          )}
+        </div>
+      </div>
     </div>,
 
     // ── TAB 1: COSTS & FEES ──
@@ -667,6 +718,44 @@ export default function EditListing() {
       </div>
     </div>,
   ]
+
+  // Open houses: add, edit and cancel slots on this listing. The date and time
+  // typed here ARE New York times, whatever this computer's clock is set to:
+  // nyWallClockToIso converts through America/New_York (DST included) and
+  // isoToNyFields converts back for editing. Cancel sets cancelled_at --
+  // nothing is ever deleted. Every failure is shown with its reason.
+  function ohToIso(date, time) {
+    return nyWallClockToIso(date, time)
+  }
+  async function saveOpenHouse() {
+    const startsAt = ohToIso(ohForm.date, ohForm.start)
+    const endsAt = ohToIso(ohForm.date, ohForm.end)
+    if (!startsAt || !endsAt) { toast.error('Pick a date, a start time and an end time'); return }
+    if (new Date(endsAt) <= new Date(startsAt)) { toast.error('The end time must be after the start time'); return }
+    setOhSaving(true)
+    const { data, error } = ohForm.id
+      ? await updateOpenHouse(ohForm.id, startsAt, endsAt)
+      : await addOpenHouse(id, startsAt, endsAt)
+    setOhSaving(false)
+    if (error) { toast.error(`Could not save the open house: ${error.message}`); return }
+    setOpenHouses(prev => {
+      const rest = prev.filter(o => o.id !== data.id)
+      return [data, ...rest].sort((a, b) => new Date(b.starts_at) - new Date(a.starts_at))
+    })
+    setOhForm({ id: null, date: '', start: '', end: '' })
+    toast.success(ohForm.id ? 'Open house updated' : 'Open house added')
+  }
+  function editOpenHouse(oh) {
+    const s = isoToNyFields(oh.starts_at), e = isoToNyFields(oh.ends_at)
+    setOhForm({ id: oh.id, date: s.date, start: s.time, end: e.time })
+  }
+  async function handleCancelOpenHouse(oh) {
+    if (!window.confirm(`Cancel the open house on ${formatOpenHouse(oh.starts_at, oh.ends_at)}? Renters who saved this listing will be told.`)) return
+    const { data, error } = await cancelOpenHouse(oh.id)
+    if (error) { toast.error(`Could not cancel: ${error.message}`); return }
+    setOpenHouses(prev => prev.map(o => o.id === data.id ? data : o))
+    toast.success('Open house cancelled')
+  }
 
   // Status is saved on its own, immediately, separate from the form: a poster
   // marking a place rented should not have to re-submit the whole listing.

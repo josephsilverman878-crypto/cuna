@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:tz": "TZ=Asia/Tokyo node --test tests/nyTime.test.mjs && TZ=America/Los_Angeles node --test tests/nyTime.test.mjs && TZ=UTC node --test tests/nyTime.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

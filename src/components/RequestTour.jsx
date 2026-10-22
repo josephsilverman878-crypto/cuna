@@ -134,19 +134,18 @@ export default function RequestTour({ listing, onClose }) {
         ...shared,
       }
 
-      const resp = await fetch('/api/send-inquiry', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(emailPayload),
-      })
-      if (!resp.ok) throw new Error('Email could not be sent')
-
-      // Snapshot what was actually shared at send time, so the poster's
-      // dashboard reflects this moment rather than the renter's current settings.
+      // The inquiry row goes in FIRST, so the database rate limit
+      // (inquiries_rate_limit, 34-saved-alerts.sql) can refuse it before any
+      // email leaves. This reverses the old order (email, then row): the old
+      // way could never be limited, and a failed row left the poster with an
+      // email and no dashboard entry. Now a refused row means no email, and
+      // a failed email leaves a row the poster can still see on the dashboard.
+      // The snapshot columns record exactly what was shared at this moment.
       const insertPayload = {
         listing_id: listing.id,
         renter_id: user.id,
         poster_id: listing.poster_id,
+        kind: 'tour',
         tour_type: tourType,
         preferred_times: cleanTimes,
         message: message.trim() || null,
@@ -156,11 +155,16 @@ export default function RequestTour({ listing, onClose }) {
         shared_pet_details: shared.petDetails || null,
         shared_credit_score_range: shared.creditScoreRange || null,
       }
-
       const { error: dbError } = await supabase
         .from('inquiries').insert(insertPayload)
+      if (dbError) throw new Error(dbError.message || 'Could not save your request')
 
-      if (dbError) console.error('Inquiry row failed after email sent:', dbError)
+      const resp = await fetch('/api/send-inquiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailPayload),
+      })
+      if (!resp.ok) throw new Error('Your request was saved for the agent, but the email could not be sent')
 
       setSent(true)
     } catch (err) {
