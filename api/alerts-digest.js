@@ -49,7 +49,10 @@ export default async function handler(req, res) {
     .is('emailed_at', null)
     .order('created_at', { ascending: true })
     .limit(500)
-  if (error) return res.status(500).json({ error: 'Could not read notifications' })
+  if (error) {
+    console.error('Alert digest: could not read notifications:', error.code, error.message, error.details || '', error.hint || '')
+    return res.status(500).json({ error: 'Could not read notifications' })
+  }
   if (!rows || rows.length === 0) return res.status(200).json({ ok: true, users: 0, sent: 0 })
 
   const byUser = new Map()
@@ -67,6 +70,7 @@ export default async function handler(req, res) {
       ? supabase.from('listings').select('id, address, neighborhood, city, status').in('id', listingIds)
       : Promise.resolve({ data: [] }),
   ])
+  console.log('Alert digest: unemailed rows', rows.length, 'users', userIds.length, 'listings', listingIds.length)
   const emailOf = new Map((profiles || []).map(p => [p.id, p]))
   const wants = new Map((prefs || []).map(p => [p.id, p.alert_emails !== false]))
   const listingOf = new Map((listings || []).map(l => [l.id, l]))
