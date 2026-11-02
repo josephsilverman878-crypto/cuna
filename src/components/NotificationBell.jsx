@@ -108,7 +108,7 @@ export default function NotificationBell() {
                 <p style={{ padding: '16px 14px', fontSize: '13px', color: 'var(--warm-gray)', margin: 0 }}>Loading…</p>
               ) : items.length === 0 ? (
                 <p style={{ padding: '16px 14px', fontSize: '13px', color: 'var(--warm-gray)', margin: 0, lineHeight: 1.5 }}>
-                  Nothing yet. Save a listing and you'll hear about status changes, price changes and open houses here.
+                  Nothing yet. Save a listing and you'll hear here whenever it changes: status, price, fees, available date, open houses or the details.
                 </p>
               ) : items.map(n => (
                 <button

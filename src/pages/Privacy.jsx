@@ -40,7 +40,7 @@ export default function Privacy() {
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '24px' }}>
         <div className="card">
           <p style={{ fontSize: '13px', color: 'var(--warm-gray)', marginBottom: '20px' }}>
-            Last updated: October 21, 2026
+            Last updated: November 2, 2026
           </p>
 
           <P>
@@ -81,13 +81,13 @@ export default function Privacy() {
             <li><strong>Account details</strong> — your email address, a password, your name, your cell phone number, whether you signed up as a Renter or a Poster, and the time you accepted our Terms and this policy. Your password is stored only in scrambled (hashed) form by our sign-in provider; we never see it. We use these to run your account, sign you in, and reach you about things you have asked us to do.</li>
             <li><strong>Poster licence details</strong> — if you sign up as a Poster: your name as it appears on your New York Department of State real estate licence, your licence number, your licence type (salesperson, broker, or owner without a licence), and your brokerage name if you give one. We use these to check that you may publish listings. Section 6 says who sees them.</li>
             <li><strong>Renter preferences</strong> — if you are a Renter, you can optionally tell us your budget range, bedrooms, minimum square footage, preferred neighborhoods, target move-in date, whether you have pets and what kind, and your credit score range. We use budget, bedrooms, square footage and neighborhoods to filter your feed when you turn filters on. Move-in date, pets and credit range are used for one thing only: they can be included in a tour request if the matching sharing switch is on (Section 5).</li>
-            <li><strong>Sharing switches</strong> — four settings on your Renter profile that control what a tour request includes: phone number, move-in date, pets, and credit score range. Two start on (move-in date and pets) and two start off (phone number and credit score range). You can change any of them at any time. A fifth switch, "Email me about saved listings," controls summary emails (see "Saved listings, notifications and alert emails" below).</li>
-            <li><strong>Saved and hidden listings</strong> — the listings you save with the heart and the ones you hide from your feed. Saving is a private bookmark: the Poster is not told who saved a listing, only how many people did. We do use your saves to tell you when those listings change (see "Saved listings, notifications and alert emails" below).</li>
+            <li><strong>Sharing switches</strong> — four settings on your Renter profile that control what a tour request includes: phone number, move-in date, pets, and credit score range. Two start on (move-in date and pets) and two start off (phone number and credit score range). You can change any of them at any time. A fifth switch, "Email me about saved listings," controls summary emails (see "Alerts about listings you save" below).</li>
+            <li><strong>Saved and hidden listings</strong> — the listings you save with the heart and the ones you hide from your feed. Saving is a private bookmark: the Poster is not told who saved a listing, only how many people did. We do use your saves to tell you when those listings change (see "Alerts about listings you save" below).</li>
             <li><strong>Tour requests</strong> — when you ask to tour a listing: whether you want an in-person or video tour, up to three preferred times, any message you write, and a record of exactly which optional details were included. Section 5 covers this in full.</li>
             <li><strong>Questions to Posters</strong> — if you use "Ask a question" on a listing, the question you write. Only your name and email travel with it. Section 5.</li>
             <li><strong>"New to NY" quiz answers</strong> — if you take the optional neighborhood quiz, your answers about what you want from a place to live. Section 9 covers where they are kept.</li>
             <li><strong>Listings</strong> — if you are a Poster: the address, neighborhood, rent, fees, bedrooms, bathrooms, size, description, amenities, availability date and photos of each listing you post; its status (Active, In contract, Rented, Off-market or De-listed) and a history of its status and price changes; and any open house times you schedule. Listings, their status, their open houses and their photos are public. Do not put anything in a listing that you would not want anyone on the internet to see. Section 7 explains statuses, history and open houses.</li>
-            <li><strong>Notifications</strong> — the alerts we create for you about listings you saved: which listing, what changed, when, whether you have read it, and whether it has been emailed to you. See "Saved listings, notifications and alert emails" below.</li>
+            <li><strong>Notifications</strong> — the alerts we create for you about listings you saved: which listing, what changed, when, whether you have read it, and whether it has been emailed to you. See "Alerts about listings you save" below.</li>
             <li><strong>Emails you send us</strong> — anything you send to hello@hellocuna.com, including from the "Tell us what you're looking for" button on the quiz results page. That button opens your own email app with a draft addressed to us that includes the neighborhood and your budget, size, commute and pace answers. Nothing leaves your device until you press send in your email app, and you can edit the draft first.</li>
           </UL>
           <P><strong>Information collected automatically</strong></P>
@@ -109,7 +109,7 @@ export default function Privacy() {
             <li>To send a tour request or a question to the Poster of a listing when you ask us to, and a confirmation copy to you;</li>
             <li>To limit how many tour requests and questions one account can send in a short period, so Posters are not flooded;</li>
             <li>To show Posters the tour requests, questions, save counts and view counts for their own listings;</li>
-            <li>To tell you, under the bell in the app, when a listing you saved changes status or price or gets an open house added, changed or cancelled — and, if that switch is on, to send you a summary by email (see "Saved listings, notifications and alert emails" below);</li>
+            <li>To tell you, under the bell in the app, whenever a listing you saved changes — status, price, fees, available date, open houses, description, photos or other details — and, if your email switch is on, to send you a summary by email (see "Alerts about listings you save" below);</li>
             <li>To check that Posters hold a valid licence before they can publish;</li>
             <li>To rank neighborhoods for you in the quiz, if you take it, and to save your results to your account if you ask;</li>
             <li>To answer your emails and act on your requests, including privacy requests;</li>
@@ -125,12 +125,12 @@ export default function Privacy() {
           <UL>
             <li><strong>With the Poster of a listing, when you send a tour request or ask a question.</strong> For a tour request the Poster receives your name, the email address on your account, your tour type, times and message, and only those optional details whose sharing switch was on when you sent it. For a question the Poster receives your name, your email address and the question, and nothing else. Section 5 lists exactly what is and is not included.</li>
             <li><strong>With Renters, if you are a Poster.</strong> Your listings, their status, their open houses and their photos are public. A Renter who sends you a tour request or a question learns your name and your email address, because our email to them names you and is addressed so that a reply goes to you. Your licence details and brokerage are never included. Section 6 says what the listing page itself loads.</li>
-            <li><strong>With Renters who saved your listing, if you are a Poster.</strong> They are told what changed — the new status, a price change, or an open house added, changed or cancelled — in a plain sentence naming the listing. Nothing about you travels with it, and you are never told who was notified.</li>
+            <li><strong>With Renters who saved your listing, if you are a Poster.</strong> They are told what changed — a new status, a price change, a fee or available-date change, an open house added, changed or cancelled, or that you updated the details (description, photos, amenities and so on) — in a plain sentence naming the listing. Nothing about you travels with it, and you are never told who was notified.</li>
             <li><strong>With the public.</strong> Listings, their status, open houses and photos can be seen by anyone, with or without an account, including on the quiz results page.</li>
             <li><strong>With the companies that run the Service for us.</strong> Each sees only what it needs to do its job:
               <ul style={{ paddingLeft: '20px', marginTop: '6px' }}>
                 <li><strong>Supabase</strong> — our database, sign-in system and photo storage. It holds all account, listing and activity data and sends password-reset emails.</li>
-                <li><strong>Vercel</strong> — hosts the website, runs the small function that sends tour-request and question emails, and runs a once-a-day scheduled job that prepares saved-listing summary emails. It keeps short-lived request logs.</li>
+                <li><strong>Vercel</strong> — hosts the website, runs the small function that sends tour-request and question emails, and runs a scheduled job (once a day now, at most twice a day) that prepares and sends saved-listing summary emails. It keeps short-lived request logs.</li>
                 <li><strong>Resend</strong> — delivers tour-request, question and saved-listing emails from hello@hellocuna.com. It handles the contents of each email in order to deliver it.</li>
                 <li><strong>Google Fonts</strong> — the typefaces on the site load from Google's servers, so Google receives your IP address and browser details when a page loads.</li>
                 <li><strong>Unsplash</strong> — when a listing has no photo, a placeholder image is loaded from Unsplash, which receives the same technical details.</li>
@@ -244,38 +244,48 @@ export default function Privacy() {
             on record, marked cancelled, rather than deleted. Open houses are shown to anyone who
             can see the listing, on the listing page and as a tag on feed cards, and are not tied to
             any person other than the Poster. Renters who saved the listing are told when an open
-            house is added, changed or cancelled (see "Saved listings, notifications and alert emails" below).
+            house is added, changed or cancelled (see "Alerts about listings you save" below).
           </P>
 
-          <H>8. Saved listings, notifications and alert emails</H>
+          <H>8. Alerts about listings you save</H>
           <P>
-            When you save a listing, we use that save to tell you when something about it changes:
-            when the Poster marks it In contract, Rented, Off-market or De-listed (or Active again),
-            when the price goes up or down, and when an open house is added, changed or cancelled.
-            Each of these is a short sentence naming the listing — for example "123 Main St was
-            marked Rented" — and appears as a notification under the bell in the app, with an
-            unread count. Tapping one opens the listing; "Mark all read" clears the count.
+            When you save a listing, we use that save to tell you when something about it changes.
+            Any change the Poster makes to the listing counts: its status (In contract, Rented,
+            Off-market, De-listed, or Active again), its price, its fees, its available date, an
+            open house added, changed or cancelled, and edits to the details — the description,
+            photos, amenities, pet policy, size or address. We do not alert you about things you
+            cannot see, such as a listing's view count or our own bookkeeping, and a save that
+            changes nothing creates nothing.
           </P>
           <P>
-            We store each notification on your account: the listing, the sentence, when it was
-            created, whether you have read it, and whether it has been emailed to you. Only you can
-            read your notifications. Posters are never told who received one; they already see only
-            the number of saves on a listing, never the names.
+            <strong>The bell.</strong> Each change becomes a short sentence naming the listing —
+            "123 Main St was marked Rented", "Price dropped $200 on 123 Main St (now $2,800)" — and
+            appears right away under the bell in the app, with an unread count. Small edits to the
+            details are grouped: however many times a Poster edits the description or photos in a
+            day, you get one line, "The poster updated the listing details (description, photos)".
+            Tapping a notification opens the listing; "Mark all read" clears the count.
           </P>
           <P>
-            <strong>Alert emails.</strong> Your profile has a switch, "Email me about saved
-            listings," which is on by default. When saved-listing emails are switched on for the
-            Service, a once-a-day job gathers the notifications that have not yet been emailed to
-            you and sends you one summary from hello@hellocuna.com, containing the same sentences
-            you see under the bell and links to the listings. We note on each notification when it
-            was emailed, so the same change is never sent twice. At launch these emails are switched
-            off for everyone; the bell works regardless. When we turn them on, your profile switch
-            applies.
+            <strong>Summary emails.</strong> If "Email me about saved listings" is on in your
+            profile (it is on by default), we also email you a summary from hello@hellocuna.com,
+            grouped by listing, with a link to each listing on hellocuna.com. We send one only when
+            something has changed since your last summary, and at most twice a day (currently once
+            a day, in the morning New York time). Each summary covers everything since the previous
+            one, so the same change is never emailed twice. These are not marketing emails: they
+            contain only the changes to listings you chose to save. Resend delivers them for us.
           </P>
           <P>
-            <strong>Turning alert emails off.</strong> Switch "Email me about saved listings" off on
-            your profile, or use the unsubscribe link at the bottom of any alert email. The link
-            works without signing in, takes one click, and changes only that switch. The bell keeps
+            <strong>What we store.</strong> Each notification is stored on your account: the
+            listing, the sentence, which details it covers, when it was created, whether you have
+            read it, and whether it has been emailed to you. We keep these records for as long as
+            your account exists; deleting your account removes them. Only you can read your
+            notifications. Posters are never told who received one; they see only how many people
+            saved a listing, never the names.
+          </P>
+          <P>
+            <strong>Turning emails off.</strong> Switch "Email me about saved listings" off on your
+            profile, or use the unsubscribe link at the bottom of any summary email. The link works
+            without signing in, takes one click, and changes only that switch. The bell keeps
             working either way. Tour-request, question and password-reset emails are not affected,
             because they are the direct result of something you asked us to do.
           </P>
@@ -340,8 +350,10 @@ export default function Privacy() {
             using those features, because they are the feature.
           </P>
           <P>
-            <strong>Saved-listing summary emails</strong> are optional. Turn them off with the switch
-            on your profile or the unsubscribe link in any such email (see "Saved listings, notifications and alert emails" below).
+            <strong>Saved-listing summary emails</strong> are optional. They go out only when a
+            listing you saved has changed, at most twice a day. Turn them off with the switch on
+            your profile or the one-click unsubscribe link in any such email, which needs no sign-in
+            (see "Alerts about listings you save" above).
           </P>
           <P>
             <strong>Promotional emails.</strong> We do not send any. If we ever start, we will ask
@@ -351,7 +363,7 @@ export default function Privacy() {
 
           <H>12. How long we keep information</H>
           <UL>
-            <li><strong>Your account, preferences, saved and hidden listings, quiz answers and notifications</strong> — for as long as your account exists. Deleting your account removes them.</li>
+            <li><strong>Your account, preferences, saved and hidden listings, quiz answers and notifications</strong> (including each notification's read and emailed status) — for as long as your account exists. Deleting your account removes them.</li>
             <li><strong>Tour requests and questions</strong> — for as long as your account exists, because the Poster needs the record of who asked about their listing. When your account is deleted the records go with it. The copy already in the Poster's inbox is theirs and outside our control.</li>
             <li><strong>Listings, their status and price history, and their open houses (including cancelled ones)</strong> — for the life of the listing. Posters cannot delete a listing; a De-listed listing stays stored and viewable at its own link. If we remove a listing at a Poster's request, its history, open houses, tour requests, questions, saves and the notifications about it go with it.</li>
             <li><strong>Photos</strong> — when a listing is removed, its photo files may remain in our storage until we clear them. Email us and we will remove them straight away.</li>
