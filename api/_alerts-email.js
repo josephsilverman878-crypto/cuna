@@ -44,8 +44,8 @@ export function renderDigest({ name, groups, base, unsubUrl }) {
   const count = groups.length
   const subject = 'Updates on homes you saved'
   const intro = count === 1
-    ? 'Here is what changed on a home you saved on Cuna.'
-    : `Here is what changed on ${count} homes you saved on Cuna.`
+    ? "Here's what changed on a home you saved on Cuna."
+    : `Here's what changed on ${count} homes you saved on Cuna.`
 
   const blocksHtml = groups.map(({ listing, rows }) => {
     const link = `${base}/listing/${listing.id}`
@@ -72,9 +72,8 @@ export function renderDigest({ name, groups, base, unsubUrl }) {
         <a href="${base}/feed" style="color:#B44A36">Open Cuna</a> to see everything you saved.
       </p>
       <p style="color:#9B8E88;font-size:12px;margin-top:28px;line-height:1.6">
-        You get these summaries because you saved these homes on Cuna; we send one only when something changed, at most twice a day.
-        <a href="${unsubUrl}" style="color:#9B8E88">Unsubscribe from saved-listing emails</a> in one click, no sign-in needed,
-        or change it any time on your <a href="${base}/profile" style="color:#9B8E88">profile</a>. The bell in the app keeps working either way.<br>
+        <a href="${unsubUrl}" style="color:#9B8E88">Unsubscribe</a> (one click, no sign-in)
+        or make a change to your <a href="${base}/profile" style="color:#9B8E88">profile</a>.<br>
         Cuna LLC · 433 Broadway, New York, NY 10013 · hello@hellocuna.com
       </p>
     </div>`
@@ -93,10 +92,8 @@ export function renderDigest({ name, groups, base, unsubUrl }) {
       ]
     }),
     `Open Cuna: ${base}/feed`, '',
-    'You get these summaries because you saved these homes on Cuna; we send one only when something changed, at most twice a day.',
     `Unsubscribe (one click, no sign-in): ${unsubUrl}`,
-    `Or change it on your profile: ${base}/profile`,
-    'The bell in the app keeps working either way.',
+    `Or make a change to your profile: ${base}/profile`,
     'Cuna LLC · 433 Broadway, New York, NY 10013 · hello@hellocuna.com',
   ].join('\n')
 
