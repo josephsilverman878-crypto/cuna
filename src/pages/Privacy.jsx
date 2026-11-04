@@ -40,7 +40,7 @@ export default function Privacy() {
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '24px' }}>
         <div className="card">
           <p style={{ fontSize: '13px', color: 'var(--warm-gray)', marginBottom: '20px' }}>
-            Last updated: November 2, 2026
+            Last updated: November 4, 2026
           </p>
 
           <P>
@@ -81,7 +81,7 @@ export default function Privacy() {
             <li><strong>Account details</strong> — your email address, a password, your name, your cell phone number, whether you signed up as a Renter or a Poster, and the time you accepted our Terms and this policy. Your password is stored only in scrambled (hashed) form by our sign-in provider; we never see it. We use these to run your account, sign you in, and reach you about things you have asked us to do.</li>
             <li><strong>Poster licence details</strong> — if you sign up as a Poster: your name as it appears on your New York Department of State real estate licence, your licence number, your licence type (salesperson, broker, or owner without a licence), and your brokerage name if you give one. We use these to check that you may publish listings. Section 6 says who sees them.</li>
             <li><strong>Renter preferences</strong> — if you are a Renter, you can optionally tell us your budget range, bedrooms, minimum square footage, preferred neighborhoods, target move-in date, whether you have pets and what kind, and your credit score range. We use budget, bedrooms, square footage and neighborhoods to filter your feed when you turn filters on. Move-in date, pets and credit range are used for one thing only: they can be included in a tour request if the matching sharing switch is on (Section 5).</li>
-            <li><strong>Sharing switches</strong> — four settings on your Renter profile that control what a tour request includes: phone number, move-in date, pets, and credit score range. Two start on (move-in date and pets) and two start off (phone number and credit score range). You can change any of them at any time. A fifth switch, "Email me about saved listings," controls summary emails (see "Alerts about listings you save" below).</li>
+            <li><strong>Sharing switches</strong> — four settings on your Renter profile that control what a tour request includes: phone number, move-in date, pets, and credit score range. Two start on (move-in date and pets) and two start off (phone number and credit score range). You can change any of them at any time.</li>
             <li><strong>Saved and hidden listings</strong> — the listings you save with the heart and the ones you hide from your feed. Saving is a private bookmark: the Poster is not told who saved a listing, only how many people did. We do use your saves to tell you when those listings change (see "Alerts about listings you save" below).</li>
             <li><strong>Tour requests</strong> — when you ask to tour a listing: whether you want an in-person or video tour, up to three preferred times, any message you write, and a record of exactly which optional details were included. Section 5 covers this in full.</li>
             <li><strong>Questions to Posters</strong> — if you use "Ask a question" on a listing, the question you write. Only your name and email travel with it. Section 5.</li>
@@ -266,9 +266,9 @@ export default function Privacy() {
             Tapping a notification opens the listing; "Mark all read" clears the count.
           </P>
           <P>
-            <strong>Summary emails.</strong> If "Email me about saved listings" is on in your
-            profile (it is on by default), we also email you a summary from hello@hellocuna.com,
-            grouped by listing, with a link to each listing on hellocuna.com. We send one only when
+            <strong>Summary emails.</strong> Saving a listing also signs you up for its email
+            updates: we email you a summary from hello@hellocuna.com, grouped by listing, with a
+            link to each listing on hellocuna.com. We send one only when
             something has changed since your last summary, and at most twice a day (currently once
             a day, in the morning New York time). Each summary covers everything since the previous
             one, so the same change is never emailed twice. These are not marketing emails: they
@@ -283,11 +283,14 @@ export default function Privacy() {
             saved a listing, never the names.
           </P>
           <P>
-            <strong>Turning emails off.</strong> Switch "Email me about saved listings" off on your
-            profile, or use the unsubscribe link at the bottom of any summary email. The link works
-            without signing in, takes one click, and changes only that switch. The bell keeps
-            working either way. Tour-request, question and password-reset emails are not affected,
-            because they are the direct result of something you asked us to do.
+            <strong>Stopping the emails.</strong> The updates follow your saves: to stop hearing
+            about a listing, unsave it (the heart on the listing, or "Remove" in your Saved
+            listings), and both the emails and the bell notifications about it stop. The link at
+            the bottom of every summary email takes you to your Saved listings — if you are signed
+            out, to the sign-in page first and then straight to Saved listings. There is no separate
+            email switch for these updates. Tour-request, question and password-reset emails are
+            not affected either way, because they are the direct result of something you asked us
+            to do.
           </P>
 
           <H>9. The "New to NY" quiz</H>
@@ -350,10 +353,10 @@ export default function Privacy() {
             using those features, because they are the feature.
           </P>
           <P>
-            <strong>Saved-listing summary emails</strong> are optional. They go out only when a
-            listing you saved has changed, at most twice a day. Turn them off with the switch on
-            your profile or the one-click unsubscribe link in any such email, which needs no sign-in
-            (see "Alerts about listings you save" above).
+            <strong>Saved-listing summary emails</strong> come with saving a listing. They go out
+            only when a listing you saved has changed, at most twice a day, and they stop when you
+            unsave the listing (see "Alerts about listings you save" above). They are notices about
+            something you asked us to watch, not promotions.
           </P>
           <P>
             <strong>Promotional emails.</strong> We do not send any. If we ever start, we will ask

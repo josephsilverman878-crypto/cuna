@@ -51,7 +51,6 @@ export default function Profile() {
     bedrooms: '', sqft_min: '', neighborhoods: '',
     credit_score_range: '', has_pets: false, pet_details: '',
     show_phone: false, show_move_in: true, show_pets: true, show_credit: false,
-    alert_emails: true,
   })
 
   // Load the renter row exactly ONCE per user. This effect calls setForm(), so
@@ -109,7 +108,6 @@ export default function Profile() {
         show_move_in: data.show_move_in ?? true,
         show_pets: data.show_pets ?? true,
         show_credit: data.show_credit || false,
-        alert_emails: data.alert_emails ?? true,
       })
     }
   }
@@ -170,7 +168,6 @@ export default function Profile() {
         show_move_in: form.show_move_in,
         show_pets: form.show_pets,
         show_credit: form.show_credit,
-        alert_emails: form.alert_emails !== false,
         updated_at: new Date().toISOString(),
       })
       if (error) throw error
@@ -387,8 +384,6 @@ export default function Profile() {
                 When a listing you saved changes status or price, or adds an open house, it shows up
                 under the bell. Turn this on to also get a summary by email.
               </p>
-              <Toggle label="Email me about saved listings" value={form.alert_emails !== false}
-                onToggle={() => update('alert_emails', form.alert_emails === false)} />
             </div>
 
             <button
