@@ -381,8 +381,9 @@ export default function Profile() {
             <div className="card">
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', marginBottom: '4px' }}>Notifications</h2>
               <p style={{ fontSize: '12px', color: 'var(--warm-gray)', marginBottom: '16px', lineHeight: 1.5 }}>
-                When a listing you saved changes status or price, or adds an open house, it shows up
-                under the bell. Turn this on to also get a summary by email.
+                Whenever a listing you saved changes — status, price, fees, available date, open
+                houses or the details — it shows up under the bell, and you get a summary by email
+                when something changed, at most twice a day. To stop updates for a listing, unsave it.
               </p>
             </div>
 
