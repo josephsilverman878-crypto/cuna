@@ -1,7 +1,8 @@
 // Saved-listing alert digest. Runs on Vercel Cron (vercel.json) and sends
 // each user ONE email summarising their notifications that have not been
 // emailed yet (everything since that user's last summary), grouped by
-// listing, then stamps emailed_at.
+// listing, then stamps emailed_at. Every saver gets them: the emails come with
+// the save; unsaving a listing stops them (and the bell rows) for that listing.
 //
 // SCHEDULE. Built for twice a day (about 9 AM and 7 PM New York). The project
 // is on Vercel's Hobby plan, which only accepts once-a-day cron schedules and
@@ -19,11 +20,9 @@
 //   SUPABASE_SERVICE_ROLE_KEY   service role (bypasses RLS: reads notifications
 //                               for every user and writes emailed_at)
 //   RESEND_API_KEY              already set for tour emails
-//   ALERT_UNSUBSCRIBE_SECRET    HMAC key for the one-click unsubscribe token
 //   INQUIRY_TEST_RECIPIENT      on Preview: every email goes here instead
 //   PUBLIC_BASE_URL             e.g. https://hellocuna.com (links)
 import { createClient } from '@supabase/supabase-js'
-import { unsubscribeToken } from './_alerts-token.js'
 import { renderDigest } from './_alerts-email.js'
 
 export default async function handler(req, res) {
@@ -36,7 +35,7 @@ export default async function handler(req, res) {
   }
   const url = process.env.SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key || !process.env.RESEND_API_KEY || !process.env.ALERT_UNSUBSCRIBE_SECRET) {
+  if (!url || !key || !process.env.RESEND_API_KEY) {
     return res.status(500).json({ error: 'Missing server configuration' })
   }
   const supabase = createClient(url, key, { auth: { persistSession: false } })
@@ -63,16 +62,14 @@ export default async function handler(req, res) {
   const userIds = [...byUser.keys()]
   const listingIds = [...new Set(rows.map(r => r.listing_id).filter(Boolean))]
 
-  const [{ data: profiles }, { data: prefs }, { data: listings }] = await Promise.all([
+  const [{ data: profiles }, { data: listings }] = await Promise.all([
     supabase.from('profiles').select('id, name, email').in('id', userIds),
-    supabase.from('renter_profiles').select('id, alert_emails').in('id', userIds),
     listingIds.length
       ? supabase.from('listings').select('id, address, neighborhood, city, status').in('id', listingIds)
       : Promise.resolve({ data: [] }),
   ])
   console.log('Alert digest: unemailed rows', rows.length, 'users', userIds.length, 'listings', listingIds.length)
   const emailOf = new Map((profiles || []).map(p => [p.id, p]))
-  const wants = new Map((prefs || []).map(p => [p.id, p.alert_emails !== false]))
   const listingOf = new Map((listings || []).map(l => [l.id, l]))
 
   const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '')
@@ -84,9 +81,11 @@ export default async function handler(req, res) {
     const prof = emailOf.get(userId)
     const ids = items.map(i => i.id)
 
-    // Opted out (or no renter row, or no email): mark as handled so the queue
-    // does not grow forever, send nothing.
-    if (!prof?.email || !wants.get(userId)) {
+    // Emails follow the save itself (no per-user switch): a renter stops them
+    // by unsaving the listing, which stops the notifications too. Only a user
+    // with no email address is skipped; their rows are marked handled so the
+    // queue does not grow forever.
+    if (!prof?.email) {
       await supabase.from('notifications').update({ emailed_at: now }).in('id', ids)
       suppressed += 1
       continue
@@ -106,9 +105,8 @@ export default async function handler(req, res) {
       byListing.get(lid).rows.push(r)
     }
 
-    const token = unsubscribeToken(userId, process.env.ALERT_UNSUBSCRIBE_SECRET)
-    const unsubUrl = `${base}/api/alerts-unsubscribe?t=${encodeURIComponent(token)}`
-    const { subject, html, text } = renderDigest({ name: prof.name, groups, base, unsubUrl })
+    const savedUrl = `${base}/history`
+    const { subject, html, text } = renderDigest({ name: prof.name, groups, base, savedUrl })
 
     const resp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -119,10 +117,6 @@ export default async function handler(req, res) {
         subject,
         html,
         text,
-        headers: {
-          'List-Unsubscribe': `<${unsubUrl}>`,
-          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-        },
       }),
     })
     if (resp.ok) {

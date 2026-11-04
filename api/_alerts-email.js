@@ -1,5 +1,7 @@
 // Builds the saved-listing summary email: subject, HTML and plain text.
-// Pure: no env, no network. A leading underscore keeps Vercel from exposing
+// Pure: no env, no network. The footer links to Saved listings: emails follow
+// the save itself, so unsaving a listing is how a renter stops them.
+// A leading underscore keeps Vercel from exposing
 // this file as a route. Used by api/alerts-digest.js and by the local sample
 // renderer in cuna-security/tools (so a sample can be shown without sending).
 
@@ -38,7 +40,8 @@ export function linesForListing(rows) {
 }
 
 // groups: [{ listing: { id, address, neighborhood, city, status }, rows: [...] }]
-export function renderDigest({ name, groups, base, unsubUrl }) {
+export function renderDigest({ name, groups, base, savedUrl }) {
+  savedUrl = savedUrl || `${base}/history`
   const first = (name || '').trim().split(/\s+/)[0]
   const hi = first ? `Hi ${first},` : 'Hi,'
   const count = groups.length
@@ -72,8 +75,8 @@ export function renderDigest({ name, groups, base, unsubUrl }) {
         <a href="${base}/feed" style="color:#B44A36">Open Cuna</a> to see everything you saved.
       </p>
       <p style="color:#9B8E88;font-size:12px;margin-top:28px;line-height:1.6">
-        <a href="${unsubUrl}" style="color:#9B8E88">Unsubscribe</a> (one click, no sign-in)
-        or make a change to your <a href="${base}/profile" style="color:#9B8E88">profile</a>.<br>
+        You get these updates because you saved these homes on Cuna. To stop updates for a home, unsave it in your
+        <a href="${savedUrl}" style="color:#9B8E88">Saved listings</a>.<br>
         Cuna LLC · 433 Broadway, New York, NY 10013 · hello@hellocuna.com
       </p>
     </div>`
@@ -92,8 +95,8 @@ export function renderDigest({ name, groups, base, unsubUrl }) {
       ]
     }),
     `Open Cuna: ${base}/feed`, '',
-    `Unsubscribe (one click, no sign-in): ${unsubUrl}`,
-    `Or make a change to your profile: ${base}/profile`,
+    'You get these updates because you saved these homes on Cuna.',
+    `To stop updates for a home, unsave it in your Saved listings: ${savedUrl}`,
     'Cuna LLC · 433 Broadway, New York, NY 10013 · hello@hellocuna.com',
   ].join('\n')
 

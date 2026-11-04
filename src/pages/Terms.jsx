@@ -35,7 +35,7 @@ export default function Terms() {
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '24px' }}>
         <div className="card">
           <p style={{ fontSize: '13px', color: 'var(--warm-gray)', marginBottom: '20px' }}>
-            Last updated: November 2, 2026
+            Last updated: November 4, 2026
           </p>
 
           <P>
@@ -160,9 +160,9 @@ export default function Terms() {
             Saving a listing is a private bookmark; the Poster sees only how many people saved a
             listing, never who. When a listing you saved changes in any way — status, price, fees,
             available date, open houses, or its details — Cuna tells you under the bell in the app.
-            If "Email me about saved listings" is on in your profile (it is on by default), you also
-            get a summary by email when something has changed, at most twice a day, with a one-click
-            unsubscribe link in every such email. Notifications are informational: they are not a
+            Saving a listing also signs you up for email summaries of its changes, sent only when
+            something has changed and at most twice a day; unsaving the listing stops them, and every
+            such email links to your Saved listings. Notifications are informational: they are not a
             promise that a listing is or will be available, and we may change or discontinue them.
           </P>
 

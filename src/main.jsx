@@ -27,8 +27,10 @@ import NewToNYResults from './pages/NewToNYResults'
 
 function ProtectedRoute({ children, role }) {
   const { user, profile, loading } = useAuth()
+  const location = useLocation()
   if (loading) return <div className="center" style={{ height: '100dvh' }}><div className="spinner" /></div>
-  if (!user) return <Navigate to="/login" replace />
+  // Signed out: go to sign-in and come back here afterwards (Login.jsx reads ?next=).
+  if (!user) return <Navigate to={'/login?next=' + encodeURIComponent(location.pathname + location.search)} replace />
   if (role && profile?.role !== role) return <Navigate to="/" replace />
   return children
 }
