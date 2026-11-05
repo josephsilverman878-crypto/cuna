@@ -15,6 +15,10 @@ import CommuteCalculator from '../components/CommuteCalculator'
 import ListingMedia from '../components/ListingMedia'
 import ShareButton from '../components/ShareButton'
 import ReportListing from '../components/ReportListing'
+import SaleDetails from '../components/SaleDetails'
+import RecordedSales from '../components/RecordedSales'
+import PastListings from '../components/PastListings'
+import { isSale, priceText, propertyTypeLabel } from '../lib/listingTypes'
 import { hasConcession, concessionText } from '../lib/netEffective'
 import { petsPolicyLabel } from '../lib/petsPolicy'
 import { getMySwipe, setLiked } from '../lib/swipes'
@@ -158,7 +162,7 @@ export default function ListingDetail() {
         </span>
         <ShareButton
           title={`${listing.address} on Cuna`}
-          text={`$${listing.price?.toLocaleString()}/mo · ${listing.bedrooms} bed · ${listing.neighborhood || listing.city}`}
+          text={`${priceText(listing)} · ${listing.bedrooms} bed · ${listing.neighborhood || listing.city}`}
           label="Share this listing"
         />
         <NotificationBell />
@@ -227,8 +231,13 @@ export default function ListingDetail() {
               <div style={{
                 fontFamily: 'var(--font-display)', fontSize: '30px', fontWeight: 600, color: 'var(--terracotta)',
               }}>
-                ${listing.price?.toLocaleString()}<span style={{ fontSize: '16px', color: 'var(--warm-gray)' }}>/mo</span>
+                ${listing.price?.toLocaleString()}{!isSale(listing) && <span style={{ fontSize: '16px', color: 'var(--warm-gray)' }}>/mo</span>}
               </div>
+              {isSale(listing) && (
+                <span style={{ fontSize: '12px', fontWeight: 600, padding: '3px 9px', borderRadius: '12px', background: 'rgba(196,113,74,0.12)', color: 'var(--terracotta)' }}>
+                  For sale{propertyTypeLabel(listing.property_type) ? ` · ${propertyTypeLabel(listing.property_type)}` : ''}
+                </span>
+              )}
               {listing.last_price_change && withinDays(listing.last_price_change.date, 30) && formatPriceDelta(listing.last_price_change.amount) && (
                 <span
                   title={lastPriceChangeText(listing.last_price_change)}
@@ -329,6 +338,11 @@ export default function ListingDetail() {
             <NearbySubway lat={listing.lat} lng={listing.lng} />
             <CommuteCalculator lat={listing.lat} lng={listing.lng} />
 
+            {isSale(listing) && <SaleDetails listing={listing} />}
+            {isSale(listing) && <RecordedSales bbl={listing.bbl} propertyType={listing.property_type} />}
+            <PastListings bbl={listing.bbl} address={listing.address} excludeId={listing.id} />
+
+            {!isSale(listing) && (<>
             <div style={{
               background: 'rgba(180,74,54,0.06)', border: '1px solid rgba(180,74,54,0.2)',
               borderRadius: '10px', padding: '12px 14px', marginBottom: '18px',
@@ -388,6 +402,7 @@ export default function ListingDetail() {
                 <span style={{ color: 'var(--terracotta)' }}>${totalDueAtSigning(listing).toLocaleString()}</span>
               </div>
             </div>
+            </>)}
           </div>
         </div>
 
