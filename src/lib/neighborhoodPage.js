@@ -115,10 +115,22 @@ export function dofNameMatches(dofName, ntaName) {
 }
 
 // ---------------------------------------------------------------- fetchers (single neighborhood, browser)
+const SCHOOL_FIELDS = 'location_name,grades_final_text,grades_text,location_category_description,location_type_description,primary_address_line_1,latitude,longitude'
+
+// The DOE file stores coordinates as text and one row literally says "NULL",
+// which makes a bare ::number cast fail for the whole query. Guard the cast
+// with text checks; if the service still refuses, fall back to the citywide
+// list (what the build script uses) and filter here.
 export async function fetchSchoolsIn(geometry) {
   const b = bboxOf(geometry)
-  const rows = await getJson(`${SCHOOLS}?$select=location_name,grades_final_text,grades_text,location_category_description,location_type_description,primary_address_line_1,latitude,longitude&$where=latitude::number between ${b.minY} and ${b.maxY} AND longitude::number between ${b.minX} and ${b.maxX} AND status_descriptions='Open'&$limit=400`)
-  return rows.map(shapeSchool).filter(s => geometryContains(geometry, s.lng, s.lat)).sort((a, b) => a.name.localeCompare(b.name))
+  let rows
+  try {
+    rows = await getJson(`${SCHOOLS}?$select=${SCHOOL_FIELDS}&$where=status_descriptions='Open' AND starts_with(latitude, '40.') AND starts_with(longitude, '-7') AND latitude != 'NULL' AND longitude != 'NULL' AND latitude::number between ${b.minY} and ${b.maxY} AND longitude::number between ${b.minX} and ${b.maxX}&$limit=400`)
+  } catch (err) {
+    console.warn('schools bbox query refused, using the citywide list:', err.message)
+    rows = await getJson(`${SCHOOLS}?$select=${SCHOOL_FIELDS}&$where=status_descriptions='Open' AND starts_with(latitude, '40.')&$limit=5000`)
+  }
+  return rows.map(shapeSchool).filter(s => Number.isFinite(s.lat) && geometryContains(geometry, s.lng, s.lat)).sort((a, b) => a.name.localeCompare(b.name))
 }
 
 export async function fetchHospitalsIn(geometry) {
