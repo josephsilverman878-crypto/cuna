@@ -155,6 +155,7 @@ Rollback for 42: `cuna-security/42-wave1-search-rollback.sql`; for 44: `44-wave2
 | wave | PR | merge commit | production check |
 |---|---|---|---|
 | 1 | [#22](https://github.com/josephsilverman878-crypto/cuna/pull/22) squash-merged 2026-11-05 | `122ca2f` (branch tip 3d2b178) | Vercel production "Deployment has completed" on 122ca2f (15:03 local); hellocuna.com serves bundle `index-DZpGVLy7.js`, identical to the local build of the merged code. Spot-check in Joseph's Chrome (signed in as the poster test account): home → dashboard renders, listing page renders (fees, open house), no console errors; Post listing address lookup shown below. Feed/map, filters and saved searches need a RENTER sign-in and were NOT checked live (verified at 375px on the dev server and by the 57-check role simulation). Preview smoke (branch alias): steps 1, 2, 7 pass; 3–6, 8 need sign-in. |
+| 2 | [#23](https://github.com/josephsilverman878-crypto/cuna/pull/23) squash-merged 2026-11-05 | `b49121e` (branch tip a274a06) | Vercel production "Deployment has completed" on b49121e (15:33 local); hellocuna.com serves bundle `index-D1dBanN5.js`, identical to the local build of the merged code. Spot-check in Joseph's Chrome (poster test account): home → dashboard, listing page renders with the share control (the report link is hidden for the listing's own poster, as designed), no console errors. Map/subway/commute need a geocoded listing and the admin Reports tab needs the admin account; both verified on the dev server and by the 40-check role simulation, not live. Preview smoke: steps 1–2 pass; 3–8 flagged. |
 
 ---
 
@@ -274,7 +275,7 @@ States: `todo` · `in progress` · `done` · `blocked (reason)`
 | 2.5 Net effective rent | done | `months_free`, `lease_term_months`, generated `net_effective_price`; shown with the gross price on cards and the page, both labeled; filter sheet "Gross / Net effective" basis (`search_listings` p_price_basis, saved searches too); sort "Net effective: low to high" |
 | 2.6 Share | done | `ShareButton.jsx`: native share sheet, copy-link fallback; listing page header |
 | 2.7 Report a listing | done | `listing_reports` (5/day/user, 1/listing/week, own rows only), `ReportListing.jsx` modal (signed-in only), `/admin` → Reports tab (open/resolved, resolve with note) through `admin_listing_reports` / `admin_resolve_report` |
-| Wave 2 merge | in progress | |
+| Wave 2 merge | done | PR #23 → main b49121e, live 2026-11-05 (see Merge log) |
 
 ### Wave 3 — sales (branch `feature/wave3-sales`)
 
