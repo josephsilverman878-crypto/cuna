@@ -135,6 +135,8 @@ as Mapbox intends. To stop anyone else using it: Mapbox → Account → Tokens �
 that token → URL restrictions → add `https://hellocuna.com/*`,
 `https://*.vercel.app/*` and `http://localhost:*/*` → Save.
 
+- **NJ-5 — XML listing-feed import (4.7).** Design is in `docs/xml-feed-design.md`; `api/feed-import.js` is a stub that answers 501 unless `FEED_IMPORT_ENABLED=true` (leave it unset). Before it is built, decide: (a) which format the first brokerages actually have (a custom XML file, or a RESO Web API / RETS server Cuna should pull from instead); (b) whether Cuna links to their photo URLs or copies photos into Supabase Storage; (c) who may register a feed (brokerage owners only, or any verified poster). Reply in chat and the import gets built in a later wave.
+
 ## Database changes applied (production)
 
 | date | script | sha256 (first 16) | tab | result |
@@ -152,6 +154,8 @@ that token → URL restrictions → add `https://hellocuna.com/*`,
 | 2026-11-05 | **`45-wave3-sales.sql` APPLIED** | 10ba7d8b… | …/sql/85ad2d6c… | listings + listing_type (default rent), property_type, common_charges, maintenance, monthly_taxes, tax_deductible_pct, financing_allowed_pct; status check gains 'sold'; trigger `listings_a_type_rules`; status_label, details_fields_sorted, listings_record_event, get_listing_public re-created; search_listings re-created with p_listing_type (44 signature dropped); saved_search_matches honors filters.listing_type; `recorded_sales_cache` (service role only); `past_listings_at` |
 
 Rollback for 42: `cuna-security/42-wave1-search-rollback.sql`; for 44: `44-wave2-listing-page-rollback.sql`; for 45: `45-wave3-sales-rollback.sql` (none run).
+| 46 | `46-wave4-broker-tools-test.sql` | 2026-11-05 ~16:08 | tab …/sql/95ff2537… hash 06f26798… · 49 checks, 0 FAIL, ROLLED BACK (poster, renter, anon, admin-as-agent). A first run in tab …/sql/c6e348f0… failed at `listing_stats` (inquiries.status did not exist yet); the lead-inbox block was moved ahead and the test re-run. Report: cuna-security/46-wave4-broker-tools-test-report.txt |
+| 46 | `46-wave4-broker-tools.sql` | 2026-11-05 ~16:10 | tab …/sql/17e9a1b2… hash 291b66c6…, dialog "Run query". Post-asserts passed; final select: swipes keeps only the five renter policies, listings gains the two brokerage-owner policies, inquiries.status default 'new', listing_views / listing_flags / brokerages empty. Backup: the 2026-11-05 export still covers every user table — `42-backup-counts.sql` re-run first in tab …/sql/3afc5b59… (users 3, listings 1, profiles 3, inquiries 0, swipes 0, notifications 6, events 6, open houses 2, photos 3: identical to counts.json; the only new tables are ones the wave scripts created). Rollback written, not run: 46-wave4-broker-tools-rollback.sql |
 
 ## Merge log
 
@@ -295,18 +299,18 @@ States: `todo` · `in progress` · `done` · `blocked (reason)`
 
 | item | state | notes |
 |---|---|---|
-| 4.1 Fair-housing fix: aggregate counts only, tighten RLS | todo | |
-| 4.2 Listing stats | todo | |
-| 4.3 Lead inbox | todo | |
-| 4.4 Agent profile pages | todo | |
-| 4.5 Brokerage verification (NY DOS dataset) | todo | |
-| 4.6 Owner verification (PLUTO/ACRIS) | todo | |
-| 4.7 Bulk posting (CSV) + XML feed design doc/stub | todo | |
-| 4.8 Duplicate and fake detection | todo | |
-| 4.9 Team accounts | todo | |
-| 4.10 Demand dashboard (buckets of 3+) | todo | |
-| 4.11 Listing quality rules | todo | |
-| Wave 4 merge | todo | |
+| 4.1 Fair-housing fix: aggregate counts only, tighten RLS | done | 46-wave4-broker-tools.sql drops the two poster SELECT policies on `swipes`; `listing_save_counts()` (security definer, own listings, `{listing_id, saves}` only) replaces the row read in `src/lib/swipes.js`. Role simulation: poster reads 0 swipe rows on its own listing, count = 1 |
+| 4.2 Listing stats | done | `listing_views` (listing, anonymous session key, NY day; no user id) + `record_listing_view()` dedupes and bumps `listings.views`; `listing_stats()` / `listing_views_daily()` (own listings). `src/lib/stats.js`, `ListingStats.jsx` (30-day bars) on the dashboard; the listing page no longer calls `increment_listing_views` and skips the poster's own visits |
+| 4.3 Lead inbox | done | `inquiries.status` (new/replied/toured/closed) + `status_changed_at`, poster-only column grant + policy; `poster_inquiry_contacts()` returns them. `LeadInbox.jsx` (status/kind/listing filters, status select, Reply-by-email link that re-opens the thread subject) at `/leads` and in the dashboard Leads tab; Leads in the poster bottom nav |
+| 4.4 Agent profile pages | done | `profiles.bio` (600 chars, fair-housing scanned on save) + `agent_public(id)` (verified posters only, anon-callable): `/agent/:id` with photo/initials, bio, brokerage, license type + number, active and past Cuna listings. Listing pages link to it ("Listed by"); Profile has the bio editor and a View link |
+| 4.5 Brokerage verification (NY DOS dataset) | done | `src/lib/licenseCheck.js` reads data.ny.gov yg7h-zjbf by license number in the admin's browser and compares name (token match), type, brokerage and expiry; `VerificationChecks.jsx` on every /admin poster card shows match / partial / mismatch / not found. Checked live against a real licensee: all four ✓. Approval stays manual |
+| 4.6 Owner verification (PLUTO/ACRIS) | done | Owner-posters enter the property address on Profile; it is geocoded to a BBL (`profiles.owner_property_address` / `owner_property_bbl`). /admin "Check property owner" reads PLUTO 64uk-42ks (`src/lib/ownerCheck.js`) and compares the recorded owner name with the account; an LLC owner shows as no-match with the hint to ask for a deed. Checked live on BBL 3010110023 |
+| 4.7 Bulk posting (CSV) + XML feed design doc/stub | done | `/bulk`: template download (22 columns with a help row), CSV parser, row-by-row preview with every error listed (same rules as the form: fair housing, FARE fees, price band, 3+ photo links), then one insert per valid row with GeoSearch geocoding; duplicates reported per row. `docs/xml-feed-design.md` + `api/feed-import.js` stub (501 unless `FEED_IMPORT_ENABLED=true`, then dry-run only). Feed questions → NJ-5 |
+| 4.8 Duplicate and fake detection | done | Unique index `listings_one_live_per_address_idx` (normalized address line, Active/In-contract only) blocks a second live listing; both forms and the CSV path show a plain message on 23505. Trigger `listings_flag_suspicious` writes `listing_flags` (price under half the median of 5+ comparable live listings; photo reused from another poster); `/admin` → Flags lists and resolves them (`admin_listing_flags` / `admin_resolve_flag`) |
+| 4.9 Team accounts | done | `brokerages` (one per owner) + `brokerage_members` (owner/agent, one team per user), owner-only insert/rename/remove, `brokerage_add_member(email)` (verified posters not yet on a team), `brokerage_team()` roster (emails for the owner only), two listings policies so the owner reads and updates team listings. `/team` page; EditListing accepts the team owner |
+| 4.10 Demand dashboard (buckets of 3+) | done | `demand_buckets()` (verified posters): saved-search counts by neighborhood, bedrooms and price band (rent and sale bands), buckets of 3+ only, no identities. `/demand` page |
+| 4.11 Listing quality rules | done | `src/lib/listingQuality.js`: 3+ photos, FARE fee fields filled (0 allowed, blank not) with the NY one-month deposit cap, price band ($500–50,000/mo rent, $50k–100M sale), fair-housing scan; applied on submit of PostListing, EditListing and every CSV row. Existing listings untouched |
+| Wave 4 merge | in progress | |
 
 ### Wave 5 — content and extras (branch `feature/wave5-content`)
 
