@@ -134,7 +134,7 @@ Rollback for 42: `cuna-security/42-wave1-search-rollback.sql` (not run).
 
 | wave | PR | merge commit | production check |
 |---|---|---|---|
-| _none yet_ | | | |
+| 1 | [#22](https://github.com/josephsilverman878-crypto/cuna/pull/22) squash-merged 2026-11-05 | `122ca2f` (branch tip 3d2b178) | Vercel production "Deployment has completed" on 122ca2f (15:03 local); hellocuna.com serves bundle `index-DZpGVLy7.js`, identical to the local build of the merged code. Spot-check in Joseph's Chrome (signed in as the poster test account): home → dashboard renders, listing page renders (fees, open house), no console errors; Post listing address lookup shown below. Feed/map, filters and saved searches need a RENTER sign-in and were NOT checked live (verified at 375px on the dev server and by the 57-check role simulation). Preview smoke (branch alias): steps 1, 2, 7 pass; 3–6, 8 need sign-in. |
 
 ---
 
@@ -241,13 +241,13 @@ States: `todo` · `in progress` · `done` · `blocked (reason)`
 | 1.6 Filter panel (persisted per user) | done | `FilterSheet.jsx` bottom sheet; persisted in `renter_profiles.search_state` (debounced); first-time seed from the Profile preferences. Net-effective toggle waits for 2.5 |
 | 1.7 Sort | done | newest · price ↑ · price ↓ · largest · recently updated (`updated_at` now maintained by trigger `listings_touch_updated_at`, views ignored) |
 | 1.8 Saved searches (+ bell, digest, SAVED_SEARCH_EMAILS_ENABLED) | done | `saved_searches` table (own rows, ≤20), "Save search" in the feed, Profile card (show/rename/delete); trigger `listings_notify_saved_searches` → bell row kind `saved_search` for NEW active listings (never the poster, one per listing); digest emails them only when `SAVED_SEARCH_EMAILS_ENABLED=true` (unset = off; rows marked handled) |
-| Wave 1 merge (PR, preview smoke, squash-merge, production check) | in progress | |
+| Wave 1 merge (PR, preview smoke, squash-merge, production check) | done | PR #22 → main 122ca2f, live on hellocuna.com 2026-11-05 (see Merge log). Post-listing lookup checked live as the poster test account: "342 9 STREET, Brooklyn" · Park Slope · BBL, mini-map |
 
 ### Wave 2 — listing page depth (branch `feature/wave2-listing-page`)
 
 | item | state | notes |
 |---|---|---|
-| 2.1 Location map on listing page | todo | |
+| 2.1 Location map on listing page | in progress | |
 | 2.2 Nearby subway stations (MTA data in DB, walking distance) | todo | |
 | 2.3 Commute time (Mapbox walking/driving; transit question to Needs Joseph) | todo | |
 | 2.4 Floor plans + video/3D tour links | todo | |
