@@ -4,8 +4,11 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import { getSaveCounts } from '../lib/swipes'
+import { listingStats } from '../lib/stats'
+import ListingStats from '../components/ListingStats'
+import LeadInbox from '../components/LeadInbox'
 import toast from 'react-hot-toast'
-import { Plus, Users, Eye, BedDouble, Bath, Pencil, ShieldCheck, CalendarCheck, Mail, Phone } from 'lucide-react'
+import { Plus, Users, Eye, BedDouble, Bath, Pencil, ShieldCheck, CalendarCheck, BarChart3, Inbox, UsersRound, TrendingUp, Upload } from 'lucide-react'
 import { statusesFor, statusLabel, isPublicStatus } from '../lib/listingStatus'
 import { priceText, isSale, propertyTypeLabel } from '../lib/listingTypes'
 
@@ -14,10 +17,11 @@ export default function PosterDashboard() {
   const navigate = useNavigate()
   const [listings, setListings] = useState([])
   const [saves, setSaves] = useState({})
+  const [stats, setStats] = useState({})
   const [inquiries, setInquiries] = useState([])
-  const [inquiriesError, setInquiriesError] = useState(false)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('listings')
+  const [openStats, setOpenStats] = useState(null)
 
   useEffect(() => { fetchData() }, [])
 
@@ -35,50 +39,28 @@ export default function PosterDashboard() {
 
       // Saves are deliberately aggregate-only: posters see interest counts, never
       // who saved. Renter identity is shared only when the renter sends a tour
-      // request. Do not re-add profile lookups here.
+      // request. listing_save_counts() returns { listing_id, saves } per listing
+      // and nothing else; posters can no longer read swipes rows at all.
       const { data: swipeData, error: swipeError } = await getSaveCounts(ids)
-
       if (swipeError) console.error('Saves fetch error:', swipeError)
-
       const counts = {}
-      ;(swipeData || []).forEach(s => {
-        counts[s.listing_id] = (counts[s.listing_id] || 0) + 1
-      })
+      ;(swipeData || []).forEach(s => { counts[s.listing_id] = s.saves })
       setSaves(counts)
+
+      // Views (deduped per visitor per day), saves and leads per listing.
+      const { data: statRows, error: statError } = await listingStats(ids)
+      if (statError) console.error('Stats fetch error:', statError)
+      const byId = {}
+      ;(statRows || []).forEach(r => { byId[r.listing_id] = r })
+      setStats(byId)
     }
 
-    // One call replaces the inquiries select plus the profiles lookup. The
-    // function is SECURITY DEFINER and pinned to auth.uid(), so it returns only
-    // inquiries on this poster's own listings. Renter name and email come from
-    // profiles inside the function; every other renter field is the inquiry's
-    // own shared_* snapshot, never a live read of renter_profiles.
-    const { data: inquiryData, error: inqError } =
-      await supabase.rpc('poster_inquiry_contacts')
-
-    // An RPC failure used to fall through to the "No tour requests yet" empty
-    // state, which tells a poster they have no interest when in fact the request
-    // failed. Track it so the tab can say so and offer a retry.
-    setInquiriesError(Boolean(inqError))
+    // The lead list itself lives in LeadInbox (poster_inquiry_contacts(), a
+    // SECURITY DEFINER function pinned to auth.uid()). This page only needs the
+    // count for the tiles and the per-listing badge.
+    const { data: inquiryData, error: inqError } = await supabase.rpc('poster_inquiry_contacts')
     if (inqError) console.error('Inquiries fetch error:', inqError)
-
-    let enrichedInquiries = []
-    if (inquiryData?.length > 0) {
-      const listingIds = [...new Set(inquiryData.map(i => i.listing_id))]
-
-      const { data: inqListings } = await supabase
-        .from('listings')
-        .select('id, address')
-        .in('id', listingIds)
-
-      enrichedInquiries = inquiryData.map(i => ({
-        ...i,
-        // The function returns inquiry_id; the rest of this page expects `id`.
-        id: i.inquiry_id,
-        renter: { name: i.renter_name, email: i.renter_email },
-        listing: inqListings?.find(l => l.id === i.listing_id) || null,
-      }))
-    }
-    setInquiries(enrichedInquiries)
+    setInquiries(inquiryData || [])
 
     setLoading(false)
   }
@@ -111,10 +93,19 @@ export default function PosterDashboard() {
 
   const totalSaves = Object.values(saves).reduce((sum, n) => sum + n, 0)
   const totalViews = listings.reduce((sum, l) => sum + (l.views || 0), 0)
+  const views7d = Object.values(stats).reduce((sum, r) => sum + (r.views_7d || 0), 0)
+  const newLeads = inquiries.filter(i => i.status === 'new').length
 
   function inquiryCountFor(listingId) {
     return inquiries.filter(i => i.listing_id === listingId).length
   }
+
+  const tools = [
+    { path: '/leads', icon: Inbox, label: newLeads ? `Leads (${newLeads} new)` : 'Leads' },
+    { path: '/team', icon: UsersRound, label: 'Team' },
+    { path: '/demand', icon: TrendingUp, label: 'Demand' },
+    { path: '/bulk', icon: Upload, label: 'Bulk upload' },
+  ]
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--sand)', paddingBottom: '80px' }}>
@@ -182,16 +173,29 @@ export default function PosterDashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', padding: '20px 24px 0' }}>
         {[
           { label: 'Active listings', value: listings.filter(l => l.status === 'active').length },
-          { label: 'Views', value: totalViews },
+          { label: 'Views, 7 days', value: views7d, sub: `${totalViews} all time` },
           { label: 'Saves', value: totalSaves },
-          { label: 'Tour requests', value: inquiries.length },
+          { label: 'Leads', value: inquiries.length, sub: newLeads ? `${newLeads} new` : null },
         ].map(stat => (
           <div key={stat.label} className="card" style={{ padding: '14px 10px', textAlign: 'center' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 600, color: 'var(--terracotta)' }}>
               {stat.value}
             </div>
             <div style={{ fontSize: '10px', color: 'var(--warm-gray)', marginTop: '4px', lineHeight: 1.3 }}>{stat.label}</div>
+            {stat.sub && <div style={{ fontSize: '10px', color: 'var(--terracotta)', marginTop: '2px' }}>{stat.sub}</div>}
           </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: '8px', padding: '14px 24px 0', overflowX: 'auto' }}>
+        {tools.map(t => (
+          <button key={t.path} onClick={() => navigate(t.path)} style={{
+            padding: '8px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: 500, whiteSpace: 'nowrap',
+            background: 'var(--white)', color: 'var(--charcoal-soft)', border: '1px solid var(--sand-dark)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+          }}>
+            <t.icon size={14} color="var(--terracotta)" /> {t.label}
+          </button>
         ))}
       </div>
 
@@ -199,7 +203,7 @@ export default function PosterDashboard() {
         {[
           { id: 'listings', label: 'My listings' },
           { id: 'saves', label: `Saves (${totalSaves})` },
-          { id: 'inquiries', label: `Requests (${inquiries.length})` },
+          { id: 'inquiries', label: `Leads (${inquiries.length})` },
         ].map(tab => (
           <button
             key={tab.id}
@@ -306,7 +310,16 @@ export default function PosterDashboard() {
                 >
                   <Pencil size={14} /> Edit
                 </button>
+                <button
+                  onClick={() => setOpenStats(openStats === listing.id ? null : listing.id)}
+                  className="btn-ghost"
+                  aria-expanded={openStats === listing.id}
+                  style={{ fontSize: '13px', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <BarChart3 size={14} /> Stats
+                </button>
               </div>
+              {openStats === listing.id && <ListingStats listingId={listing.id} stats={stats[listing.id]} />}
             </div>
           ))
         )}
@@ -361,106 +374,7 @@ export default function PosterDashboard() {
           )
         )}
 
-        {activeTab === 'inquiries' && (
-          inquiriesError ? (
-            <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--warm-gray)' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
-              <p style={{ fontWeight: 600, color: 'var(--charcoal)' }}>
-                Could not load your tour requests and questions.
-              </p>
-              <p style={{ fontSize: '13px', marginTop: '6px' }}>
-                This is a loading problem, not an empty inbox — you may have requests waiting.
-              </p>
-              <button
-                className="btn-secondary"
-                onClick={() => { setInquiriesError(false); fetchData() }}
-                style={{ marginTop: '18px', padding: '10px 22px', fontSize: '14px' }}
-              >
-                Try again
-              </button>
-            </div>
-          ) : inquiries.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--warm-gray)' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>📩</div>
-              <p>No tour requests or questions yet.</p>
-            </div>
-          ) : inquiries.map(inq => (
-            <div key={inq.id} className="card" style={{ padding: '18px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '15px' }}>{inq.renter?.name}</div>
-                  <div
-                    style={{ fontSize: '13px', color: 'var(--warm-gray)', marginTop: '2px', cursor: 'pointer' }}
-                    onClick={() => navigate('/listing/' + inq.listing_id)}
-                  >
-                    {inq.listing?.address}
-                  </div>
-                </div>
-                <span style={{
-                  fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '20px',
-                  background: inq.kind === 'question' ? 'rgba(76,175,125,0.15)' : 'rgba(180,74,54,0.1)',
-                  color: inq.kind === 'question' ? 'var(--like-green)' : 'var(--terracotta)', flexShrink: 0,
-                }}>
-                  {inq.kind === 'question' ? 'Question' : inq.tour_type === 'video' ? 'Video chat' : 'In person'}
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', marginBottom: '10px' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--terracotta)' }}>
-                  <Mail size={13} /> {inq.renter?.email}
-                </span>
-                {/* Phone comes from the inquiry snapshot, not the live profile —
-                    it appears only if the renter shared it when they sent this. */}
-                {inq.shared_phone && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--warm-gray)' }}>
-                    <Phone size={13} /> {inq.shared_phone}
-                  </span>
-                )}
-              </div>
-
-              {(inq.shared_move_in_date || typeof inq.shared_has_pets === 'boolean' || inq.shared_credit_score_range) && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
-                  {inq.shared_move_in_date && (
-                    <span className="tag">🗓 Move in {new Date(inq.shared_move_in_date).toLocaleDateString()}</span>
-                  )}
-                  {inq.shared_has_pets === true && (
-                    <span className="tag">
-                      🐾 Has pets{inq.shared_pet_details ? ` — ${inq.shared_pet_details}` : ''}
-                    </span>
-                  )}
-                  {inq.shared_has_pets === false && <span className="tag">No pets</span>}
-                  {inq.shared_credit_score_range && (
-                    <span className="tag">📊 Credit: {inq.shared_credit_score_range.replace('_', '-')}</span>
-                  )}
-                </div>
-              )}
-
-              {(inq.preferred_times || []).length > 0 && (
-                <div style={{ marginBottom: '10px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--warm-gray)', marginBottom: '4px' }}>
-                    Preferred times
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {inq.preferred_times.map((t, i) => <span key={i} className="tag">{t}</span>)}
-                  </div>
-                </div>
-              )}
-
-              {inq.message && (
-                <p style={{
-                  fontSize: '13px', color: 'var(--charcoal-soft)', lineHeight: 1.5,
-                  background: 'var(--sand)', padding: '10px 12px', borderRadius: '8px', margin: '0 0 10px',
-                }}>
-                  {inq.message}
-                </p>
-              )}
-
-              <div style={{ fontSize: '12px', color: 'var(--warm-gray)' }}>
-                Requested {new Date(inq.created_at).toLocaleString()}
-              </div>
-            </div>
-          ))
-        )}
+        {activeTab === 'inquiries' && <LeadInbox compact />}
       </div>
 
       <BottomNav />

@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Home, Heart, User } from 'lucide-react'
+import { Home, Heart, User, Inbox } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function BottomNav() {
@@ -14,6 +14,7 @@ export default function BottomNav() {
   ]
   const posterTabs = [
     { path: '/dashboard', icon: Home, label: 'Listings' },
+    { path: '/leads', icon: Inbox, label: 'Leads' },
     { path: '/profile', icon: User, label: 'Profile' },
   ]
   const tabs = profile?.role === 'poster' ? posterTabs : renterTabs

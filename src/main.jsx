@@ -24,6 +24,11 @@ import Admin from './pages/Admin'
 import ListingDetail from './pages/ListingDetail'
 import NewToNY from './pages/NewToNY'
 import NewToNYResults from './pages/NewToNYResults'
+import AgentPage from './pages/AgentPage'
+import Leads from './pages/Leads'
+import Team from './pages/Team'
+import Demand from './pages/Demand'
+import BulkUpload from './pages/BulkUpload'
 
 function ProtectedRoute({ children, role }) {
   const { user, profile, loading } = useAuth()
@@ -42,7 +47,7 @@ function AppRoutes() {
   if (loading) return <div className="center" style={{ height: '100dvh' }}><div className="spinner" /></div>
 
   const publicPaths = ['/reset-password', '/terms', '/privacy', '/new-to-ny', '/new-to-ny/results']
-  if (user && !profile && !publicPaths.includes(location.pathname) && !location.pathname.startsWith('/listing/')) {
+  if (user && !profile && !publicPaths.includes(location.pathname) && !location.pathname.startsWith('/listing/') && !location.pathname.startsWith('/agent/')) {
     return <CompleteProfile />
   }
 
@@ -60,6 +65,7 @@ function AppRoutes() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/listing/:id" element={<ListingDetail />} />
+      <Route path="/agent/:id" element={<AgentPage />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/new-to-ny" element={<NewToNY />} />
       <Route path="/new-to-ny/results" element={<NewToNYResults />} />
@@ -87,6 +93,18 @@ function AppRoutes() {
       } />
       <Route path="/post-listing" element={
         <ProtectedRoute role="poster"><PostListing /></ProtectedRoute>
+      } />
+      <Route path="/leads" element={
+        <ProtectedRoute role="poster"><Leads /></ProtectedRoute>
+      } />
+      <Route path="/team" element={
+        <ProtectedRoute role="poster"><Team /></ProtectedRoute>
+      } />
+      <Route path="/demand" element={
+        <ProtectedRoute role="poster"><Demand /></ProtectedRoute>
+      } />
+      <Route path="/bulk" element={
+        <ProtectedRoute role="poster"><BulkUpload /></ProtectedRoute>
       } />
 
       <Route path="/matches" element={<Navigate to="/history" replace />} />

@@ -65,15 +65,11 @@ export async function removeSwipe(renterId, listingId) {
     .eq('listing_id', listingId)
 }
 
-// The ONE place poster-side swipe access happens. Posters are meant to see
-// aggregate interest only, never who saved, so this selects listing_id and nothing
-// else, and the caller does the counting. This is where the planned RLS/RPC fix
-// goes: replace this row read with an RPC that returns per-listing counts and
-// never exposes renter_id, then lock posters out of reading swipes rows directly.
+// The ONE place poster-side swipe access happens. Posters see aggregate
+// interest only, never who saved: listing_save_counts() (46-wave4-broker-
+// tools.sql) is SECURITY DEFINER, counts liked rows for the calling poster's
+// own listings and returns [{ listing_id, saves }]. The two poster SELECT
+// policies on swipes are gone, so a direct row read returns nothing here.
 export async function getSaveCounts(listingIds) {
-  return supabase
-    .from('swipes')
-    .select('listing_id')
-    .in('listing_id', listingIds)
-    .eq('liked', true)
+  return supabase.rpc('listing_save_counts', { p_listing_ids: listingIds?.length ? listingIds : null })
 }

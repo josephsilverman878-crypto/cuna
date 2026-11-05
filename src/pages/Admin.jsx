@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import AdminReports from '../components/AdminReports'
+import AdminFlags from '../components/AdminFlags'
+import VerificationChecks from '../components/VerificationChecks'
 import toast from 'react-hot-toast'
 import { ChevronLeft, Check, ExternalLink } from 'lucide-react'
 
@@ -15,7 +17,7 @@ export default function Admin() {
   const [approving, setApproving] = useState(null)
   const [tab, setTab] = useState('pending')
 
-  useEffect(() => { if (profile?.is_admin && tab !== 'reports') fetchPosters() }, [profile, tab])
+  useEffect(() => { if (profile?.is_admin && tab !== 'reports' && tab !== 'flags') fetchPosters() }, [profile, tab])
 
   async function fetchPosters() {
     setLoading(true)
@@ -99,43 +101,24 @@ export default function Admin() {
       </div>
 
       <div style={{ maxWidth: '640px', margin: '0 auto', padding: '24px' }}>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-          <button
-            onClick={() => setTab('pending')}
-            style={{
-              padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 500,
-              background: tab === 'pending' ? 'var(--terracotta)' : 'var(--white)',
-              color: tab === 'pending' ? 'white' : 'var(--warm-gray)',
-              border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-sm)',
-            }}
-          >
-            Pending
-          </button>
-          <button
-            onClick={() => setTab('verified')}
-            style={{
-              padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 500,
-              background: tab === 'verified' ? 'var(--terracotta)' : 'var(--white)',
-              color: tab === 'verified' ? 'white' : 'var(--warm-gray)',
-              border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-sm)',
-            }}
-          >
-            Verified
-          </button>
-          <button
-            onClick={() => setTab('reports')}
-            style={{
-              padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 500,
-              background: tab === 'reports' ? 'var(--terracotta)' : 'var(--white)',
-              color: tab === 'reports' ? 'white' : 'var(--warm-gray)',
-              border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-sm)',
-            }}
-          >
-            Reports
-          </button>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          {[['pending', 'Pending'], ['verified', 'Verified'], ['reports', 'Reports'], ['flags', 'Flags']].map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              style={{
+                padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 500,
+                background: tab === id ? 'var(--terracotta)' : 'var(--white)',
+                color: tab === id ? 'white' : 'var(--warm-gray)',
+                border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
-        {tab === 'reports' ? <AdminReports /> : (<>
+        {tab === 'reports' ? <AdminReports /> : tab === 'flags' ? <AdminFlags /> : (<>
         <button
           onClick={() => window.open('https://dos.ny.gov/licensing/eaccessny.html', '_blank')}
           style={{
@@ -176,6 +159,8 @@ export default function Admin() {
                   <Row label="Brokerage" value={p.brokerage_name} />
                   <Row label="Signed up" value={p.created_at ? new Date(p.created_at).toLocaleDateString() : null} />
                 </div>
+
+                <VerificationChecks poster={p} />
 
                 {tab === 'pending' ? (
                   <button

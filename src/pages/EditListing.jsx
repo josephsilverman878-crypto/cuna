@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import { scanDescription } from '../lib/fairHousing'
+import { validateListing } from '../lib/listingQuality'
+import { isDuplicateAddressError, DUPLICATE_ADDRESS_MESSAGE } from '../lib/flags'
 import { PETS_POLICY_OPTIONS, PETS_POLICY_NOTE, petsPolicyLabel } from '../lib/petsPolicy'
 import LocationCheck from '../components/LocationCheck'
 import { geocodeColumns } from '../lib/geocode'
@@ -70,7 +72,15 @@ export default function EditListing() {
     const { data, error } = await supabase
       .from('listings').select('*').eq('id', id).single()
     if (error || !data) { toast.error('Listing not found'); navigate('/dashboard'); return }
-    if (data.poster_id !== user.id) { toast.error('Not your listing'); navigate('/dashboard'); return }
+    // The poster, or the owner of the poster's brokerage team (the update
+    // policy "Brokerage owners update team listings" lets the save through;
+    // the select above only returned the row because a policy allowed it).
+    if (data.poster_id !== user.id) {
+      const { data: team } = await supabase.rpc('brokerage_team')
+      const me = (team || []).find(m => m.user_id === user.id)
+      const theirs = (team || []).some(m => m.user_id === data.poster_id)
+      if (!me?.is_owner || !theirs) { toast.error('Not your listing'); navigate('/dashboard'); return }
+    }
 
     const amenities = data.amenities || []
     setExistingPhotos(data.photos || [])
@@ -255,6 +265,16 @@ export default function EditListing() {
       return
     }
 
+    // Listing quality rules (src/lib/listingQuality.js): price band, FARE
+    // fee fields filled in, 3+ photos, fair-housing scan. New and edited
+    // listings only; nothing already live is touched by these.
+    const quality = validateListing({ form, photoCount: existingPhotos.length + photos.length })
+    if (quality.length > 0) {
+      toast.error(quality[0].message)
+      setTab(quality[0].tab)
+      return
+    }
+
     setSubmitting(true)
     try {
       const amenitiesArray = Object.entries({
@@ -307,7 +327,7 @@ export default function EditListing() {
       toast.success('Listing updated!')
       navigate('/dashboard')
     } catch (err) {
-      toast.error(err.message || 'Failed to update listing')
+      toast.error(isDuplicateAddressError(err) ? DUPLICATE_ADDRESS_MESSAGE : (err.message || 'Failed to update listing'))
     } finally {
       setSubmitting(false)
       setUploadProgress('')
