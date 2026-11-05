@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { X, Search } from 'lucide-react'
 import {
-  SORTS, AMENITY_OPTIONS, PETS_OPTIONS, BEDS_OPTIONS, BATHS_OPTIONS, EMPTY_FILTERS, normalizeFilters,
+  SORTS, AMENITY_OPTIONS, PETS_OPTIONS, BEDS_OPTIONS, BATHS_OPTIONS, PRICE_BASIS_OPTIONS, EMPTY_FILTERS, normalizeFilters,
 } from '../lib/search'
 import { groupByBorough } from '../lib/areas'
 
@@ -138,6 +138,14 @@ export default function FilterSheet({ open, onClose, filters, sort, neighborhood
               <input type="number" inputMode="numeric" min="0" placeholder="Max $" aria-label="Maximum rent" value={draft.price_max}
                 onChange={e => set('price_max', e.target.value)} style={inputStyle} />
             </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+              {PRICE_BASIS_OPTIONS.map(o => (
+                <Chip key={o.value} active={draft.price_basis === o.value} onClick={() => set('price_basis', o.value)}>{o.label}</Chip>
+              ))}
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--warm-gray)', margin: '6px 0 0', lineHeight: 1.5 }}>
+              Net effective spreads any free months over the lease. Cards show both when they differ.
+            </p>
           </Section>
 
           <Section title="Bedrooms">

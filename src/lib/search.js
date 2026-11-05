@@ -9,11 +9,16 @@ import { supabase } from './supabase'
 // must be stable: every sort ends with id as the tiebreaker.
 
 export const SORTS = [
-  { id: 'newest',     label: 'Newest',             col: 'created_at', asc: false },
-  { id: 'price_asc',  label: 'Price: low to high', col: 'price',      asc: true },
-  { id: 'price_desc', label: 'Price: high to low', col: 'price',      asc: false },
-  { id: 'sqft_desc',  label: 'Largest',            col: 'sqft',       asc: false },
-  { id: 'updated',    label: 'Recently updated',   col: 'updated_at', asc: false },
+  { id: 'newest',     label: 'Newest',                     col: 'created_at',          asc: false },
+  { id: 'price_asc',  label: 'Price: low to high',         col: 'price',               asc: true },
+  { id: 'price_desc', label: 'Price: high to low',         col: 'price',               asc: false },
+  { id: 'net_asc',    label: 'Net effective: low to high', col: 'net_effective_price', asc: true },
+  { id: 'sqft_desc',  label: 'Largest',                    col: 'sqft',                asc: false },
+  { id: 'updated',    label: 'Recently updated',           col: 'updated_at',          asc: false },
+]
+export const PRICE_BASIS_OPTIONS = [
+  { value: 'gross', label: 'Gross rent' },
+  { value: 'net', label: 'Net effective rent' },
 ]
 export const DEFAULT_SORT = 'newest'
 
@@ -39,13 +44,14 @@ export const BATHS_OPTIONS = [
 
 export const EMPTY_FILTERS = Object.freeze({
   price_min: '', price_max: '', beds_min: '', baths_min: '', sqft_min: '',
-  amenities: [], pets: [],
+  amenities: [], pets: [], price_basis: 'gross',
 })
 
 export function normalizeFilters(f) {
   const n = { ...EMPTY_FILTERS, ...(f || {}) }
   n.amenities = Array.isArray(n.amenities) ? n.amenities.filter(a => AMENITY_OPTIONS.includes(a)) : []
   n.pets = Array.isArray(n.pets) ? n.pets.filter(p => PETS_OPTIONS.some(o => o.value === p)) : []
+  n.price_basis = n.price_basis === 'net' ? 'net' : 'gross'
   for (const k of ['price_min', 'price_max', 'beds_min', 'baths_min', 'sqft_min']) {
     n[k] = n[k] === null || n[k] === undefined ? '' : String(n[k])
   }
@@ -86,12 +92,14 @@ export function filtersForServer(filters) {
   if (sq !== null) out.sqft_min = Math.max(0, Math.round(sq))
   if (f.amenities.length) out.amenities = f.amenities
   if (f.pets.length) out.pets = f.pets
+  if (f.price_basis === 'net' && (pmin !== null || pmax !== null)) out.price_basis = 'net'
   return out
 }
 
 function rpcParams({ filters, neighborhoodIds, area, exclude }) {
   const f = filtersForServer(filters)
   return {
+    p_price_basis: f.price_basis === 'net' ? 'net' : 'gross',
     p_neighborhood_ids: (neighborhoodIds || []).length ? neighborhoodIds : null,
     p_area: area ? JSON.stringify(area) : null,
     p_price_min: f.price_min ?? null,
@@ -158,9 +166,10 @@ export function describeFilters(filters, neighborhoodNames = [], hasArea = false
   const f = normalizeFilters(filters)
   const parts = []
   const pmin = num(f.price_min), pmax = num(f.price_max)
-  if (pmin !== null && pmax !== null) parts.push(`$${pmin.toLocaleString()}–$${pmax.toLocaleString()}`)
-  else if (pmin !== null) parts.push(`$${pmin.toLocaleString()}+`)
-  else if (pmax !== null) parts.push(`up to $${pmax.toLocaleString()}`)
+  const basis = f.price_basis === 'net' && (pmin !== null || pmax !== null) ? ' net' : ''
+  if (pmin !== null && pmax !== null) parts.push(`$${pmin.toLocaleString()}–$${pmax.toLocaleString()}${basis}`)
+  else if (pmin !== null) parts.push(`$${pmin.toLocaleString()}+${basis}`)
+  else if (pmax !== null) parts.push(`up to $${pmax.toLocaleString()}${basis}`)
   if (num(f.beds_min) !== null) parts.push(num(f.beds_min) === 0 ? 'studio+' : `${f.beds_min}+ bed`)
   if (num(f.baths_min) !== null) parts.push(`${f.baths_min}+ bath`)
   if (num(f.sqft_min) !== null) parts.push(`${num(f.sqft_min).toLocaleString()}+ sqft`)

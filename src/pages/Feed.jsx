@@ -18,6 +18,7 @@ import {
 import { listNeighborhoods, idsForNames } from '../lib/areas'
 import { createSavedSearch, getSavedSearch } from '../lib/savedSearches'
 import { mapsEnabled } from '../lib/mapbox'
+import { hasConcession, concessionText } from '../lib/netEffective'
 import toast from 'react-hot-toast'
 import {
   MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Heart, MoreVertical, EyeOff,
@@ -170,6 +171,12 @@ function FeedCard({ listing, liked, onToggleLike, onHide, onRequestTour, onOpen 
               {listing.neighborhood ? `${listing.neighborhood}, ` : ''}{listing.city}, {listing.state}
             </span>
           </div>
+          {hasConcession(listing) && (
+            <div style={{ marginTop: '6px', fontSize: '13px', color: 'var(--charcoal-soft)' }}>
+              <strong style={{ color: 'var(--like-green)' }}>${Number(listing.net_effective_price).toLocaleString()}/mo net effective</strong>
+              <span style={{ color: 'var(--warm-gray)' }}> · {concessionText(listing)} · ${Number(listing.price).toLocaleString()} gross</span>
+            </div>
+          )}
         </div>
 
         <div style={{

@@ -7,6 +7,8 @@ import { scanDescription } from '../lib/fairHousing'
 import { PETS_POLICY_OPTIONS, PETS_POLICY_NOTE, petsPolicyLabel } from '../lib/petsPolicy'
 import LocationCheck from '../components/LocationCheck'
 import { geocodeColumns } from '../lib/geocode'
+import { netEffective } from '../lib/netEffective'
+import { embedUrl } from '../components/ListingMedia'
 import toast from 'react-hot-toast'
 import { Loader, ChevronLeft, X, Upload, ChevronRight, AlertTriangle } from 'lucide-react'
 
@@ -19,6 +21,10 @@ const EMPTY_FORM = {
   description: '', available_date: '',
   // costs & fees
   security_deposit: '', application_fee: '', move_in_fee: '', other_fees: [],
+  // lease terms (net effective rent = price x (term - free) / term)
+  months_free: '', lease_term_months: '12',
+  // media links (embedded, never hosted)
+  video_url: '', tour_3d_url: '',
   // pets policy: 'allowed' | 'cats_only' | 'none'
   pets_policy: '',
   // amenities as booleans
@@ -35,12 +41,14 @@ export default function PostListing() {
   const [submitting, setSubmitting] = useState(false)
   const [uploadProgress, setUploadProgress] = useState('')
   const [photos, setPhotos] = useState([])
+  const [floorPlans, setFloorPlans] = useState([])
   const [dragging, setDragging] = useState(false)
   const [fhAck, setFhAck] = useState(false)
   // The map point for the typed address (LocationCheck). Null until the
   // address is found; the neighborhood comes from it, never from typing.
   const [geo, setGeo] = useState(null)
   const fileInputRef = useRef()
+  const planInputRef = useRef()
 
   const fhScan = scanDescription(form.description)
   const neighborhoodName = geo?.neighborhoodName || (geo ? '' : form.neighborhood)
@@ -102,14 +110,26 @@ export default function PostListing() {
     addFiles(e.dataTransfer.files)
   }
 
-  async function uploadPhotos(listingId) {
-    if (!photos.length) return []
+  // Floor plans: up to 4 images, stored next to the photos under a
+  // floorplans/ folder so they never mix with the photo carousel.
+  function addFloorPlans(files) {
+    const remaining = 4 - floorPlans.length
+    if (remaining <= 0) { toast.error('Maximum 4 floor plans'); return }
+    const toAdd = Array.from(files).slice(0, remaining)
+    setFloorPlans(prev => [...prev, ...toAdd.map(file => ({ file, preview: URL.createObjectURL(file) }))])
+  }
+  function removeFloorPlan(i) {
+    setFloorPlans(prev => { URL.revokeObjectURL(prev[i].preview); return prev.filter((_, idx) => idx !== i) })
+  }
+
+  async function uploadImages(listingId, items, folder, label) {
+    if (!items.length) return []
     const urls = []
-    for (let i = 0; i < photos.length; i++) {
-      setUploadProgress(`Uploading photo ${i + 1} of ${photos.length}…`)
-      const { file } = photos[i]
+    for (let i = 0; i < items.length; i++) {
+      setUploadProgress(`Uploading ${label} ${i + 1} of ${items.length}…`)
+      const { file } = items[i]
       const ext = file.name.split('.').pop()
-      const path = `${user.id}/${listingId}/${Date.now()}-${i}.${ext}`
+      const path = `${user.id}/${listingId}/${folder}${Date.now()}-${i}.${ext}`
       const { error } = await supabase.storage
         .from('listing-photos')
         .upload(path, file, { cacheControl: '3600', upsert: false })
@@ -120,6 +140,12 @@ export default function PostListing() {
     setUploadProgress('')
     return urls
   }
+  const uploadPhotos = (listingId) => uploadImages(listingId, photos, '', 'photo')
+  const uploadFloorPlans = (listingId) => uploadImages(listingId, floorPlans, 'floorplans/', 'floor plan')
+
+  const netPreview = netEffective(parseInt(form.price) || 0, parseFloat(form.months_free) || 0, parseInt(form.lease_term_months) || 12)
+  const videoOk = !form.video_url.trim() || Boolean(embedUrl('video', form.video_url.trim()))
+  const tourOk = !form.tour_3d_url.trim() || Boolean(embedUrl('tour', form.tour_3d_url.trim()))
 
   // ── SUBMIT ────────────────────────────────────────────────────
   async function handleSubmit() {
@@ -138,6 +164,18 @@ export default function PostListing() {
     if (!form.pets_policy) {
       toast.error('Please choose a pets policy before posting.')
       setTab(2)
+      return
+    }
+    if (!videoOk || !tourOk) {
+      toast.error(!videoOk ? 'The video link must be a YouTube or Vimeo link.' : 'The 3D tour link must be a Matterport link.')
+      setTab(3)
+      return
+    }
+    const monthsFree = parseFloat(form.months_free) || 0
+    const leaseTerm = parseInt(form.lease_term_months) || 12
+    if (monthsFree < 0 || monthsFree >= leaseTerm || leaseTerm < 1 || leaseTerm > 36) {
+      toast.error('Free months must be less than the lease term (1–36 months).')
+      setTab(1)
       return
     }
 
@@ -178,18 +216,24 @@ export default function PostListing() {
           amenities: amenitiesArray,
           pets_policy: form.pets_policy,
           available_date: form.available_date || null,
+          months_free: monthsFree,
+          lease_term_months: leaseTerm,
+          video_url: form.video_url.trim() || null,
+          tour_3d_url: form.tour_3d_url.trim() || null,
           status: 'active',
           photos: [],
+          floor_plans: [],
         })
         .select()
         .single()
 
       if (insertError) throw insertError
 
-      if (photos.length > 0) {
+      if (photos.length > 0 || floorPlans.length > 0) {
         const photoUrls = await uploadPhotos(listing.id)
+        const planUrls = await uploadFloorPlans(listing.id)
         const { error: updateError } = await supabase
-          .from('listings').update({ photos: photoUrls }).eq('id', listing.id)
+          .from('listings').update({ photos: photoUrls, floor_plans: planUrls }).eq('id', listing.id)
         if (updateError) throw updateError
       }
 
@@ -435,6 +479,27 @@ export default function PostListing() {
           ${totalDueAtSigning().toLocaleString()}
         </span>
       </div>
+
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', margin: 0 }}>Lease terms</h3>
+        <div style={rowStyle}>
+          <div>
+            <label className="label">Lease term (months)</label>
+            <input type="number" min="1" max="36" placeholder="12" value={form.lease_term_months}
+              onChange={e => update('lease_term_months', e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <label className="label">Free months</label>
+            <input type="number" min="0" max="11" step="0.5" placeholder="0" value={form.months_free}
+              onChange={e => update('months_free', e.target.value)} style={inputStyle} />
+          </div>
+        </div>
+        <p style={{ fontSize: '13px', color: 'var(--charcoal-soft)', margin: 0, lineHeight: 1.55 }}>
+          {parseFloat(form.months_free) > 0 && form.price
+            ? <>Net effective rent: <strong>${netPreview.toLocaleString()}/mo</strong> (gross ${parseInt(form.price).toLocaleString()}). Renters see both, clearly labeled.</>
+            : 'If you offer free months, enter them here and the net effective rent is shown next to the gross rent.'}
+        </p>
+      </div>
     </div>,
 
     // ── TAB 2: AMENITIES ──
@@ -485,8 +550,9 @@ export default function PostListing() {
       </div>
     </div>,
 
-    // ── TAB 2: PHOTOS ──
-    <div key="photos" className="card">
+    // ── TAB 3: PHOTOS, FLOOR PLANS, VIDEO ──
+    <div key="photos" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className="card">
       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', marginBottom: '6px' }}>Photos</h3>
       <p style={{ fontSize: '13px', color: 'var(--warm-gray)', marginBottom: '20px' }}>
         Add up to 10 photos. The first photo is the cover. JPG, PNG, or HEIC.
@@ -556,6 +622,57 @@ export default function PostListing() {
           ))}
         </div>
       )}
+    </div>
+
+    <div className="card">
+      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', marginBottom: '6px' }}>Floor plans</h3>
+      <p style={{ fontSize: '13px', color: 'var(--warm-gray)', marginBottom: '14px' }}>
+        Up to 4 images, shown in their own section, not in the photo carousel.
+      </p>
+      {floorPlans.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '12px' }}>
+          {floorPlans.map((p, i) => (
+            <div key={i} style={{ position: 'relative', aspectRatio: '4/3' }}>
+              <img src={p.preview} alt={`Floor plan ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '10px', background: 'var(--sand)' }} />
+              <button type="button" onClick={() => removeFloorPlan(i)} aria-label="Remove floor plan" style={{
+                position: 'absolute', top: '6px', right: '6px', background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%',
+                width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff',
+              }}><X size={13} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+      {floorPlans.length < 4 && (
+        <>
+          <button type="button" className="btn-secondary" onClick={() => planInputRef.current?.click()} style={{ padding: '10px 16px', fontSize: '13px' }}>
+            + Add floor plan
+          </button>
+          <input ref={planInputRef} type="file" accept="image/*" multiple
+            onChange={e => { addFloorPlans(e.target.files); e.target.value = '' }} style={{ display: 'none' }} />
+        </>
+      )}
+    </div>
+
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', marginBottom: '6px' }}>Video and 3D tour</h3>
+        <p style={{ fontSize: '13px', color: 'var(--warm-gray)', margin: 0 }}>
+          Paste links. Cuna embeds them on the listing page; nothing is uploaded here.
+        </p>
+      </div>
+      <div>
+        <label className="label">Video tour (YouTube or Vimeo link)</label>
+        <input placeholder="https://www.youtube.com/watch?v=…" value={form.video_url}
+          onChange={e => update('video_url', e.target.value)} style={{ ...inputStyle, borderColor: videoOk ? undefined : 'var(--pass-red)' }} />
+        {!videoOk && <p style={{ fontSize: '12px', color: 'var(--pass-red)', margin: '6px 0 0' }}>That is not a YouTube or Vimeo link.</p>}
+      </div>
+      <div>
+        <label className="label">3D walkthrough (Matterport link)</label>
+        <input placeholder="https://my.matterport.com/show/?m=…" value={form.tour_3d_url}
+          onChange={e => update('tour_3d_url', e.target.value)} style={{ ...inputStyle, borderColor: tourOk ? undefined : 'var(--pass-red)' }} />
+        {!tourOk && <p style={{ fontSize: '12px', color: 'var(--pass-red)', margin: '6px 0 0' }}>That is not a Matterport link.</p>}
+      </div>
+    </div>
     </div>,
 
     // ── TAB 3: REVIEW ──
@@ -580,7 +697,9 @@ export default function PostListing() {
               ? form.other_fees.map(f => `${f.description}: $${parseInt(f.amount || 0).toLocaleString()}`).join(', ')
               : 'None'],
             ['Total at signing', `$${totalDueAtSigning().toLocaleString()}`],
-            ['Photos', `${photos.length} photo${photos.length !== 1 ? 's' : ''}`],
+            ['Lease', `${parseInt(form.lease_term_months) || 12} months${parseFloat(form.months_free) > 0 ? `, ${form.months_free} free → net effective $${netPreview.toLocaleString()}/mo` : ''}`],
+            ['Photos', `${photos.length} photo${photos.length !== 1 ? 's' : ''}${floorPlans.length ? ` · ${floorPlans.length} floor plan${floorPlans.length !== 1 ? 's' : ''}` : ''}`],
+            ['Video / 3D', [form.video_url.trim() && 'video', form.tour_3d_url.trim() && '3D tour'].filter(Boolean).join(', ') || 'None'],
             ['Pets', petsPolicyLabel(form.pets_policy) || 'Not selected'],
             ['Amenities', Object.entries({
               doorman: 'Doorman', elevator: 'Elevator', gym: 'Gym',

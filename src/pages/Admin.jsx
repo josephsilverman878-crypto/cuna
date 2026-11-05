@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
+import AdminReports from '../components/AdminReports'
 import toast from 'react-hot-toast'
 import { ChevronLeft, Check, ExternalLink } from 'lucide-react'
 
@@ -14,7 +15,7 @@ export default function Admin() {
   const [approving, setApproving] = useState(null)
   const [tab, setTab] = useState('pending')
 
-  useEffect(() => { if (profile?.is_admin) fetchPosters() }, [profile, tab])
+  useEffect(() => { if (profile?.is_admin && tab !== 'reports') fetchPosters() }, [profile, tab])
 
   async function fetchPosters() {
     setLoading(true)
@@ -121,8 +122,20 @@ export default function Admin() {
           >
             Verified
           </button>
+          <button
+            onClick={() => setTab('reports')}
+            style={{
+              padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 500,
+              background: tab === 'reports' ? 'var(--terracotta)' : 'var(--white)',
+              color: tab === 'reports' ? 'white' : 'var(--warm-gray)',
+              border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-sm)',
+            }}
+          >
+            Reports
+          </button>
         </div>
 
+        {tab === 'reports' ? <AdminReports /> : (<>
         <button
           onClick={() => window.open('https://dos.ny.gov/licensing/eaccessny.html', '_blank')}
           style={{
@@ -194,6 +207,7 @@ export default function Admin() {
             ))}
           </div>
         )}
+        </>)}
       </div>
 
       <BottomNav />
