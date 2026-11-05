@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
+import SavedSearchesCard from '../components/SavedSearchesCard'
 import toast from 'react-hot-toast'
 import { LogOut, Save } from 'lucide-react'
 
@@ -276,9 +277,11 @@ export default function Profile() {
 
         {profile?.role === 'renter' && (
           <>
+            <SavedSearchesCard userId={user.id} />
+
             <div className="card">
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', marginBottom: '4px' }}>Search preferences</h2>
-              <p style={{ fontSize: '12px', color: 'var(--warm-gray)', marginBottom: '20px' }}>Used to find you better matches. Never shown to landlords.</p>
+              <p style={{ fontSize: '12px', color: 'var(--warm-gray)', marginBottom: '20px' }}>A starting point for your feed filters the first time you open the feed. Never shown to landlords.</p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -384,6 +387,8 @@ export default function Profile() {
                 Whenever a listing you saved changes — status, price, fees, available date, open
                 houses or the details — it shows up under the bell, and you get a summary by email
                 when something changed, at most twice a day. To stop updates for a listing, unsave it.
+                New listings that match a saved search show up under the bell too; to stop those,
+                delete the saved search above.
               </p>
             </div>
 

@@ -16,6 +16,12 @@
 // Env vars (Vercel, server-side only; never VITE_):
 //   CRON_SECRET                 Vercel sends "Authorization: Bearer <CRON_SECRET>"
 //   ALERT_EMAILS_ENABLED        'true' to send; anything else = skip
+//   SAVED_SEARCH_EMAILS_ENABLED 'true' to include "new listing matches your saved
+//                               search" rows (kind saved_search) in the email.
+//                               Anything else: those rows are marked handled
+//                               without being emailed, so they never pile up
+//                               into one giant first email later. The bell
+//                               shows them regardless. DEFAULT OFF.
 //   SUPABASE_URL                project URL
 //   SUPABASE_SERVICE_ROLE_KEY   service role (bypasses RLS: reads notifications
 //                               for every user and writes emailed_at)
@@ -54,13 +60,27 @@ export default async function handler(req, res) {
   }
   if (!rows || rows.length === 0) return res.status(200).json({ ok: true, users: 0, sent: 0 })
 
+  // Saved-search matches go out only behind their own flag (default off).
+  const savedSearchEmails = process.env.SAVED_SEARCH_EMAILS_ENABLED === 'true'
+  let savedSearchSuppressed = 0
+  let live = rows
+  if (!savedSearchEmails) {
+    const ssIds = rows.filter(r => r.kind === 'saved_search').map(r => r.id)
+    if (ssIds.length) {
+      await supabase.from('notifications').update({ emailed_at: new Date().toISOString() }).in('id', ssIds)
+      savedSearchSuppressed = ssIds.length
+    }
+    live = rows.filter(r => r.kind !== 'saved_search')
+    if (live.length === 0) return res.status(200).json({ ok: true, users: 0, sent: 0, savedSearchSuppressed })
+  }
+
   const byUser = new Map()
-  for (const r of rows) {
+  for (const r of live) {
     if (!byUser.has(r.user_id)) byUser.set(r.user_id, [])
     byUser.get(r.user_id).push(r)
   }
   const userIds = [...byUser.keys()]
-  const listingIds = [...new Set(rows.map(r => r.listing_id).filter(Boolean))]
+  const listingIds = [...new Set(live.map(r => r.listing_id).filter(Boolean))]
 
   const [{ data: profiles }, { data: listings }] = await Promise.all([
     supabase.from('profiles').select('id, name, email').in('id', userIds),
@@ -68,7 +88,7 @@ export default async function handler(req, res) {
       ? supabase.from('listings').select('id, address, neighborhood, city, status').in('id', listingIds)
       : Promise.resolve({ data: [] }),
   ])
-  console.log('Alert digest: unemailed rows', rows.length, 'users', userIds.length, 'listings', listingIds.length)
+  console.log('Alert digest: unemailed rows', rows.length, 'emailable', live.length, 'users', userIds.length, 'listings', listingIds.length, 'saved-search rows suppressed', savedSearchSuppressed)
   const emailOf = new Map((profiles || []).map(p => [p.id, p]))
   const listingOf = new Map((listings || []).map(l => [l.id, l]))
 
@@ -91,10 +111,16 @@ export default async function handler(req, res) {
       continue
     }
 
-    // Group this user's rows by listing, in the order the listings first changed.
+    // Saved-search matches are their own section: one entry per new listing.
+    const matches = items
+      .filter(r => r.kind === 'saved_search')
+      .map(r => ({ listing: listingOf.get(r.listing_id) || { id: r.listing_id, address: r.message, status: null }, line: r.line || r.message }))
+
+    // Group this user's saved-listing rows by listing, in the order the listings first changed.
     const groups = []
     const byListing = new Map()
     for (const r of items) {
+      if (r.kind === 'saved_search') continue
       const lid = r.listing_id || 'none'
       if (!byListing.has(lid)) {
         const listing = listingOf.get(r.listing_id) || { id: r.listing_id, address: r.message, status: null }
@@ -106,7 +132,7 @@ export default async function handler(req, res) {
     }
 
     const savedUrl = `${base}/history`
-    const { subject, html, text } = renderDigest({ name: prof.name, groups, base, savedUrl })
+    const { subject, html, text } = renderDigest({ name: prof.name, groups, matches, base, savedUrl })
 
     const resp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -127,5 +153,5 @@ export default async function handler(req, res) {
       console.error('Alert digest send failed for user', userId, await resp.text().catch(() => ''))
     }
   }
-  return res.status(200).json({ ok: true, users: byUser.size, sent, suppressed, failed })
+  return res.status(200).json({ ok: true, users: byUser.size, sent, suppressed, failed, savedSearchSuppressed })
 }
