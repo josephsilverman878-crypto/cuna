@@ -35,7 +35,7 @@ export default function Terms() {
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '24px' }}>
         <div className="card">
           <p style={{ fontSize: '13px', color: 'var(--warm-gray)', marginBottom: '20px' }}>
-            Last updated: November 4, 2026
+            Last updated: November 5, 2026
           </p>
 
           <P>
@@ -52,19 +52,22 @@ export default function Terms() {
 
           <H>1. What Cuna Is (and Isn't)</H>
           <P>
-            Cuna is a platform that connects people looking for rental apartments ("Renters") with
-            people offering rental apartments ("Posters"), including licensed real estate agents and
-            landlords. Renters browse listings and, when they want to see one or know more, send a
-            tour request or a question that Cuna emails to the Poster. Renters can save listings and
-            be told when a saved listing changes. Cuna also offers an optional neighborhood guide
-            (the "New to NY" quiz) built from public data.
+            Cuna is a platform that connects people looking for a home to rent or buy ("Renters",
+            whether renting or buying) with people offering homes for rent or sale ("Posters"),
+            including licensed real estate agents, brokerages and owners. Renters browse listings and,
+            when they want to see one or know more, send a tour request or a question that Cuna emails
+            to the Poster. Renters can save listings and searches and be told when something changes,
+            and may keep an optional rental application to share with a Poster when they choose.
+            Cuna also publishes pages built from public records: building pages, neighborhood pages,
+            market data and the optional "New to NY" neighborhood guide.
           </P>
           <P><strong>Cuna is a listing and introduction platform only.</strong> Cuna:</P>
           <UL>
             <li>Is <strong>not a party</strong> to any lease, rental agreement, or transaction between Renters and Posters;</li>
             <li>Does <strong>not</strong> act as a real estate broker, agent, or salesperson through the Service, and does not represent any user in any transaction;</li>
             <li>Does <strong>not</strong> verify, inspect, or guarantee any listing, apartment, price, fee, availability, or the identity or conduct of any user, beyond the licence check described in Section 4;</li>
-            <li>Does <strong>not</strong> collect rent, deposits, or fees on behalf of any Poster, and never asks you to pay anything through the Service.</li>
+            <li>Does <strong>not</strong> collect rent, deposits, or fees on behalf of any Poster, never asks you to pay anything through the Service, and charges no application fee;</li>
+            <li>Is <strong>not</strong> a tenant-screening company or consumer reporting agency: a rental application on Cuna is information a Renter chose to write down and share, not a report Cuna prepared or verified.</li>
           </UL>
           <P>Any agreement you enter into with another user is solely between you and that user.</P>
 
@@ -89,8 +92,10 @@ export default function Terms() {
           <P>
             Before you can publish a listing, a Cuna administrator reviews the licence details you
             gave at signup and may check them against public New York Department of State records.
-            Verification confirms that the details you gave match a licence record; it is not an
-            endorsement, and it does not make Cuna responsible for your conduct.
+            Verification confirms that the details you gave match a licence record, and for owners
+            that the property you named is recorded as yours; it is not an endorsement, and it does
+            not make Cuna responsible for your conduct. The comparisons use public New York State and
+            New York City datasets as they stand on the day; a person at Cuna makes the decision.
           </P>
           <P>If you post a listing, you represent and agree that:</P>
           <UL>
@@ -105,7 +110,14 @@ export default function Terms() {
               </ul>
             </li>
             <li>Your listing is for a residential rental with a lease term of at least 30 days. Short-term rentals, vacation rentals, and offers of individual rooms for periods under 30 days are not permitted;</li>
-            <li>You will not post more than one active listing for the same unit at the same time;</li>
+            <li>You will not post more than one active listing for the same unit at the same time (the Service refuses a second live listing at the same address and unit);</li>
+            <li>Each listing you publish or edit will carry at least three photos that are yours to use, every fee the tenant pays (0 when there is none), a price within the Service's sensible range, and a description about the home, never about the tenant you want. The Service checks these before posting and may flag for review a listing priced far below comparable ones nearby or using photos already on another Poster's listing;</li>
+            <li>For a home offered for sale, the asking price, common charges, maintenance, taxes and financing terms you post are accurate; a sale listing is an advertisement, not an offer, and the FARE Act's rental-fee rules do not apply to it;</li>
+            <li>If you post many listings at once through the CSV upload, you are responsible for every row exactly as if you had typed it;</li>
+            <li>If you create a brokerage team, you are responsible for the agents you add and may see and update their listings; if you join one, you accept that its owner can do so. Leads still go to the Poster who posted;</li>
+            <li>Your public agent page describes your service and experience and nothing about the tenants you are looking for; Cuna may remove a bio that does not;</li>
+            <li>If you signed up as an owner, the property address you give for verification is the property you actually own;</li>
+            <li><strong>If a Renter shares a rental application with you</strong>, you will use it only to evaluate that Renter for that home, keep it confidential, not copy or forward it beyond the people who need it for that decision, delete any copies when the decision is made, and never use it to discriminate on any ground protected by law, including lawful source of income;</li>
             <li><strong>You will keep each listing's status current</strong> — Active, In contract, Rented, Off-market or De-listed — and change it as soon as the facts change. Listings cannot be deleted: De-listed is the final state, and every listing remains viewable at its own link with its status, the date it changed, its days on market and its last price change;</li>
             <li>Open house times you post are public. You will keep them accurate and cancel any that will not take place; cancelled times stay on record, marked cancelled;</li>
             <li>You will use the contact details a Renter sends you in a tour request or a question only to respond to that request or question.</li>
@@ -122,7 +134,8 @@ export default function Terms() {
           <UL>
             <li>Information you provide in your profile and preferences is accurate;</li>
             <li>You will independently verify any listing details (including fees, availability, and condition) before entering into any agreement;</li>
-            <li>Cuna's display of listing information, including any fee breakdowns or totals, reflects information provided by the Poster and is not verified by Cuna.</li>
+            <li>Cuna's display of listing information, including any fee breakdowns, net effective rent or totals, reflects information provided by the Poster and is not verified by Cuna;</li>
+            <li>If you fill in a rental application, what you write is accurate, the documents are yours and may lawfully be shared, and you will not put a Social Security number, a bank or card number, or anyone else's personal information in it. You decide, request by request, whether to share it; Cuna never shares it for you and charges nothing for it.</li>
           </UL>
           <P>
             <strong>Tour requests and questions.</strong> When you send a tour request, Cuna emails
@@ -139,12 +152,18 @@ export default function Terms() {
             listing in a day. A request over the limit is refused and nothing is sent.
           </P>
 
-          <H>6. Neighborhood Guide, Public Data and Estimates</H>
+          <H>6. Neighborhood Guide, Building, Market and Neighborhood Pages, Public Data and Estimates</H>
           <P>
-            The "New to NY" quiz, the neighborhood descriptions, and the information shown on
-            neighborhood cards are provided for general information only. They are not advice, not
-            a recommendation to rent or buy anywhere, and not a decision about you.
+            The "New to NY" quiz, the neighborhood descriptions, the neighborhood cards, the
+            building pages, the market page and the neighborhood pages are provided for general
+            information only. They are not advice, not a recommendation to rent or buy anywhere, and
+            not a decision about you.
           </P>
+          <UL>
+            <li><strong>Building pages</strong> show year built, number of apartments, floors and building class from the City's PLUTO dataset, recorded sales from the Department of Finance and ACRIS, and listings on Cuna. Public records can lag or contain errors; confirm anything that matters with the Poster or the records themselves.</li>
+            <li><strong>Market data</strong> shows median recorded sale prices and counts by the Department of Finance's own neighborhood names for the last twelve months, and median asking prices of live Cuna listings. A figure is shown only when it rests on at least ten records. Medians describe a group of sales or listings, never a particular home, and are not appraisals.</li>
+            <li><strong>Neighborhood pages</strong> list the subway stations, public schools and hospitals located inside a neighborhood's boundary as drawn by the City (2020 Neighborhood Tabulation Areas), by name and address only, with the listings on Cuna and the market figures above. Boundaries are approximate; school assignment depends on an exact address.</li>
+          </UL>
           <UL>
             <li><strong>Price ranges are estimates, not appraisals or offers.</strong> Rent ranges are derived from publicly listed asking rents and sale ranges from publicly recorded sales, for the period noted on each card. They are rounded, can be out of date, and do not describe any particular apartment. Always confirm the actual price with the Poster or seller.</li>
             <li><strong>School, district and hospital information comes from public sources</strong> — the NYC Department of Education's school list as of the school year stated on the card (currently 2024–25), NYC Department of City Planning school-district boundaries, and the New York State Department of Health facility list. We list what is located within a neighborhood's boundaries as we have drawn them; those boundaries are approximate. School assignment depends on an exact address and the city's own rules. Confirm it with the Department of Education before relying on it. We publish names, grade spans, public or charter status and district numbers only, never ratings or rankings.</li>
@@ -158,7 +177,9 @@ export default function Terms() {
           <H>7. Saved Listings and Notifications</H>
           <P>
             Saving a listing is a private bookmark; the Poster sees only how many people saved a
-            listing, never who. When a listing you saved changes in any way — status, price, fees,
+            listing, never who. Saving a search works the same way: you are told when new listings
+            match it, and Posters see only counts of saved searches by neighborhood, bedrooms and
+            price band, for groups of three or more. When a listing you saved changes in any way — status, price, fees,
             available date, open houses, or its details — Cuna tells you under the bell in the app.
             Saving a listing also signs you up for email summaries of its changes, sent only when
             something has changed and at most twice a day; unsaving the listing stops them, and every
@@ -174,9 +195,12 @@ export default function Terms() {
             <li>Harass, threaten, or abuse other users, including in a tour request, a question, a listing, an open house time, or in email replies that begin with a tour request or question;</li>
             <li>Use tour requests or questions, or the contact details received through them, to send spam or unsolicited commercial messages, or try to get around the sending limits;</li>
             <li>Scrape, copy, or harvest data, listings, or user information from the Service;</li>
+            <li>Use photos, descriptions or details from another Poster's listing, or post a listing for a home you do not control;</li>
+            <li>Use a rental application a Renter shared with you for anything other than evaluating that Renter for that home, or keep it after the decision;</li>
+            <li>Report a listing you know to be accurate, or use reports to harass a Poster;</li>
             <li>Attempt to circumvent security measures, access other users' accounts, or interfere with the operation of the Service;</li>
             <li>Impersonate any person or misrepresent your affiliation with any person or entity;</li>
-            <li>Use the Service for any purpose other than seeking or offering residential rentals.</li>
+            <li>Use the Service for any purpose other than seeking or offering homes to rent or buy.</li>
           </UL>
           <P>
             We may remove content or suspend or terminate accounts that violate these Terms, at our
@@ -198,7 +222,10 @@ export default function Terms() {
           <H>10. Third-Party Services and Content</H>
           <P>
             The Service is built on third-party infrastructure (hosting, database, sign-in, email
-            delivery, a scheduled job for summary emails, and fonts), named in the Privacy Policy. The Service links to outside sites,
+            delivery, a scheduled job for summary emails, maps and address lookups, and fonts), named
+            in the Privacy Policy, and reads public datasets from New York City and New York State
+            for maps, verification checks and the building, market and neighborhood pages. If sign-in
+            with Google or Apple is offered, your use of it is also subject to their terms. The Service links to outside sites,
             such as the New York City Department of Education's school search, and the "Tell us what
             you're looking for" button opens your own email application. Links do not imply
             endorsement, and those sites and services have their own terms.
