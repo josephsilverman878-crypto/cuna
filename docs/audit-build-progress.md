@@ -112,6 +112,22 @@ Flatbush / Ditmas Park 2.89, Williamsburg 2.02 (+ Greenpoint stays NTA).
 | Bensonhurst | 4.52 | | Bath Beach | 1.91 |
 | Gravesend (West) | 3.14 | | | |
 
+### NJ-4 · Transit (subway) commute times: pick a provider or wait (2.3)
+
+The listing page shows walking and driving times from Mapbox. Mapbox has no
+public-transit routing, so there is no subway time. Three ways to add one;
+I have not picked:
+
+| option | what it costs | notes |
+|---|---|---|
+| Google Routes API, transit mode | $5 per 1,000 requests after Google's $200/month free credit (about 40,000 free requests a month) | Best NYC transit coverage; needs a Google Cloud project, a billing account and a key restricted to hellocuna.com |
+| HERE Public Transit API | Free up to 250,000 requests a month on the Freemium plan, then about $1 per 1,000 | Needs a HERE developer account and an API key; coverage good in NYC |
+| Self-hosted OpenTripPlanner with the MTA GTFS feeds | Free software; a small always-on server (~$20–40 a month) and someone to keep the GTFS files current | No per-request cost or vendor key; most work for us |
+
+Reply with one of the three (or "wait"), and for Google or HERE create the
+account and give me the key as a Vercel server-side env var name (never a
+VITE_ var); I will wire it behind a flag.
+
 ### NJ-2 · Mapbox token URL restriction (1.1, not blocking)
 
 The token in VITE_MAPBOX_TOKEN is a public token and ships in the browser,
@@ -128,7 +144,11 @@ that token → URL restrictions → add `https://hellocuna.com/*`,
 | 2026-11-05 | `42-wave1-search-test.sql` (role simulation, ROLLED BACK) | 9eeaac69… | …/sql/d022eda9… | 57 checks, 0 FAIL (`42-test-report.txt`) |
 | 2026-11-05 | **`42-wave1-search.sql` APPLIED** | db163ea5… | …/sql/6e17ed37… | postgis 3.3.7 + http 1.6; neighborhoods 274 rows (14 custom, 40 NTAs trimmed); listings +8 columns +3 triggers; neighborhood_for_point, neighborhoods_geojson, search_listings; renter_profiles.search_state; saved_searches + notify trigger; notifications.kind += saved_search |
 
-Rollback for 42: `cuna-security/42-wave1-search-rollback.sql` (not run).
+| 2026-11-05 | counts re-check before 44 (42-backup-counts.sql, read-only) | 24aae4e5… | …/sql/8985e44e… | identical to the morning backup (only my new tables added: neighborhoods 274, saved_searches 0), so that backup still covers every pre-existing row |
+| 2026-11-05 | `44-wave2-listing-page-test.sql` (role simulation, ROLLED BACK) | 92d7084d… | …/sql/f7588b35… | 40 checks, 0 FAIL (`44-test-report.txt`) |
+| 2026-11-05 | **`44-wave2-listing-page.sql` APPLIED** | d4fba608… | …/sql/d07c4299… | subway_stations 496 rows; listings + floor_plans, video_url, tour_3d_url, months_free, lease_term_months, generated net_effective_price; search_listings re-created with p_price_basis (old signature dropped); saved_search_matches, listings_record_event, details_fields_sorted, get_listing_public re-created; listing_reports + guard trigger + admin_listing_reports / admin_resolve_report; nearby_subway_stations, neighborhood_shape |
+
+Rollback for 42: `cuna-security/42-wave1-search-rollback.sql`; for 44: `44-wave2-listing-page-rollback.sql` (neither run).
 
 ## Merge log
 
@@ -247,14 +267,14 @@ States: `todo` · `in progress` · `done` · `blocked (reason)`
 
 | item | state | notes |
 |---|---|---|
-| 2.1 Location map on listing page | in progress | |
-| 2.2 Nearby subway stations (MTA data in DB, walking distance) | todo | |
-| 2.3 Commute time (Mapbox walking/driving; transit question to Needs Joseph) | todo | |
-| 2.4 Floor plans + video/3D tour links | todo | |
-| 2.5 Net effective rent | todo | |
-| 2.6 Share | todo | |
-| 2.7 Report a listing | todo | |
-| Wave 2 merge | todo | |
+| 2.1 Location map on listing page | done | `ListingMap.jsx`: pin + neighborhood outline (`neighborhood_shape` RPC), "Open in Maps"; shown only for geocoded listings |
+| 2.2 Nearby subway stations (MTA data in DB, walking distance) | done | `subway_stations` (496 rows from NY Open Data 39hk-dx4f, loaded once by 44) + `nearby_subway_stations` RPC (transfer complexes collapsed); `NearbySubway.jsx` with Mapbox Matrix walking times, estimate fallback |
+| 2.3 Commute time (Mapbox walking/driving; transit question to Needs Joseph) | done | `CommuteCalculator.jsx`: destination via GeoSearch, walking + driving via Mapbox Directions, remembered per browser; transit options in NJ-4 |
+| 2.4 Floor plans + video/3D tour links | done | `listings.floor_plans` (up to 4 images under `<poster>/<listing>/floorplans/`), `video_url` (YouTube/Vimeo), `tour_3d_url` (Matterport), DB checks on the hosts; `ListingMedia.jsx` tap-to-load embeds; Post/Edit fields |
+| 2.5 Net effective rent | done | `months_free`, `lease_term_months`, generated `net_effective_price`; shown with the gross price on cards and the page, both labeled; filter sheet "Gross / Net effective" basis (`search_listings` p_price_basis, saved searches too); sort "Net effective: low to high" |
+| 2.6 Share | done | `ShareButton.jsx`: native share sheet, copy-link fallback; listing page header |
+| 2.7 Report a listing | done | `listing_reports` (5/day/user, 1/listing/week, own rows only), `ReportListing.jsx` modal (signed-in only), `/admin` → Reports tab (open/resolved, resolve with note) through `admin_listing_reports` / `admin_resolve_report` |
+| Wave 2 merge | in progress | |
 
 ### Wave 3 — sales (branch `feature/wave3-sales`)
 
