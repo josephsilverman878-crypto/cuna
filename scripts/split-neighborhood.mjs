@@ -76,20 +76,24 @@ console.log(`area: ${area.name} [${area.slug}] ${area.borough} ${area.area_km2} 
 const q = `[out:json][timeout:60];way["highway"]["name"~"^${streetName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$",i](${bbox.join(',')});out geom;`
 let osm = null
 const errors = []
-const mirrors = ['https://overpass-api.de/api/interpreter', 'https://lz4.overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.osm.ch/api/interpreter', 'https://overpass.private.coffee/api/interpreter']
-for (let attempt = 0; attempt < 3 && !osm; attempt++) {
+// Worldwide mirrors only (overpass.osm.ch, for one, holds Switzerland alone
+// and answers an NYC query with an empty, misleading 200).
+const mirrors = ['https://overpass-api.de/api/interpreter', 'https://lz4.overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter']
+let ways = []
+for (let attempt = 0; attempt < 4 && !ways.length; attempt++) {
   for (const url of mirrors) {
     try {
       const r = await fetch(url, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'cuna-split-neighborhood/1.0' } })
-      if (r.ok) { osm = await r.json(); break }
-      errors.push(url + ' -> ' + r.status)
+      if (!r.ok) { errors.push(url + ' -> ' + r.status); continue }
+      const data = await r.json()
+      ways = (data.elements || []).filter(w => w.type === 'way' && w.geometry && w.geometry.length > 1)
+      if (ways.length) { osm = data; break }
+      errors.push(url + ' -> 200 but no matching way')
     } catch (e) { errors.push(url + ' -> ' + e.message) }
   }
-  if (!osm) { console.log(`Overpass busy (attempt ${attempt + 1}); waiting 20 s`); await new Promise(res => setTimeout(res, 20000)) }
+  if (!ways.length) { console.log(`Overpass busy or empty (attempt ${attempt + 1}); waiting 30 s`); await new Promise(res => setTimeout(res, 30000)) }
 }
-if (!osm) { console.error('Overpass failed on every mirror:\n  ' + errors.join('\n  ')); process.exit(1) }
-const ways = osm.elements.filter(w => w.type === 'way' && w.geometry && w.geometry.length > 1)
-if (!ways.length) { console.error(`no OpenStreetMap way named "${streetName}" inside the area's box; check the spelling`); process.exit(1) }
+if (!ways.length) { console.error(`no OpenStreetMap way named "${streetName}" inside the area's box (or every mirror was busy). Tried:\n  ` + errors.join('\n  ')); process.exit(1) }
 console.log(`street: "${streetName}" -> ${ways.length} OSM segments`)
 const multiline = { type: 'MultiLineString', coordinates: ways.map(w => w.geometry.map(p => [p.lon, p.lat])) }
 
