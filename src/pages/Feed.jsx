@@ -19,6 +19,7 @@ import { listNeighborhoods, idsForNames } from '../lib/areas'
 import { createSavedSearch, getSavedSearch } from '../lib/savedSearches'
 import { mapsEnabled } from '../lib/mapbox'
 import { hasConcession, concessionText } from '../lib/netEffective'
+import { LISTING_TYPES, isSale, priceText, propertyTypeLabel } from '../lib/listingTypes'
 import toast from 'react-hot-toast'
 import {
   MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Heart, MoreVertical, EyeOff,
@@ -93,8 +94,17 @@ function FeedCard({ listing, liked, onToggleLike, onHide, onRequestTour, onOpen 
           padding: '6px 14px', borderRadius: '20px',
           fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600,
         }}>
-          ${listing.price?.toLocaleString()}/mo
+          {priceText(listing)}
         </div>
+        {isSale(listing) && (
+          <div style={{
+            position: 'absolute', top: '58px', right: '16px',
+            background: 'rgba(255,255,255,0.92)', color: 'var(--charcoal)',
+            padding: '3px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600,
+          }}>
+            For sale{propertyTypeLabel(listing.property_type) ? ` · ${propertyTypeLabel(listing.property_type)}` : ''}
+          </div>
+        )}
 
         {listing.next_open_house && (
           <div style={{
@@ -247,7 +257,7 @@ function FeedCard({ listing, liked, onToggleLike, onHide, onRequestTour, onOpen 
               cursor: 'pointer',
             }}
           >
-            Details & fees
+            {isSale(listing) ? 'Details' : 'Details & fees'}
           </button>
           <button
             onClick={() => onRequestTour(listing)}
@@ -469,6 +479,12 @@ export default function Feed() {
 
   function clearAreas() { applyCriteria({ neighborhoodIds: [], area: null }) }
   function setView(view) { applyCriteria({ view }, { refetch: false }) }
+  // Rent / Buy: part of the filters, so saved searches and the remembered
+  // state carry it too.
+  function setListingType(listing_type) {
+    if (listing_type === criteriaRef.current.filters.listing_type) return
+    applyCriteria({ filters: { ...criteriaRef.current.filters, listing_type } })
+  }
 
   async function toggleLike(listing) {
     const wasLiked = likedIds.has(listing.id)
@@ -552,6 +568,18 @@ export default function Feed() {
             cuna
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div role="group" aria-label="Rent or buy" style={{ display: 'flex', background: 'var(--sand)', borderRadius: '20px', padding: '3px' }}>
+              {LISTING_TYPES.map(t => {
+                const on = criteria.filters.listing_type === t.id
+                return (
+                  <button key={t.id} onClick={() => setListingType(t.id)} aria-pressed={on} style={{
+                    padding: '5px 12px', borderRadius: '17px', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer',
+                    background: on ? 'var(--white)' : 'transparent', color: on ? 'var(--terracotta)' : 'var(--warm-gray)',
+                    boxShadow: on ? 'var(--shadow-sm)' : 'none', transition: 'all 0.2s',
+                  }}>{t.label}</button>
+                )
+              })}
+            </div>
             <NotificationBell />
             <button onClick={() => setFiltersOpen(true)} style={pill(activeCount > 0)} aria-label="Filters">
               <SlidersHorizontal size={14} />
@@ -616,7 +644,7 @@ export default function Feed() {
           <div style={{ textAlign: 'center', padding: '60px 0' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏠</div>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', marginBottom: '12px' }}>
-              {activeCount > 0 ? 'No listings match your search' : 'No listings available yet'}
+              {activeCount > 0 ? 'No listings match your search' : criteria.filters.listing_type === 'sale' ? 'No homes for sale yet' : 'No rentals available yet'}
             </h2>
             <p style={{ color: 'var(--warm-gray)', marginBottom: '24px' }}>
               {activeCount > 0

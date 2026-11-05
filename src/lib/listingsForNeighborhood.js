@@ -4,12 +4,9 @@ import { matchListingToNeighborhood } from './neighborhoodAliases'
 
 // Listings for the neighborhoods on the results page.
 //
-// IMPORTANT — the listings table has NO rent-vs-sale column. Every field on it
-// is a rental field (security_deposit, move_in_fee, application_fee,
-// available_date) and every price in the table reads as a monthly rent. So every
-// listing here is treated as a rental. A buyer therefore has no inventory to
-// show, and gets an honest "none yet" instead of rentals dressed up as sales.
-// If a sale flag is added later, this is the file that has to learn about it.
+// Since wave 3 the listings table carries listing_type ('rent' | 'sale'):
+// a renter's quiz answers select rentals, a buyer's select sales, and the
+// price in either case is the matching figure (monthly rent or asking price).
 //
 // FAIR HOUSING: listings are selected by location, price and size only. Nothing
 // about the person is used to filter or order them — only the budget ceiling and
@@ -26,14 +23,13 @@ export async function fetchListingsForNeighborhoods(neighborhoodIds = [], answer
   const grouped = {}
   for (const id of wanted) grouped[id] = []
 
-  // No sale inventory exists, so a buyer gets nothing rather than rentals.
-  if (answers.tenure === 'buy') return grouped
   if (wanted.size === 0) return grouped
 
   let query = supabase
     .from('listings')
-    .select('id, address, city, state, neighborhood, zip_code, price, bedrooms, bathrooms, photos')
+    .select('id, address, city, state, neighborhood, zip_code, price, bedrooms, bathrooms, photos, listing_type')
     .in('status', PUBLIC_STATUSES)
+    .eq('listing_type', answers.tenure === 'buy' ? 'sale' : 'rent')
 
   // Budget is applied as a ceiling only, the same way the matcher treats it.
   // Filtering out listings below the band would hide cheaper places the renter
