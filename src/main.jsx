@@ -34,6 +34,7 @@ import Building from './pages/Building'
 import Market from './pages/Market'
 import Neighborhoods from './pages/Neighborhoods'
 import Neighborhood from './pages/Neighborhood'
+import AuthCallback from './pages/AuthCallback'
 
 function ProtectedRoute({ children, role }) {
   const { user, profile, loading } = useAuth()
@@ -51,7 +52,7 @@ function AppRoutes() {
 
   if (loading) return <div className="center" style={{ height: '100dvh' }}><div className="spinner" /></div>
 
-  const publicPaths = ['/reset-password', '/terms', '/privacy', '/new-to-ny', '/new-to-ny/results', '/help', '/market', '/neighborhoods']
+  const publicPaths = ['/reset-password', '/terms', '/privacy', '/new-to-ny', '/new-to-ny/results', '/help', '/market', '/neighborhoods', '/auth/callback']
   const publicPrefixes = ['/listing/', '/agent/', '/building/', '/neighborhoods/']
   if (user && !profile && !publicPaths.includes(location.pathname) && !publicPrefixes.some(p => location.pathname.startsWith(p))) {
     return <CompleteProfile />
@@ -69,6 +70,7 @@ function AppRoutes() {
       <Route path="/register/pro" element={user ? <Navigate to="/" /> : <RegisterPro />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/listing/:id" element={<ListingDetail />} />
       <Route path="/agent/:id" element={<AgentPage />} />

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { safeNextPath } from '../lib/safeNext'
 import toast from 'react-hot-toast'
+import OAuthButtons from '../components/OAuthButtons'
 
 export default function Register() {
   const navigate = useNavigate()
@@ -102,6 +103,7 @@ export default function Register() {
               {loading ? 'Creating account...' : 'Create account'}
             </button>
           </form>
+          <OAuthButtons next={next} />
 
           <div style={{ textAlign: 'center', marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--sand-dark)' }}>
             <Link to="/register/pro" style={{ color: 'var(--terracotta)', fontSize: '14px', fontWeight: 600 }}>

@@ -137,6 +137,9 @@ that token → URL restrictions → add `https://hellocuna.com/*`,
 
 - **NJ-5 — XML listing-feed import (4.7).** Design is in `docs/xml-feed-design.md`; `api/feed-import.js` is a stub that answers 501 unless `FEED_IMPORT_ENABLED=true` (leave it unset). Before it is built, decide: (a) which format the first brokerages actually have (a custom XML file, or a RESO Web API / RETS server Cuna should pull from instead); (b) whether Cuna links to their photo URLs or copies photos into Supabase Storage; (c) who may register a feed (brokerage owners only, or any verified poster). Reply in chat and the import gets built in a later wave.
 
+- **NJ-6 — Google sign-in (5.5).** Built and off: the buttons appear only when the Vercel env var `VITE_OAUTH_PROVIDERS` contains `google`. To turn it on: (1) Google Cloud Console → APIs & Services → OAuth consent screen → External → app name "Cuna", support email, authorized domain `hellocuna.com`, save. (2) APIs & Services → Credentials → Create credentials → OAuth client ID → Web application; Authorized JavaScript origins: `https://hellocuna.com`; Authorized redirect URIs: `https://iumommqyjfeehmqpsjot.supabase.co/auth/v1/callback`; Create; copy the Client ID and Client secret. (3) Supabase dashboard → Authentication → Providers → Google → Enable, paste Client ID and secret, Save. (4) Supabase → Authentication → URL Configuration → Site URL `https://hellocuna.com`; Redirect URLs add `https://hellocuna.com/auth/callback` and `https://*.vercel.app/auth/callback` (previews). (5) Vercel → Settings → Environment Variables → add `VITE_OAUTH_PROVIDERS` = `google` for Production (and Preview if you want to test there) → Redeploy. New Google users land on the role + Terms screen before anything is saved.
+- **NJ-7 — Apple sign-in (5.5).** Needs a paid Apple Developer account ($99/yr). When you have it: (1) developer.apple.com → Certificates, Identifiers & Profiles → Identifiers → + → App ID "Cuna" with Sign in with Apple enabled. (2) Identifiers → + → Services ID (`com.hellocuna.web`), enable Sign in with Apple → Configure: primary App ID, domain `iumommqyjfeehmqpsjot.supabase.co`, return URL `https://iumommqyjfeehmqpsjot.supabase.co/auth/v1/callback`. (3) Keys → + → Sign in with Apple key, download the .p8 once, note Key ID and Team ID. (4) Supabase → Authentication → Providers → Apple → Enable; Client ID = the Services ID; Secret = generated from the .p8 (Supabase's docs have the one-line generator; the secret expires every 6 months and must be regenerated). (5) Add `apple` to `VITE_OAUTH_PROVIDERS` (`google,apple`) in Vercel → Redeploy.
+
 ## Database changes applied (production)
 
 | date | script | sha256 (first 16) | tab | result |
@@ -317,11 +320,11 @@ States: `todo` · `in progress` · `done` · `blocked (reason)`
 
 | item | state | notes |
 |---|---|---|
-| 5.1 Building pages | todo | |
-| 5.2 Market data page | todo | |
-| 5.3 Neighborhood pages (pre-rendered) | todo | |
-| 5.4 Help center | todo | |
-| 5.5 Google and Apple sign-in (flagged off) | todo | |
+| 5.1 Building pages | done | `/building/:bbl`: PLUTO facts (year built, apartments, floors, building class; no owner name), live Cuna listings in the lot, past listings (`past_listings_at`), recorded sales (`/api/recorded-sales`). Listing pages link to it when they have a BBL |
+| 5.2 Market data page | done | `/api/market` (SoQL `median()` over DOF Rolling Sales, last 12 months, sales > $100k, grouped houses / co-ops / condos, rows under 10 sales dropped server-side, CDN-cached a day) + `/market` with borough chips, search, and a second table of live Cuna medians by neighborhood (10+ listings). Every figure carries its source and date |
+| 5.3 Neighborhood pages (pre-rendered) | done | `scripts/prerender-neighborhoods.mjs` runs after `vite build` and writes `dist/neighborhoods/<slug>/index.html` for all 209 NTA neighborhoods (listings, subway stations inside the boundary, DOE public schools, NYS DOH hospitals, DOF medians by matching name), plus `/neighborhoods` index, `sitemap.xml` and `robots.txt`; ~10 fetches in all, point-in-polygon in JS, and the build never fails on a data error. `/neighborhoods/:slug` renders the same model live. No demographic content; facilities are names and addresses only |
+| 5.4 Help center | done | `/help`: FAQ for renting, buying, posting, fair housing and privacy; contact hello@hellocuna.com; linked from the landing footer |
+| 5.5 Google and Apple sign-in (flagged off) | done (off) | `src/lib/oauth.js`, `OAuthButtons.jsx` on Login and Register, `/auth/callback`. Buttons render only when `VITE_OAUTH_PROVIDERS` lists a provider (unset in production). New OAuth users have no profile row, so they hit CompleteProfile (role + Terms acceptance) before anything is saved. Setup steps: NJ-6 (Google), NJ-7 (Apple) |
 | 5.6 Rental applications / verified renter profile | todo | |
 | 5.7 Policy update (own PR, needs "approved" in chat) | todo | |
 | Wave 5 merge | todo | |
