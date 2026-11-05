@@ -84,10 +84,13 @@ export async function uploadDocument(userId, file) {
   return path
 }
 
-// The object row goes through delete_my_application_file() (own folder
-// only); the row's absence makes the blob unreachable.
+// Through the Storage API, which removes the blob and the row together.
+// The bucket policy allows it only for paths inside the caller's own folder.
 export async function deleteDocument(path) {
-  return supabase.rpc('delete_my_application_file', { p_name: path })
+  const { data, error } = await supabase.storage.from(BUCKET).remove([path])
+  if (error) return { data: null, error }
+  if (!data || data.length === 0) return { data: null, error: new Error('The file was not removed') }
+  return { data, error: null }
 }
 
 // 10-minute link for a file the caller may read (the renter for their own
