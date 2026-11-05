@@ -148,7 +148,10 @@ that token → URL restrictions → add `https://hellocuna.com/*`,
 | 2026-11-05 | `44-wave2-listing-page-test.sql` (role simulation, ROLLED BACK) | 92d7084d… | …/sql/f7588b35… | 40 checks, 0 FAIL (`44-test-report.txt`) |
 | 2026-11-05 | **`44-wave2-listing-page.sql` APPLIED** | d4fba608… | …/sql/d07c4299… | subway_stations 496 rows; listings + floor_plans, video_url, tour_3d_url, months_free, lease_term_months, generated net_effective_price; search_listings re-created with p_price_basis (old signature dropped); saved_search_matches, listings_record_event, details_fields_sorted, get_listing_public re-created; listing_reports + guard trigger + admin_listing_reports / admin_resolve_report; nearby_subway_stations, neighborhood_shape |
 
-Rollback for 42: `cuna-security/42-wave1-search-rollback.sql`; for 44: `44-wave2-listing-page-rollback.sql` (neither run).
+| 2026-11-05 | `45-wave3-sales-test.sql` (role simulation, ROLLED BACK) | ba85a7c7… | …/sql/3775838f… | 29 checks, 0 FAIL (`45-test-report.txt`); a first file had a generator bug (see the report) |
+| 2026-11-05 | **`45-wave3-sales.sql` APPLIED** | 10ba7d8b… | …/sql/85ad2d6c… | listings + listing_type (default rent), property_type, common_charges, maintenance, monthly_taxes, tax_deductible_pct, financing_allowed_pct; status check gains 'sold'; trigger `listings_a_type_rules`; status_label, details_fields_sorted, listings_record_event, get_listing_public re-created; search_listings re-created with p_listing_type (44 signature dropped); saved_search_matches honors filters.listing_type; `recorded_sales_cache` (service role only); `past_listings_at` |
+
+Rollback for 42: `cuna-security/42-wave1-search-rollback.sql`; for 44: `44-wave2-listing-page-rollback.sql`; for 45: `45-wave3-sales-rollback.sql` (none run).
 
 ## Merge log
 
@@ -282,10 +285,10 @@ States: `todo` · `in progress` · `done` · `blocked (reason)`
 | item | state | notes |
 |---|---|---|
 | 3.1 listing_type rent/sale + sale fields + sale statuses | todo | |
-| 3.2 Rent/Buy toggle everywhere; forms switch by type | todo | |
-| 3.3 Recorded sales history (DOF Rolling Sales + ACRIS by BBL) | todo | |
-| 3.4 Past listings on Cuna | todo | |
-| Wave 3 merge | todo | |
+| 3.2 Rent/Buy toggle everywhere; forms switch by type | done | header Rent/Buy control in the feed (part of the filters, so persisted and saved with searches), filter sheet "Looking to" + price label/basis per type, map pin labels, `search_listings` p_listing_type, saved searches fire only for their type, quiz results pick rentals or sales by tenure. "Sales listings are free to post" on the form |
+| 3.3 Recorded sales history (DOF Rolling Sales + ACRIS by BBL) | done | `/api/recorded-sales?bbl=` (Vercel, service role): DOF Rolling Sales usep-8jbt + ACRIS legals 8h5j-fqxa → master bnx9-e6tj deeds with an amount, per BBL, cached 7 days in `recorded_sales_cache` (no client access); `RecordedSales.jsx` on sale pages with "Source: NYC Department of Finance … as of <date>" and the co-op note |
+| 3.4 Past listings on Cuna | done | `past_listings_at` (security definer, public fields only: Sold/Rented at the same BBL or address) + `PastListings.jsx` on every listing page |
+| Wave 3 merge | in progress | |
 
 ### Wave 4 — broker tools (branch `feature/wave4-broker-tools`)
 
