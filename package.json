@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/prerender-neighborhoods.mjs",
     "preview": "vite preview",
     "test:tz": "TZ=Asia/Tokyo node --test tests/nyTime.test.mjs && TZ=America/Los_Angeles node --test tests/nyTime.test.mjs && TZ=UTC node --test tests/nyTime.test.mjs"
   },

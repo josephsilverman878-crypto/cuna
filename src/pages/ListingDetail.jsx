@@ -24,7 +24,7 @@ import { petsPolicyLabel } from '../lib/petsPolicy'
 import { getMySwipe, setLiked } from '../lib/swipes'
 import { recordView } from '../lib/stats'
 import toast from 'react-hot-toast'
-import { MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Heart, CalendarDays, Clock, TrendingUp, MessageCircle, CalendarClock, Flag, BadgeCheck } from 'lucide-react'
+import { MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Heart, CalendarDays, Clock, TrendingUp, MessageCircle, CalendarClock, Flag, BadgeCheck, Building2 } from 'lucide-react'
 
 export default function ListingDetail() {
   const { id } = useParams()
@@ -408,6 +408,14 @@ export default function ListingDetail() {
             </>)}
           </div>
         </div>
+
+        {listing.bbl && (
+          <button type="button" onClick={() => navigate('/building/' + listing.bbl)} className="btn-ghost" style={{
+            marginTop: '16px', fontSize: '13px', padding: '9px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px',
+          }}>
+            <Building2 size={14} /> See the building: facts, other homes in it, recorded sales
+          </button>
+        )}
 
         {listing.poster?.name && (
           <button type="button" onClick={() => navigate('/agent/' + listing.poster_id)} className="card" style={{
