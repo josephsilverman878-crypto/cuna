@@ -159,6 +159,7 @@ Rollback for 42: `cuna-security/42-wave1-search-rollback.sql`; for 44: `44-wave2
 |---|---|---|---|
 | 1 | [#22](https://github.com/josephsilverman878-crypto/cuna/pull/22) squash-merged 2026-11-05 | `122ca2f` (branch tip 3d2b178) | Vercel production "Deployment has completed" on 122ca2f (15:03 local); hellocuna.com serves bundle `index-DZpGVLy7.js`, identical to the local build of the merged code. Spot-check in Joseph's Chrome (signed in as the poster test account): home → dashboard renders, listing page renders (fees, open house), no console errors; Post listing address lookup shown below. Feed/map, filters and saved searches need a RENTER sign-in and were NOT checked live (verified at 375px on the dev server and by the 57-check role simulation). Preview smoke (branch alias): steps 1, 2, 7 pass; 3–6, 8 need sign-in. |
 | 2 | [#23](https://github.com/josephsilverman878-crypto/cuna/pull/23) squash-merged 2026-11-05 | `b49121e` (branch tip a274a06) | Vercel production "Deployment has completed" on b49121e (15:33 local); hellocuna.com serves bundle `index-D1dBanN5.js`, identical to the local build of the merged code. Spot-check in Joseph's Chrome (poster test account): home → dashboard, listing page renders with the share control (the report link is hidden for the listing's own poster, as designed), no console errors. Map/subway/commute need a geocoded listing and the admin Reports tab needs the admin account; both verified on the dev server and by the 40-check role simulation, not live. Preview smoke: steps 1–2 pass; 3–8 flagged. |
+| 3 | [#24](https://github.com/josephsilverman878-crypto/cuna/pull/24) squash-merged 2026-11-05 | `105629e` (branch tip e6c8311) | Vercel production deployment status "success" on 105629e (15:51 local); hellocuna.com serves bundle `index-DAt7uBSq.js`, the same bundle the preview served for the branch tip. Spot-check in Joseph's Chrome (poster test account): home → dashboard renders, /privacy renders, no console errors; `/api/recorded-sales?bbl=3010110023` returns one ACRIS deed and, on the second server hit, `cached: true` (the row is in `recorded_sales_cache`). Note: the route sends `Cache-Control: public, max-age=3600`, so a browser repeats its own first answer for an hour; that is why the preview looked uncached. Feed Rent/Buy, sale listing page and the Sold status need the renter / a sale listing and were verified on the preview harness and by the 29-check role simulation, not live. |
 
 ---
 
@@ -284,11 +285,11 @@ States: `todo` · `in progress` · `done` · `blocked (reason)`
 
 | item | state | notes |
 |---|---|---|
-| 3.1 listing_type rent/sale + sale fields + sale statuses | todo | |
+| 3.1 listing_type rent/sale + sale fields + sale statuses | done | `listing_type` rent/sale, `property_type`, sale financials (common charges, maintenance, taxes, tax deductible %, financing %), Sold status, `listings_a_type_rules` trigger; `SaleFinancialsFields.jsx`, `SaleDetails.jsx`, `listingTypes.js`, `listingStatus.js` |
 | 3.2 Rent/Buy toggle everywhere; forms switch by type | done | header Rent/Buy control in the feed (part of the filters, so persisted and saved with searches), filter sheet "Looking to" + price label/basis per type, map pin labels, `search_listings` p_listing_type, saved searches fire only for their type, quiz results pick rentals or sales by tenure. "Sales listings are free to post" on the form |
 | 3.3 Recorded sales history (DOF Rolling Sales + ACRIS by BBL) | done | `/api/recorded-sales?bbl=` (Vercel, service role): DOF Rolling Sales usep-8jbt + ACRIS legals 8h5j-fqxa → master bnx9-e6tj deeds with an amount, per BBL, cached 7 days in `recorded_sales_cache` (no client access); `RecordedSales.jsx` on sale pages with "Source: NYC Department of Finance … as of <date>" and the co-op note |
 | 3.4 Past listings on Cuna | done | `past_listings_at` (security definer, public fields only: Sold/Rented at the same BBL or address) + `PastListings.jsx` on every listing page |
-| Wave 3 merge | in progress | |
+| Wave 3 merge | done | PR #24 → main 105629e, live 2026-11-05 (see Merge log) |
 
 ### Wave 4 — broker tools (branch `feature/wave4-broker-tools`)
 
