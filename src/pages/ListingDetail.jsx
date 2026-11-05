@@ -22,8 +22,9 @@ import { isSale, priceText, propertyTypeLabel } from '../lib/listingTypes'
 import { hasConcession, concessionText } from '../lib/netEffective'
 import { petsPolicyLabel } from '../lib/petsPolicy'
 import { getMySwipe, setLiked } from '../lib/swipes'
+import { recordView } from '../lib/stats'
 import toast from 'react-hot-toast'
-import { MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Heart, CalendarDays, Clock, TrendingUp, MessageCircle, CalendarClock, Flag } from 'lucide-react'
+import { MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Heart, CalendarDays, Clock, TrendingUp, MessageCircle, CalendarClock, Flag, BadgeCheck } from 'lucide-react'
 
 export default function ListingDetail() {
   const { id } = useParams()
@@ -72,7 +73,9 @@ export default function ListingDetail() {
     setListing(withContacts)
     setLoading(false)
 
-    supabase.rpc('increment_listing_views', { listing_uuid: id }).then(() => {})
+    // One view per visitor per New York day, keyed by an anonymous session
+    // string (src/lib/stats.js). The poster's own visits are not counted.
+    if (!isOwner) recordView(id).then(({ error }) => { if (error) console.error('record_listing_view failed:', error) })
 
     if (user) {
       const { data: swipe } = await getMySwipe(user.id, id)
@@ -405,6 +408,27 @@ export default function ListingDetail() {
             </>)}
           </div>
         </div>
+
+        {listing.poster?.name && (
+          <button type="button" onClick={() => navigate('/agent/' + listing.poster_id)} className="card" style={{
+            marginTop: '16px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
+            textAlign: 'left', cursor: 'pointer', border: 'none',
+          }}>
+            <div style={{
+              width: '44px', height: '44px', borderRadius: '50%', background: 'var(--terracotta)', color: 'white', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600,
+            }}>
+              {listing.poster.name.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()}
+            </div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: '12px', color: 'var(--warm-gray)' }}>Listed by</div>
+              <div style={{ fontWeight: 600, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                {listing.poster.name} <BadgeCheck size={14} color="var(--like-green)" />
+              </div>
+            </div>
+            <ChevronRight size={18} color="var(--warm-gray)" />
+          </button>
+        )}
 
         <div style={{ marginTop: '16px' }}>
           <FairHousingNotice />

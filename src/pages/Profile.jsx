@@ -4,7 +4,11 @@ import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import SavedSearchesCard from '../components/SavedSearchesCard'
 import toast from 'react-hot-toast'
-import { LogOut, Save } from 'lucide-react'
+import { LogOut, Save, ExternalLink, MapPin } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { scanDescription } from '../lib/fairHousing'
+import { saveAgentFields } from '../lib/agents'
+import { geocodeAddress } from '../lib/geocode'
 
 // Module scope on purpose. Declared inside Profile() this was a new component
 // type on every render, so React unmounted and remounted all four buttons each
@@ -44,6 +48,9 @@ export default function Profile() {
   const posterFormDirty = useRef(false)
   const [saving, setSaving] = useState(false)
   const [savingPoster, setSavingPoster] = useState(false)
+  const [savingAgent, setSavingAgent] = useState(false)
+  const [agentForm, setAgentForm] = useState({ bio: '', owner_property_address: '', owner_property_bbl: '' })
+  const navigate = useNavigate()
   const [posterForm, setPosterForm] = useState({
     license_name: '', license_number: '', license_type: '', brokerage_name: '',
   })
@@ -82,6 +89,11 @@ export default function Profile() {
       license_number: profile.license_number || '',
       license_type: profile.license_type || '',
       brokerage_name: profile.brokerage_name || '',
+    })
+    setAgentForm({
+      bio: profile.bio || '',
+      owner_property_address: profile.owner_property_address || '',
+      owner_property_bbl: profile.owner_property_bbl || '',
     })
   }, [profile, user?.id])
 
@@ -144,6 +156,46 @@ export default function Profile() {
       toast.error(err.message || 'Failed to save')
     } finally {
       setSavingPoster(false)
+    }
+  }
+
+  // Agent page text and the owner-verification address. The bio goes through
+  // the fair-housing scanner: it describes the service, never the clients.
+  async function saveAgentProfile() {
+    const scan = scanDescription(agentForm.bio || '')
+    if (scan.blocked.length > 0) {
+      toast.error('Your bio may violate fair housing law. Describe your service, not the tenants you want.')
+      return
+    }
+    setSavingAgent(true)
+    try {
+      let bbl = agentForm.owner_property_bbl
+      if (agentForm.owner_property_address.trim()) {
+        // The address is turned into a tax lot (BBL) by NYC GeoSearch so the
+        // admin page can compare it with the recorded owner in PLUTO.
+        try {
+          const g = await geocodeAddress({ address: agentForm.owner_property_address, city: '', state: 'NY', zip_code: '' })
+          bbl = g.bbl || ''
+        } catch (err) {
+          toast.error(err.message || 'Could not find that address in New York City')
+          setSavingAgent(false)
+          return
+        }
+      } else {
+        bbl = ''
+      }
+      const { data, error } = await saveAgentFields(user.id, { ...agentForm, owner_property_bbl: bbl })
+      if (error) throw error
+      if (!data) throw new Error('Nothing was saved')
+      setAgentForm({ bio: data.bio || '', owner_property_address: data.owner_property_address || '', owner_property_bbl: data.owner_property_bbl || '' })
+      posterFormDirty.current = false
+      await fetchProfile(user.id)
+      toast.success('Saved')
+    } catch (err) {
+      console.error('Agent profile save error:', err)
+      toast.error(err.message || 'Failed to save')
+    } finally {
+      setSavingAgent(false)
     }
   }
 
@@ -270,6 +322,52 @@ export default function Profile() {
               >
                 <Save size={16} />
                 {savingPoster ? 'Saving...' : 'Save license details'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {profile?.role === 'poster' && (
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', margin: 0 }}>Your public page</h2>
+              {profile.verified && (
+                <button onClick={() => navigate('/agent/' + user.id)} className="btn-ghost" style={{ fontSize: '12px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  View <ExternalLink size={12} />
+                </button>
+              )}
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--warm-gray)', marginBottom: '16px', lineHeight: 1.5 }}>
+              Renters see this page from every one of your listings once you are verified: your name, brokerage, license and listings, plus the bio below.
+              Describe your service and experience, never the tenants you are looking for.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label className="label">Bio</label>
+                <textarea value={agentForm.bio} maxLength={600} rows={4} placeholder="Fifteen years helping people find homes in Brooklyn and Queens..."
+                  onChange={e => { posterFormDirty.current = true; setAgentForm(f => ({ ...f, bio: e.target.value })) }}
+                  style={{ marginTop: '6px', width: '100%', resize: 'vertical' }} />
+                <div style={{ fontSize: '11px', color: 'var(--warm-gray)', marginTop: '4px' }}>{agentForm.bio.length}/600</div>
+                {scanDescription(agentForm.bio || '').blocked.length > 0 && (
+                  <div style={{ fontSize: '12px', color: 'var(--pass-red)', marginTop: '4px' }}>
+                    This wording may violate fair housing law: {scanDescription(agentForm.bio).blocked.map(h => `"${h.phrase}"`).join(', ')}
+                  </div>
+                )}
+              </div>
+              {posterForm.license_type === 'owner' && (
+                <div>
+                  <label className="label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><MapPin size={13} /> Owner verification: the property you own</label>
+                  <input placeholder="Street address, e.g. 342 9th Street, Brooklyn" value={agentForm.owner_property_address} maxLength={200}
+                    onChange={e => { posterFormDirty.current = true; setAgentForm(f => ({ ...f, owner_property_address: e.target.value })) }} style={{ marginTop: '6px' }} />
+                  <div style={{ fontSize: '11px', color: 'var(--warm-gray)', marginTop: '4px', lineHeight: 1.5 }}>
+                    Cuna compares this with the recorded owner in NYC property records before approving owner accounts.
+                    {agentForm.owner_property_bbl ? ` Tax lot on file: BBL ${agentForm.owner_property_bbl}.` : ''}
+                  </div>
+                </div>
+              )}
+              <button className="btn-primary w-full" onClick={saveAgentProfile} disabled={savingAgent}
+                style={{ opacity: savingAgent ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <Save size={16} /> {savingAgent ? 'Saving...' : 'Save page details'}
               </button>
             </div>
           </div>
