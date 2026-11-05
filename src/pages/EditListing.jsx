@@ -7,6 +7,8 @@ import { scanDescription } from '../lib/fairHousing'
 import { PETS_POLICY_OPTIONS, PETS_POLICY_NOTE, petsPolicyLabel } from '../lib/petsPolicy'
 import LocationCheck from '../components/LocationCheck'
 import { geocodeColumns } from '../lib/geocode'
+import { netEffective } from '../lib/netEffective'
+import { embedUrl } from '../components/ListingMedia'
 import toast from 'react-hot-toast'
 import { Loader, ChevronLeft, X, Upload, ChevronRight, AlertTriangle } from 'lucide-react'
 import { LISTING_STATUSES, statusLabel } from '../lib/listingStatus'
@@ -24,6 +26,9 @@ export default function EditListing() {
   const [uploadProgress, setUploadProgress] = useState('')
   const [photos, setPhotos] = useState([])
   const [existingPhotos, setExistingPhotos] = useState([])
+  const [floorPlans, setFloorPlans] = useState([])
+  const [existingFloorPlans, setExistingFloorPlans] = useState([])
+  const planInputRef = useRef()
   const [dragging, setDragging] = useState(false)
   const [fhAck, setFhAck] = useState(false)
   const [status, setStatus] = useState('active')
@@ -41,6 +46,7 @@ export default function EditListing() {
     price: '', bedrooms: '', bathrooms: '', sqft: '',
     description: '', available_date: '',
     security_deposit: '', application_fee: '', move_in_fee: '', other_fees: [],
+    months_free: '', lease_term_months: '12', video_url: '', tour_3d_url: '',
     pets_policy: '',
     doorman: false, elevator: false, gym: false, laundry: false,
     dishwasher: false, hardwood: false, roof_deck: false,
@@ -49,6 +55,9 @@ export default function EditListing() {
 
   const fhScan = scanDescription(form.description)
   const neighborhoodName = geo?.neighborhoodName || (geo ? '' : form.neighborhood)
+  const netPreview = netEffective(parseInt(form.price) || 0, parseFloat(form.months_free) || 0, parseInt(form.lease_term_months) || 12)
+  const videoOk = !form.video_url.trim() || Boolean(embedUrl('video', form.video_url.trim()))
+  const tourOk = !form.tour_3d_url.trim() || Boolean(embedUrl('tour', form.tour_3d_url.trim()))
 
   useEffect(() => { fetchListing() }, [id])
 
@@ -60,6 +69,7 @@ export default function EditListing() {
 
     const amenities = data.amenities || []
     setExistingPhotos(data.photos || [])
+    setExistingFloorPlans(data.floor_plans || [])
     setStatus(data.status || 'active')
     const { data: ohRows, error: ohError } = await getOpenHousesForListing(id)
     if (ohError) console.error('Open houses fetch failed:', ohError)
@@ -87,6 +97,10 @@ export default function EditListing() {
       application_fee: data.application_fee?.toString() || '',
       move_in_fee: data.move_in_fee?.toString() || '',
       other_fees: data.other_fees || [],
+      months_free: data.months_free && Number(data.months_free) > 0 ? String(Number(data.months_free)) : '',
+      lease_term_months: data.lease_term_months ? String(data.lease_term_months) : '12',
+      video_url: data.video_url || '',
+      tour_3d_url: data.tour_3d_url || '',
       pets_policy: data.pets_policy || '',
       doorman: amenities.includes('Doorman'),
       elevator: amenities.includes('Elevator'),
@@ -157,14 +171,29 @@ export default function EditListing() {
   function onDragLeave() { setDragging(false) }
   function onDrop(e) { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files) }
 
-  async function uploadNewPhotos() {
-    if (!photos.length) return []
+  // Floor plans: up to 4 in total, kept under a floorplans/ folder so they
+  // never mix with the photo carousel.
+  function addFloorPlans(files) {
+    const remaining = 4 - existingFloorPlans.length - floorPlans.length
+    if (remaining <= 0) { toast.error('Maximum 4 floor plans'); return }
+    const toAdd = Array.from(files).slice(0, remaining)
+    setFloorPlans(prev => [...prev, ...toAdd.map(file => ({ file, preview: URL.createObjectURL(file) }))])
+  }
+  function removeFloorPlan(i) {
+    setFloorPlans(prev => { URL.revokeObjectURL(prev[i].preview); return prev.filter((_, idx) => idx !== i) })
+  }
+  function removeExistingFloorPlan(i) {
+    setExistingFloorPlans(prev => prev.filter((_, idx) => idx !== i))
+  }
+
+  async function uploadImages(items, folder, label) {
+    if (!items.length) return []
     const urls = []
-    for (let i = 0; i < photos.length; i++) {
-      setUploadProgress(`Uploading photo ${i + 1} of ${photos.length}…`)
-      const { file } = photos[i]
+    for (let i = 0; i < items.length; i++) {
+      setUploadProgress(`Uploading ${label} ${i + 1} of ${items.length}…`)
+      const { file } = items[i]
       const ext = file.name.split('.').pop()
-      const path = `${user.id}/${id}/${Date.now()}-${i}.${ext}`
+      const path = `${user.id}/${id}/${folder}${Date.now()}-${i}.${ext}`
       const { error } = await supabase.storage
         .from('listing-photos')
         .upload(path, file, { cacheControl: '3600', upsert: false })
@@ -175,6 +204,8 @@ export default function EditListing() {
     setUploadProgress('')
     return urls
   }
+  const uploadNewPhotos = () => uploadImages(photos, '', 'photo')
+  const uploadNewFloorPlans = () => uploadImages(floorPlans, 'floorplans/', 'floor plan')
 
   async function handleSubmit() {
     // Fair housing gate — re-scan at submit time so the check can't be bypassed
@@ -194,6 +225,18 @@ export default function EditListing() {
       setTab(2)
       return
     }
+    if (!videoOk || !tourOk) {
+      toast.error(!videoOk ? 'The video link must be a YouTube or Vimeo link.' : 'The 3D tour link must be a Matterport link.')
+      setTab(3)
+      return
+    }
+    const monthsFree = parseFloat(form.months_free) || 0
+    const leaseTerm = parseInt(form.lease_term_months) || 12
+    if (monthsFree < 0 || monthsFree >= leaseTerm || leaseTerm < 1 || leaseTerm > 36) {
+      toast.error('Free months must be less than the lease term (1–36 months).')
+      setTab(1)
+      return
+    }
 
     setSubmitting(true)
     try {
@@ -206,8 +249,15 @@ export default function EditListing() {
 
       const newUrls = await uploadNewPhotos()
       const allPhotos = [...existingPhotos, ...newUrls]
+      const newPlanUrls = await uploadNewFloorPlans()
+      const allFloorPlans = [...existingFloorPlans, ...newPlanUrls]
 
       const { error } = await supabase.from('listings').update({
+        months_free: monthsFree,
+        lease_term_months: leaseTerm,
+        video_url: form.video_url.trim() || null,
+        tour_3d_url: form.tour_3d_url.trim() || null,
+        floor_plans: allFloorPlans,
         address: form.address,
         city: form.city,
         state: form.state,
@@ -515,6 +565,27 @@ export default function EditListing() {
           ${totalDueAtSigning().toLocaleString()}
         </span>
       </div>
+
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', margin: 0 }}>Lease terms</h3>
+        <div style={rowStyle}>
+          <div>
+            <label className="label">Lease term (months)</label>
+            <input type="number" min="1" max="36" placeholder="12" value={form.lease_term_months}
+              onChange={e => update('lease_term_months', e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <label className="label">Free months</label>
+            <input type="number" min="0" max="11" step="0.5" placeholder="0" value={form.months_free}
+              onChange={e => update('months_free', e.target.value)} style={inputStyle} />
+          </div>
+        </div>
+        <p style={{ fontSize: '13px', color: 'var(--charcoal-soft)', margin: 0, lineHeight: 1.55 }}>
+          {parseFloat(form.months_free) > 0 && form.price
+            ? <>Net effective rent: <strong>${netPreview.toLocaleString()}/mo</strong> (gross ${parseInt(form.price).toLocaleString()}). Renters see both, clearly labeled.</>
+            : 'If you offer free months, enter them here and the net effective rent is shown next to the gross rent.'}
+        </p>
+      </div>
     </div>,
 
     // ── TAB 2: AMENITIES ──
@@ -565,8 +636,9 @@ export default function EditListing() {
       </div>
     </div>,
 
-    // ── TAB 2: PHOTOS ──
-    <div key="photos" className="card">
+    // ── TAB 3: PHOTOS, FLOOR PLANS, VIDEO ──
+    <div key="photos" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className="card">
       <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', marginBottom: '6px' }}>Photos</h3>
       <p style={{ fontSize: '13px', color: 'var(--warm-gray)', marginBottom: '20px' }}>
         {totalPhotos}/10 photos. First photo is the cover. Remove existing or add new ones.
@@ -655,6 +727,66 @@ export default function EditListing() {
             style={{ display: 'none' }} />
         </div>
       )}
+    </div>
+
+    <div className="card">
+      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', marginBottom: '6px' }}>Floor plans</h3>
+      <p style={{ fontSize: '13px', color: 'var(--warm-gray)', marginBottom: '14px' }}>
+        Up to 4 images, shown in their own section, not in the photo carousel.
+      </p>
+      {(existingFloorPlans.length > 0 || floorPlans.length > 0) && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '12px' }}>
+          {existingFloorPlans.map((url, i) => (
+            <div key={url} style={{ position: 'relative', aspectRatio: '4/3' }}>
+              <img src={url} alt={`Floor plan ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '10px', background: 'var(--sand)' }} />
+              <button type="button" onClick={() => removeExistingFloorPlan(i)} aria-label="Remove floor plan" style={{
+                position: 'absolute', top: '6px', right: '6px', background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%',
+                width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff',
+              }}><X size={13} /></button>
+            </div>
+          ))}
+          {floorPlans.map((p, i) => (
+            <div key={i} style={{ position: 'relative', aspectRatio: '4/3' }}>
+              <img src={p.preview} alt="New floor plan" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '10px', background: 'var(--sand)' }} />
+              <button type="button" onClick={() => removeFloorPlan(i)} aria-label="Remove floor plan" style={{
+                position: 'absolute', top: '6px', right: '6px', background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%',
+                width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff',
+              }}><X size={13} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+      {existingFloorPlans.length + floorPlans.length < 4 && (
+        <>
+          <button type="button" className="btn-secondary" onClick={() => planInputRef.current?.click()} style={{ padding: '10px 16px', fontSize: '13px' }}>
+            + Add floor plan
+          </button>
+          <input ref={planInputRef} type="file" accept="image/*" multiple
+            onChange={e => { addFloorPlans(e.target.files); e.target.value = '' }} style={{ display: 'none' }} />
+        </>
+      )}
+    </div>
+
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', marginBottom: '6px' }}>Video and 3D tour</h3>
+        <p style={{ fontSize: '13px', color: 'var(--warm-gray)', margin: 0 }}>
+          Paste links. Cuna embeds them on the listing page; nothing is uploaded here.
+        </p>
+      </div>
+      <div>
+        <label className="label">Video tour (YouTube or Vimeo link)</label>
+        <input placeholder="https://www.youtube.com/watch?v=…" value={form.video_url}
+          onChange={e => update('video_url', e.target.value)} style={{ ...inputStyle, borderColor: videoOk ? undefined : 'var(--pass-red)' }} />
+        {!videoOk && <p style={{ fontSize: '12px', color: 'var(--pass-red)', margin: '6px 0 0' }}>That is not a YouTube or Vimeo link.</p>}
+      </div>
+      <div>
+        <label className="label">3D walkthrough (Matterport link)</label>
+        <input placeholder="https://my.matterport.com/show/?m=…" value={form.tour_3d_url}
+          onChange={e => update('tour_3d_url', e.target.value)} style={{ ...inputStyle, borderColor: tourOk ? undefined : 'var(--pass-red)' }} />
+        {!tourOk && <p style={{ fontSize: '12px', color: 'var(--pass-red)', margin: '6px 0 0' }}>That is not a Matterport link.</p>}
+      </div>
+    </div>
     </div>,
 
     // ── TAB 3: REVIEW ──
@@ -678,7 +810,9 @@ export default function EditListing() {
               ? form.other_fees.map(f => `${f.description}: $${parseInt(f.amount || 0).toLocaleString()}`).join(', ')
               : 'None'],
             ['Total at signing', `$${totalDueAtSigning().toLocaleString()}`],
-            ['Photos', `${totalPhotos} photo${totalPhotos !== 1 ? 's' : ''}`],
+            ['Lease', `${parseInt(form.lease_term_months) || 12} months${parseFloat(form.months_free) > 0 ? `, ${form.months_free} free → net effective $${netPreview.toLocaleString()}/mo` : ''}`],
+            ['Photos', `${totalPhotos} photo${totalPhotos !== 1 ? 's' : ''}${existingFloorPlans.length + floorPlans.length ? ` · ${existingFloorPlans.length + floorPlans.length} floor plan${existingFloorPlans.length + floorPlans.length !== 1 ? 's' : ''}` : ''}`],
+            ['Video / 3D', [form.video_url.trim() && 'video', form.tour_3d_url.trim() && '3D tour'].filter(Boolean).join(', ') || 'None'],
             ['Pets', petsPolicyLabel(form.pets_policy) || 'Not selected'],
             ['Amenities', Object.entries({
               doorman: 'Doorman', elevator: 'Elevator', gym: 'Gym',
