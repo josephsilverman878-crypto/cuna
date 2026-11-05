@@ -29,6 +29,13 @@ import Leads from './pages/Leads'
 import Team from './pages/Team'
 import Demand from './pages/Demand'
 import BulkUpload from './pages/BulkUpload'
+import Help from './pages/Help'
+import Building from './pages/Building'
+import Market from './pages/Market'
+import Neighborhoods from './pages/Neighborhoods'
+import Neighborhood from './pages/Neighborhood'
+import AuthCallback from './pages/AuthCallback'
+import Application from './pages/Application'
 
 function ProtectedRoute({ children, role }) {
   const { user, profile, loading } = useAuth()
@@ -46,8 +53,9 @@ function AppRoutes() {
 
   if (loading) return <div className="center" style={{ height: '100dvh' }}><div className="spinner" /></div>
 
-  const publicPaths = ['/reset-password', '/terms', '/privacy', '/new-to-ny', '/new-to-ny/results']
-  if (user && !profile && !publicPaths.includes(location.pathname) && !location.pathname.startsWith('/listing/') && !location.pathname.startsWith('/agent/')) {
+  const publicPaths = ['/reset-password', '/terms', '/privacy', '/new-to-ny', '/new-to-ny/results', '/help', '/market', '/neighborhoods', '/auth/callback']
+  const publicPrefixes = ['/listing/', '/agent/', '/building/', '/neighborhoods/']
+  if (user && !profile && !publicPaths.includes(location.pathname) && !publicPrefixes.some(p => location.pathname.startsWith(p))) {
     return <CompleteProfile />
   }
 
@@ -63,9 +71,15 @@ function AppRoutes() {
       <Route path="/register/pro" element={user ? <Navigate to="/" /> : <RegisterPro />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/listing/:id" element={<ListingDetail />} />
       <Route path="/agent/:id" element={<AgentPage />} />
+      <Route path="/building/:bbl" element={<Building />} />
+      <Route path="/help" element={<Help />} />
+      <Route path="/market" element={<Market />} />
+      <Route path="/neighborhoods" element={<Neighborhoods />} />
+      <Route path="/neighborhoods/:slug" element={<Neighborhood />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/new-to-ny" element={<NewToNY />} />
       <Route path="/new-to-ny/results" element={<NewToNYResults />} />
@@ -76,6 +90,9 @@ function AppRoutes() {
       <Route path="/swipe" element={<Navigate to="/feed" replace />} />
       <Route path="/history" element={
         <ProtectedRoute role="renter"><SwipeHistory /></ProtectedRoute>
+      } />
+      <Route path="/application" element={
+        <ProtectedRoute role="renter"><Application /></ProtectedRoute>
       } />
       
       <Route path="/profile" element={

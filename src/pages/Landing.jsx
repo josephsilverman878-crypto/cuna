@@ -108,12 +108,16 @@ export default function Landing() {
       {/* Footer */}
       <footer style={{
         padding: '24px 40px',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
         borderTop: '1px solid var(--sand-dark)',
         fontSize: '13px', color: 'var(--warm-gray)',
       }}>
         <div>© 2026 Cuna</div>
-        <div>Cuna helps people and businesses find the spaces where they belong</div>
+        <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {[['/neighborhoods', 'Neighborhoods'], ['/market', 'Market'], ['/help', 'Help'], ['/terms', 'Terms'], ['/privacy', 'Privacy']].map(([to, label]) => (
+            <button key={to} onClick={() => navigate(to)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--warm-gray)', fontSize: '13px', padding: 0 }}>{label}</button>
+          ))}
+        </div>
       </footer>
     </div>
   )

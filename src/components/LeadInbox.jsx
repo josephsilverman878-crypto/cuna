@@ -4,6 +4,7 @@ import { Mail, Phone, ExternalLink, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
 import { fetchLeads, setLeadStatus, LEAD_STATUSES, leadStatusLabel, mailtoFor } from '../lib/leads'
+import { documentUrl, documentLabel } from '../lib/applications'
 
 // Every tour request and question on the poster's listings, in one list,
 // with a status the poster sets, filters, and a link back into the email
@@ -175,6 +176,30 @@ export default function LeadInbox({ compact = false }) {
               <p style={{ fontSize: '13px', color: 'var(--charcoal-soft)', lineHeight: 1.5, background: 'var(--sand)', padding: '10px 12px', borderRadius: '8px', margin: '0 0 10px' }}>
                 {lead.message}
               </p>
+            )}
+
+            {lead.shared_application && (
+              <div style={{ fontSize: '13px', background: 'rgba(76,175,125,0.08)', border: '1px solid rgba(76,175,125,0.25)', padding: '10px 12px', borderRadius: '8px', margin: '0 0 10px', lineHeight: 1.6 }}>
+                <div style={{ fontWeight: 600, marginBottom: '4px' }}>Rental application (shared by the renter)</div>
+                {lead.shared_application.employer && <div>Work: {lead.shared_application.job_title ? `${lead.shared_application.job_title}, ` : ''}{lead.shared_application.employer}</div>}
+                {lead.shared_application.annual_income != null && <div>Annual income: ${Number(lead.shared_application.annual_income).toLocaleString()}</div>}
+                {lead.shared_application.move_in_date && <div>Move-in: {new Date(lead.shared_application.move_in_date).toLocaleDateString()}</div>}
+                {lead.shared_application.current_address && <div>Current address: {lead.shared_application.current_address}</div>}
+                {(lead.shared_application.references || []).length > 0 && (
+                  <div>References: {lead.shared_application.references.map(r => [r.name, r.relationship, r.contact].filter(Boolean).join(' · ')).join('; ')}</div>
+                )}
+                {lead.shared_application.notes && <div>Notes: {lead.shared_application.notes}</div>}
+                {(lead.shared_documents || []).length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+                    {lead.shared_documents.map(p => (
+                      <button key={p} type="button" className="btn-ghost" style={{ fontSize: '12px', padding: '5px 9px' }}
+                        onClick={async () => { try { window.open(await documentUrl(p), '_blank', 'noopener') } catch (err) { toast.error(err.message || 'Could not open the file') } }}>
+                        {documentLabel(p)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', justifyContent: 'space-between' }}>

@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   const {
     listingAddress, listingPrice, listingUrl,
     posterName, posterEmail,
-    renterName, renterEmail, renterPhone,
+    renterName, renterEmail, renterPhone, applicationShared,
     tourType, times, message,
     // Optional, and only present when the renter's privacy toggle allows it.
     moveInDate, hasPets, petDetails, creditScoreRange,
@@ -100,6 +100,7 @@ export default async function handler(req, res) {
       <p><strong>Preferred times:</strong></p>
       ${timesHtml}
       ${message ? '<p><strong>Message:</strong> ' + esc(message) + '</p>' : ''}
+      ${applicationShared === true ? '<p><strong>Rental application:</strong> the renter shared their application with you. Open your Leads inbox on Cuna to read it; it is not sent by email.</p>' : ''}
       <div style="border-top:1px solid #E0D4C4;margin-top:16px;padding-top:16px">
         <p style="margin:0"><strong>Renter contact</strong></p>
         <p style="margin:4px 0 0">${esc(renterName)}<br/>${esc(renterEmail)}${renterPhone ? '<br/>' + esc(renterPhone) : ''}</p>

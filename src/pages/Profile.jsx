@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom'
 import { scanDescription } from '../lib/fairHousing'
 import { saveAgentFields } from '../lib/agents'
 import { geocodeAddress } from '../lib/geocode'
+import { APPLICATIONS_ENABLED } from '../lib/applications'
 
 // Module scope on purpose. Declared inside Profile() this was a new component
 // type on every render, so React unmounted and remounted all four buttons each
@@ -376,6 +377,16 @@ export default function Profile() {
         {profile?.role === 'renter' && (
           <>
             <SavedSearchesCard userId={user.id} />
+
+            {APPLICATIONS_ENABLED && (
+              <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                <div>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', margin: '0 0 4px' }}>Rental application</h2>
+                  <p style={{ fontSize: '12px', color: 'var(--warm-gray)', margin: 0, lineHeight: 1.5 }}>Fill it in once; share it with an agent only when you choose, from a tour request. No application fee.</p>
+                </div>
+                <button className="btn-secondary" onClick={() => navigate('/application')} style={{ padding: '10px 14px', fontSize: '13px', flexShrink: 0 }}>Open</button>
+              </div>
+            )}
 
             <div className="card">
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', marginBottom: '4px' }}>Search preferences</h2>

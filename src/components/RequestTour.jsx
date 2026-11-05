@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 import { X, CalendarCheck } from 'lucide-react'
+import { APPLICATIONS_ENABLED, getMyApplication, snapshotOf } from '../lib/applications'
 
 export default function RequestTour({ listing, onClose }) {
   const { user, profile } = useAuth()
@@ -16,6 +17,17 @@ export default function RequestTour({ listing, onClose }) {
   const [message, setMessage] = useState('')
   const [renterProfile, setRenterProfile] = useState(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
+  // The renter's saved rental application (wave 5). Shared only when the
+  // box below is ticked, as a snapshot on this one inquiry.
+  const [application, setApplication] = useState(null)
+  const [shareApplication, setShareApplication] = useState(false)
+
+  useEffect(() => {
+    if (!APPLICATIONS_ENABLED) return
+    let cancelled = false
+    getMyApplication(user.id).then(({ data }) => { if (!cancelled) setApplication(data || null) })
+    return () => { cancelled = true }
+  }, [user.id])
 
   // Load the renter's privacy toggles up front so the preview below shows
   // exactly what will be shared — the same object is used to build the payload.
@@ -132,6 +144,8 @@ export default function RequestTour({ listing, onClose }) {
         message: message.trim(),
         // Only toggled-on fields; renterPhone is included here or not at all.
         ...shared,
+        // A yes/no only: the application itself never goes by email.
+        applicationShared: Boolean(APPLICATIONS_ENABLED && shareApplication && application),
       }
 
       // The inquiry row goes in FIRST, so the database rate limit
@@ -154,6 +168,13 @@ export default function RequestTour({ listing, onClose }) {
         shared_has_pets: shared.hasPets !== undefined ? shared.hasPets : null,
         shared_pet_details: shared.petDetails || null,
         shared_credit_score_range: shared.creditScoreRange || null,
+        // The application travels only on this request, as a copy, and only
+        // when the renter ticked the box. The poster then sees it in their
+        // inbox and may open the listed documents; nothing else is shared.
+        ...(APPLICATIONS_ENABLED && shareApplication && application ? {
+          shared_application: snapshotOf(application),
+          shared_documents: application.documents || [],
+        } : {}),
       }
       const { error: dbError } = await supabase
         .from('inquiries').insert(insertPayload)
@@ -319,6 +340,18 @@ export default function RequestTour({ listing, onClose }) {
             <textarea rows={3} placeholder="Anything the agent should know…"
               value={message} onChange={e => setMessage(e.target.value)}
               style={{ marginTop: '8px', marginBottom: '20px', resize: 'vertical', width: '100%' }} />
+
+            {APPLICATIONS_ENABLED && application && (
+
+              <label style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', fontSize: '13px', lineHeight: 1.5, padding: '10px 12px', background: 'var(--sand)', borderRadius: '10px', marginBottom: '12px', cursor: 'pointer' }}>
+
+                <input type="checkbox" checked={shareApplication} onChange={e => setShareApplication(e.target.checked)} style={{ marginTop: '3px' }} />
+
+                <span>Share my rental application with this agent{(application.documents || []).length ? ` (${(application.documents || []).length} document${(application.documents || []).length === 1 ? '' : 's'})` : ''}. A copy goes with this request only.</span>
+
+              </label>
+
+            )}
 
             <button
               className="btn-primary w-full"

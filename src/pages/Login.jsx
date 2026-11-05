@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { safeNextPath } from '../lib/safeNext'
 import toast from 'react-hot-toast'
+import OAuthButtons from '../components/OAuthButtons'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -78,6 +79,7 @@ export default function Login() {
               </Link>
             </div>
           </form>
+          <OAuthButtons next={next} />
         </div>
 
         <p style={{ textAlign: 'center', marginTop: '24px', color: 'var(--warm-gray)', fontSize: '14px' }}>
