@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import { scanDescription } from '../lib/fairHousing'
 import { PETS_POLICY_OPTIONS, PETS_POLICY_NOTE, petsPolicyLabel } from '../lib/petsPolicy'
+import LocationCheck from '../components/LocationCheck'
+import { geocodeColumns } from '../lib/geocode'
 import toast from 'react-hot-toast'
 import { Loader, ChevronLeft, X, Upload, ChevronRight, AlertTriangle } from 'lucide-react'
 import { LISTING_STATUSES, statusLabel } from '../lib/listingStatus'
@@ -29,6 +31,9 @@ export default function EditListing() {
   const [openHouses, setOpenHouses] = useState([])
   const [ohForm, setOhForm] = useState({ id: null, date: '', start: '', end: '' })
   const [ohSaving, setOhSaving] = useState(false)
+  // The map point (LocationCheck). Loaded from the row; re-looked-up when the
+  // address changes. The neighborhood comes from it, never from typing.
+  const [geo, setGeo] = useState(null)
   const fileInputRef = useRef()
 
   const [form, setForm] = useState({
@@ -43,6 +48,7 @@ export default function EditListing() {
   })
 
   const fhScan = scanDescription(form.description)
+  const neighborhoodName = geo?.neighborhoodName || (geo ? '' : form.neighborhood)
 
   useEffect(() => { fetchListing() }, [id])
 
@@ -58,6 +64,13 @@ export default function EditListing() {
     const { data: ohRows, error: ohError } = await getOpenHousesForListing(id)
     if (ohError) console.error('Open houses fetch failed:', ohError)
     setOpenHouses(ohRows || [])
+    setGeo(data.lat != null && data.lng != null ? {
+      lat: data.lat, lng: data.lng, bbl: data.bbl, bin: data.bin,
+      label: data.geocode_label, geocoded_at: data.geocoded_at,
+      neighborhoodName: data.neighborhood_id ? data.neighborhood : null,
+      neighborhoodLabel: data.neighborhood || null,
+      neighborhoodKind: data.neighborhood_id ? 'neighborhood' : null,
+    } : null)
     setForm({
       address: data.address || '',
       city: data.city || '',
@@ -198,8 +211,11 @@ export default function EditListing() {
         address: form.address,
         city: form.city,
         state: form.state,
-        neighborhood: form.neighborhood || null,
-        zip_code: form.zip_code || null,
+        // With a point, the database trigger sets the neighborhood from the
+        // map anyway; this is the same value so the dashboard shows it at once.
+        neighborhood: neighborhoodName || null,
+        zip_code: form.zip_code || geo?.zip || null,
+        ...geocodeColumns(geo),
         price: parseInt(form.price),
         bedrooms: parseInt(form.bedrooms),
         bathrooms: parseFloat(form.bathrooms),
@@ -292,18 +308,17 @@ export default function EditListing() {
               onChange={e => update('state', e.target.value.toUpperCase())} style={inputStyle} />
           </div>
         </div>
-        <div style={rowStyle}>
-          <div>
-            <label className="label">Neighborhood</label>
-            <input placeholder="Park Slope" value={form.neighborhood}
-              onChange={e => update('neighborhood', e.target.value)} style={inputStyle} />
-          </div>
-          <div>
-            <label className="label">Zip code</label>
-            <input placeholder="11215" value={form.zip_code}
-              onChange={e => update('zip_code', e.target.value)} style={inputStyle} />
-          </div>
+        <div>
+          <label className="label">Zip code</label>
+          <input placeholder="11215" inputMode="numeric" value={form.zip_code}
+            onChange={e => update('zip_code', e.target.value)} style={inputStyle} />
         </div>
+
+        <LocationCheck
+          address={form.address} city={form.city} state={form.state} zip_code={form.zip_code}
+          value={geo} onChange={setGeo}
+          manualNeighborhood={form.neighborhood} onManualNeighborhood={v => update('neighborhood', v)}
+        />
       </div>
 
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
@@ -648,8 +663,9 @@ export default function EditListing() {
         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', marginBottom: '16px' }}>Review changes</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {[
-            ['Address', form.address],
+            ['Address', form.address + (neighborhoodName ? ` · ${neighborhoodName}` : '')],
             ['City / State', `${form.city}, ${form.state} ${form.zip_code}`],
+            ['Map', geo ? (geo.label || 'Placed on the map') : 'Not on the map — address not found'],
             ['Rent', form.price ? `$${parseInt(form.price).toLocaleString()}/mo` : '—'],
             ['Bedrooms', form.bedrooms || '—'],
             ['Bathrooms', form.bathrooms || '—'],

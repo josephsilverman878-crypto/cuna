@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import { scanDescription } from '../lib/fairHousing'
 import { PETS_POLICY_OPTIONS, PETS_POLICY_NOTE, petsPolicyLabel } from '../lib/petsPolicy'
+import LocationCheck from '../components/LocationCheck'
+import { geocodeColumns } from '../lib/geocode'
 import toast from 'react-hot-toast'
 import { Loader, ChevronLeft, X, Upload, ChevronRight, AlertTriangle } from 'lucide-react'
 
@@ -35,9 +37,13 @@ export default function PostListing() {
   const [photos, setPhotos] = useState([])
   const [dragging, setDragging] = useState(false)
   const [fhAck, setFhAck] = useState(false)
+  // The map point for the typed address (LocationCheck). Null until the
+  // address is found; the neighborhood comes from it, never from typing.
+  const [geo, setGeo] = useState(null)
   const fileInputRef = useRef()
 
   const fhScan = scanDescription(form.description)
+  const neighborhoodName = geo?.neighborhoodName || (geo ? '' : form.neighborhood)
 
   function update(field, value) {
     setForm(f => ({ ...f, [field]: value }))
@@ -153,8 +159,11 @@ export default function PostListing() {
           address: form.address,
           city: form.city,
           state: form.state,
-          neighborhood: form.neighborhood || null,
-          zip_code: form.zip_code || null,
+          // With a point, the database trigger sets the neighborhood from the
+          // map anyway; this is the same value so the dashboard shows it at once.
+          neighborhood: neighborhoodName || null,
+          zip_code: form.zip_code || geo?.zip || null,
+          ...geocodeColumns(geo),
           price: parseInt(form.price),
           bedrooms: parseInt(form.bedrooms),
           bathrooms: parseFloat(form.bathrooms),
@@ -278,18 +287,17 @@ export default function PostListing() {
           </div>
         </div>
 
-        <div style={rowStyle}>
-          <div>
-            <label className="label">Neighborhood</label>
-            <input placeholder="Park Slope" value={form.neighborhood}
-              onChange={e => update('neighborhood', e.target.value)} style={inputStyle} />
-          </div>
-          <div>
-            <label className="label">Zip code</label>
-            <input placeholder="11215" value={form.zip_code}
-              onChange={e => update('zip_code', e.target.value)} style={inputStyle} />
-          </div>
+        <div>
+          <label className="label">Zip code</label>
+          <input placeholder="11215" inputMode="numeric" value={form.zip_code}
+            onChange={e => update('zip_code', e.target.value)} style={inputStyle} />
         </div>
+
+        <LocationCheck
+          address={form.address} city={form.city} state={form.state} zip_code={form.zip_code}
+          value={geo} onChange={setGeo}
+          manualNeighborhood={form.neighborhood} onManualNeighborhood={v => update('neighborhood', v)}
+        />
       </div>
 
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
@@ -557,8 +565,9 @@ export default function PostListing() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {[
-            ['Address', form.address + (form.neighborhood ? ` · ${form.neighborhood}` : '')],
+            ['Address', form.address + (neighborhoodName ? ` · ${neighborhoodName}` : '')],
             ['City / State', `${form.city}, ${form.state} ${form.zip_code}`],
+            ['Map', geo ? (geo.label || 'Placed on the map') : 'Not on the map — address not found'],
             ['Rent', form.price ? `$${parseInt(form.price).toLocaleString()}/mo` : '—'],
             ['Bedrooms', form.bedrooms || '—'],
             ['Bathrooms', form.bathrooms || '—'],
