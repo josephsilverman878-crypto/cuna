@@ -9,10 +9,17 @@ import AskQuestion from '../components/AskQuestion'
 import NotificationBell from '../components/NotificationBell'
 import { formatOpenHouse } from '../lib/openHouses'
 import FairHousingNotice from '../components/FairHousingNotice'
+import ListingMap from '../components/ListingMap'
+import NearbySubway from '../components/NearbySubway'
+import CommuteCalculator from '../components/CommuteCalculator'
+import ListingMedia from '../components/ListingMedia'
+import ShareButton from '../components/ShareButton'
+import ReportListing from '../components/ReportListing'
+import { hasConcession, concessionText } from '../lib/netEffective'
 import { petsPolicyLabel } from '../lib/petsPolicy'
 import { getMySwipe, setLiked } from '../lib/swipes'
 import toast from 'react-hot-toast'
-import { MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Heart, CalendarDays, Clock, TrendingUp, MessageCircle, CalendarClock } from 'lucide-react'
+import { MapPin, BedDouble, Bath, Maximize2, ChevronLeft, ChevronRight, Heart, CalendarDays, Clock, TrendingUp, MessageCircle, CalendarClock, Flag } from 'lucide-react'
 
 export default function ListingDetail() {
   const { id } = useParams()
@@ -25,8 +32,14 @@ export default function ListingDetail() {
   const [showQuestion, setShowQuestion] = useState(false)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showReport, setShowReport] = useState(false)
 
   useEffect(() => { fetchListing() }, [id, user])
+
+  function handleReport() {
+    if (!user) { requireLogin(); return }
+    setShowReport(true)
+  }
 
   async function fetchListing() {
     setLoading(true)
@@ -143,6 +156,11 @@ export default function ListingDetail() {
         <span style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, color: 'var(--terracotta)', flex: 1 }}>
           cuna
         </span>
+        <ShareButton
+          title={`${listing.address} on Cuna`}
+          text={`$${listing.price?.toLocaleString()}/mo · ${listing.bedrooms} bed · ${listing.neighborhood || listing.city}`}
+          label="Share this listing"
+        />
         <NotificationBell />
       </div>
 
@@ -224,6 +242,12 @@ export default function ListingDetail() {
                 </span>
               )}
             </div>
+            {hasConcession(listing) && (
+              <div style={{ marginTop: '4px', fontSize: '14px', color: 'var(--charcoal-soft)', lineHeight: 1.5 }}>
+                <strong style={{ color: 'var(--like-green)' }}>${Number(listing.net_effective_price).toLocaleString()}/mo net effective</strong>
+                <span style={{ color: 'var(--warm-gray)' }}> · {concessionText(listing)}. The gross rent above is what you pay each month you are charged.</span>
+              </div>
+            )}
             {statusBadge(listing) && (
               <div style={{
                 display: 'inline-block', marginTop: '6px', padding: '4px 10px', borderRadius: '12px',
@@ -268,6 +292,8 @@ export default function ListingDetail() {
               </p>
             )}
 
+            <ListingMedia floorPlans={listing.floor_plans} videoUrl={listing.video_url} tour3dUrl={listing.tour_3d_url} />
+
             {petsPolicyLabel(listing.pets_policy) && (
               <div style={{ marginBottom: '20px' }}>
                 <p style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>Pets</p>
@@ -299,6 +325,10 @@ export default function ListingDetail() {
               </div>
             )}
 
+            <ListingMap lat={listing.lat} lng={listing.lng} neighborhoodId={listing.neighborhood_id} neighborhoodName={listing.neighborhood_id ? listing.neighborhood : null} address={listing.address} />
+            <NearbySubway lat={listing.lat} lng={listing.lng} />
+            <CommuteCalculator lat={listing.lat} lng={listing.lng} />
+
             <div style={{
               background: 'rgba(180,74,54,0.06)', border: '1px solid rgba(180,74,54,0.2)',
               borderRadius: '10px', padding: '12px 14px', marginBottom: '18px',
@@ -311,9 +341,21 @@ export default function ListingDetail() {
             <p style={{ fontSize: '16px', fontWeight: 600, marginBottom: '10px' }}>Costs & fees</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                <span style={{ color: 'var(--warm-gray)' }}>Monthly rent</span>
+                <span style={{ color: 'var(--warm-gray)' }}>Monthly rent (gross)</span>
                 <span style={{ fontWeight: 500 }}>${listing.price?.toLocaleString()}</span>
               </div>
+              {hasConcession(listing) && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                    <span style={{ color: 'var(--warm-gray)' }}>Lease term</span>
+                    <span style={{ fontWeight: 500 }}>{listing.lease_term_months} months, {Number(listing.months_free)} free</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                    <span style={{ color: 'var(--warm-gray)' }}>Net effective rent</span>
+                    <span style={{ fontWeight: 500, color: 'var(--like-green)' }}>${Number(listing.net_effective_price).toLocaleString()}/mo</span>
+                  </div>
+                </>
+              )}
               {listing.security_deposit > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
                   <span style={{ color: 'var(--warm-gray)' }}>Security deposit</span>
@@ -352,6 +394,17 @@ export default function ListingDetail() {
         <div style={{ marginTop: '16px' }}>
           <FairHousingNotice />
         </div>
+
+        {!(user && listing.poster_id === user.id) && (
+          <div style={{ textAlign: 'center', marginTop: '14px' }}>
+            <button type="button" onClick={handleReport} style={{
+              background: 'none', border: 'none', cursor: 'pointer', color: 'var(--warm-gray)', fontSize: '13px',
+              display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 10px',
+            }}>
+              <Flag size={14} /> Report this listing
+            </button>
+          </div>
+        )}
       </div>
 
       <div style={{
@@ -410,6 +463,9 @@ export default function ListingDetail() {
       )}
       {showQuestion && (
         <AskQuestion listing={listing} onClose={() => setShowQuestion(false)} />
+      )}
+      {showReport && user && (
+        <ReportListing listing={listing} userId={user.id} onClose={() => setShowReport(false)} />
       )}
     </div>
   )

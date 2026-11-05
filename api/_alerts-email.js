@@ -9,7 +9,7 @@ const STATUS_LABEL = {
   active: 'Active', in_contract: 'In contract', rented: 'Rented',
   off_market: 'Off-market', delisted: 'De-listed',
 }
-const FIELD_ORDER = ['description', 'photos', 'amenities', 'pet policy', 'size', 'address']
+const FIELD_ORDER = ['description', 'photos', 'media', 'amenities', 'pet policy', 'size', 'lease terms', 'address']
 const KIND_ORDER = { status: 0, price: 1, available_date: 2, fees: 3, open_house: 4, details: 5 }
 
 export const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => (
