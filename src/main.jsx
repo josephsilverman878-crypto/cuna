@@ -35,6 +35,7 @@ import Market from './pages/Market'
 import Neighborhoods from './pages/Neighborhoods'
 import Neighborhood from './pages/Neighborhood'
 import AuthCallback from './pages/AuthCallback'
+import Application from './pages/Application'
 
 function ProtectedRoute({ children, role }) {
   const { user, profile, loading } = useAuth()
@@ -89,6 +90,9 @@ function AppRoutes() {
       <Route path="/swipe" element={<Navigate to="/feed" replace />} />
       <Route path="/history" element={
         <ProtectedRoute role="renter"><SwipeHistory /></ProtectedRoute>
+      } />
+      <Route path="/application" element={
+        <ProtectedRoute role="renter"><Application /></ProtectedRoute>
       } />
       
       <Route path="/profile" element={
