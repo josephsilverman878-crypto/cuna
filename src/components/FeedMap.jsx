@@ -3,6 +3,7 @@ import { Pencil, Check, X, Eraser } from 'lucide-react'
 import MapView from './MapView'
 import { MAP_COLORS, ringToPolygon, bboxOf } from '../lib/mapbox'
 import { loadAreaShapes } from '../lib/areas'
+import { shortMoney } from '../lib/listingTypes'
 
 // The feed's map: every Cuna area as a tappable shape, one pin per matching
 // listing, and a draw-your-own-area mode. Selection state lives in the feed;
@@ -32,7 +33,7 @@ function pinsToGeoJSON(points) {
       .map(p => ({
         type: 'Feature',
         id: p.id,
-        properties: { id: p.id, price: p.price, label: p.price ? '$' + Number(p.price).toLocaleString() : '' },
+        properties: { id: p.id, price: p.price, label: p.price ? (Number(p.price) < 10000 ? '$' + Number(p.price).toLocaleString() : shortMoney(p.price)) : '' },
         geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
       })),
   }

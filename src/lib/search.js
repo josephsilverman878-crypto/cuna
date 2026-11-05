@@ -44,7 +44,7 @@ export const BATHS_OPTIONS = [
 
 export const EMPTY_FILTERS = Object.freeze({
   price_min: '', price_max: '', beds_min: '', baths_min: '', sqft_min: '',
-  amenities: [], pets: [], price_basis: 'gross',
+  amenities: [], pets: [], price_basis: 'gross', listing_type: 'rent',
 })
 
 export function normalizeFilters(f) {
@@ -52,6 +52,7 @@ export function normalizeFilters(f) {
   n.amenities = Array.isArray(n.amenities) ? n.amenities.filter(a => AMENITY_OPTIONS.includes(a)) : []
   n.pets = Array.isArray(n.pets) ? n.pets.filter(p => PETS_OPTIONS.some(o => o.value === p)) : []
   n.price_basis = n.price_basis === 'net' ? 'net' : 'gross'
+  n.listing_type = n.listing_type === 'sale' ? 'sale' : 'rent'
   for (const k of ['price_min', 'price_max', 'beds_min', 'baths_min', 'sqft_min']) {
     n[k] = n[k] === null || n[k] === undefined ? '' : String(n[k])
   }
@@ -92,13 +93,15 @@ export function filtersForServer(filters) {
   if (sq !== null) out.sqft_min = Math.max(0, Math.round(sq))
   if (f.amenities.length) out.amenities = f.amenities
   if (f.pets.length) out.pets = f.pets
-  if (f.price_basis === 'net' && (pmin !== null || pmax !== null)) out.price_basis = 'net'
+  if (f.price_basis === 'net' && f.listing_type !== 'sale' && (pmin !== null || pmax !== null)) out.price_basis = 'net'
+  if (f.listing_type === 'sale') out.listing_type = 'sale'
   return out
 }
 
 function rpcParams({ filters, neighborhoodIds, area, exclude }) {
   const f = filtersForServer(filters)
   return {
+    p_listing_type: f.listing_type === 'sale' ? 'sale' : 'rent',
     p_price_basis: f.price_basis === 'net' ? 'net' : 'gross',
     p_neighborhood_ids: (neighborhoodIds || []).length ? neighborhoodIds : null,
     p_area: area ? JSON.stringify(area) : null,
@@ -165,8 +168,9 @@ export async function saveSearchState(userId, state) {
 export function describeFilters(filters, neighborhoodNames = [], hasArea = false) {
   const f = normalizeFilters(filters)
   const parts = []
+  if (f.listing_type === 'sale') parts.push('For sale')
   const pmin = num(f.price_min), pmax = num(f.price_max)
-  const basis = f.price_basis === 'net' && (pmin !== null || pmax !== null) ? ' net' : ''
+  const basis = f.price_basis === 'net' && f.listing_type !== 'sale' && (pmin !== null || pmax !== null) ? ' net' : ''
   if (pmin !== null && pmax !== null) parts.push(`$${pmin.toLocaleString()}–$${pmax.toLocaleString()}${basis}`)
   else if (pmin !== null) parts.push(`$${pmin.toLocaleString()}+${basis}`)
   else if (pmax !== null) parts.push(`up to $${pmax.toLocaleString()}${basis}`)
@@ -179,5 +183,6 @@ export function describeFilters(filters, neighborhoodNames = [], hasArea = false
     parts.push(neighborhoodNames.length <= 3 ? neighborhoodNames.join(', ') : `${neighborhoodNames.slice(0, 2).join(', ')} +${neighborhoodNames.length - 2} more`)
   }
   if (hasArea) parts.push('drawn area')
-  return parts.length ? parts.join(' · ') : 'All listings'
+  if (parts.length === 1 && f.listing_type === 'sale') return 'All homes for sale'
+  return parts.length ? parts.join(' · ') : 'All rentals'
 }

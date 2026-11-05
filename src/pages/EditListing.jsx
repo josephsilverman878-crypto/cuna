@@ -9,9 +9,11 @@ import LocationCheck from '../components/LocationCheck'
 import { geocodeColumns } from '../lib/geocode'
 import { netEffective } from '../lib/netEffective'
 import { embedUrl } from '../components/ListingMedia'
+import SaleFinancialsFields, { saleColumns } from '../components/SaleFinancialsFields'
+import { propertyTypeLabel } from '../lib/listingTypes'
 import toast from 'react-hot-toast'
 import { Loader, ChevronLeft, X, Upload, ChevronRight, AlertTriangle } from 'lucide-react'
-import { LISTING_STATUSES, statusLabel } from '../lib/listingStatus'
+import { statusesFor, statusLabel } from '../lib/listingStatus'
 import { getOpenHousesForListing, addOpenHouse, updateOpenHouse, cancelOpenHouse, formatOpenHouse, isUpcoming, nyWallClockToIso, isoToNyFields } from '../lib/openHouses'
 
 const TABS = ['Details', 'Costs & Fees', 'Amenities', 'Photos', 'Review']
@@ -47,6 +49,8 @@ export default function EditListing() {
     description: '', available_date: '',
     security_deposit: '', application_fee: '', move_in_fee: '', other_fees: [],
     months_free: '', lease_term_months: '12', video_url: '', tour_3d_url: '',
+    listing_type: 'rent', property_type: '',
+    common_charges: '', maintenance: '', monthly_taxes: '', tax_deductible_pct: '', financing_allowed_pct: '',
     pets_policy: '',
     doorman: false, elevator: false, gym: false, laundry: false,
     dishwasher: false, hardwood: false, roof_deck: false,
@@ -58,6 +62,7 @@ export default function EditListing() {
   const netPreview = netEffective(parseInt(form.price) || 0, parseFloat(form.months_free) || 0, parseInt(form.lease_term_months) || 12)
   const videoOk = !form.video_url.trim() || Boolean(embedUrl('video', form.video_url.trim()))
   const tourOk = !form.tour_3d_url.trim() || Boolean(embedUrl('tour', form.tour_3d_url.trim()))
+  const isSaleForm = form.listing_type === 'sale'
 
   useEffect(() => { fetchListing() }, [id])
 
@@ -101,6 +106,13 @@ export default function EditListing() {
       lease_term_months: data.lease_term_months ? String(data.lease_term_months) : '12',
       video_url: data.video_url || '',
       tour_3d_url: data.tour_3d_url || '',
+      listing_type: data.listing_type === 'sale' ? 'sale' : 'rent',
+      property_type: data.property_type || '',
+      common_charges: data.common_charges?.toString() || '',
+      maintenance: data.maintenance?.toString() || '',
+      monthly_taxes: data.monthly_taxes?.toString() || '',
+      tax_deductible_pct: data.tax_deductible_pct != null ? String(Number(data.tax_deductible_pct)) : '',
+      financing_allowed_pct: data.financing_allowed_pct != null ? String(Number(data.financing_allowed_pct)) : '',
       pets_policy: data.pets_policy || '',
       doorman: amenities.includes('Doorman'),
       elevator: amenities.includes('Elevator'),
@@ -230,8 +242,13 @@ export default function EditListing() {
       setTab(3)
       return
     }
-    const monthsFree = parseFloat(form.months_free) || 0
-    const leaseTerm = parseInt(form.lease_term_months) || 12
+    if (isSaleForm && !form.property_type) {
+      toast.error('Choose a property type for a sale listing.')
+      setTab(1)
+      return
+    }
+    const monthsFree = isSaleForm ? 0 : (parseFloat(form.months_free) || 0)
+    const leaseTerm = isSaleForm ? 12 : (parseInt(form.lease_term_months) || 12)
     if (monthsFree < 0 || monthsFree >= leaseTerm || leaseTerm < 1 || leaseTerm > 36) {
       toast.error('Free months must be less than the lease term (1–36 months).')
       setTab(1)
@@ -271,10 +288,13 @@ export default function EditListing() {
         bathrooms: parseFloat(form.bathrooms),
         sqft: form.sqft ? parseInt(form.sqft) : null,
         description: form.description || null,
-        security_deposit: form.security_deposit ? parseInt(form.security_deposit) : null,
-        application_fee: form.application_fee ? parseInt(form.application_fee) : null,
-        move_in_fee: form.move_in_fee ? parseInt(form.move_in_fee) : null,
-        other_fees: form.other_fees
+        // listing_type itself is fixed (the database refuses a change); only
+        // the sale fields travel.
+        ...(({ listing_type, ...rest }) => rest)(saleColumns(form)),
+        security_deposit: !isSaleForm && form.security_deposit ? parseInt(form.security_deposit) : null,
+        application_fee: !isSaleForm && form.application_fee ? parseInt(form.application_fee) : null,
+        move_in_fee: !isSaleForm && form.move_in_fee ? parseInt(form.move_in_fee) : null,
+        other_fees: isSaleForm ? [] : form.other_fees
           .filter(f => f.description && f.amount)
           .map(f => ({ description: f.description, amount: parseInt(f.amount) })),
         amenities: amenitiesArray,
@@ -373,9 +393,14 @@ export default function EditListing() {
 
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', margin: 0 }}>Unit details</h3>
+        {isSaleForm && (
+          <div style={{ fontSize: '13px', color: 'var(--charcoal-soft)', background: 'var(--sand)', borderRadius: '10px', padding: '10px 12px' }}>
+            <strong>For sale</strong>{propertyTypeLabel(form.property_type) ? ` · ${propertyTypeLabel(form.property_type)}` : ''}. A listing cannot switch between rent and sale; post a new one instead.
+          </div>
+        )}
         <div>
-          <label className="label">Monthly rent ($) *</label>
-          <input required type="number" min="1" placeholder="3500" value={form.price}
+          <label className="label">{isSaleForm ? 'Asking price ($) *' : 'Monthly rent ($) *'}</label>
+          <input required type="number" min="1" placeholder={isSaleForm ? '850000' : '3500'} value={form.price}
             onChange={e => update('price', e.target.value)} style={inputStyle} />
         </div>
         <div style={rowStyle}>
@@ -431,7 +456,7 @@ export default function EditListing() {
           onChange={e => changeStatus(e.target.value)}
           style={{ ...inputStyle, cursor: 'pointer', fontWeight: 600 }}
         >
-          {LISTING_STATUSES.map(st => (
+          {statusesFor(form.listing_type).map(st => (
             <option key={st.id} value={st.id}>{st.label}</option>
           ))}
         </select>
@@ -487,8 +512,11 @@ export default function EditListing() {
       </div>
     </div>,
 
-    // ── TAB 1: COSTS & FEES ──
+    // ── TAB 1: COSTS & FEES (rent) / SALE DETAILS (sale) ──
     <div key="fees" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {isSaleForm ? (
+        <SaleFinancialsFields form={form} update={update} inputStyle={inputStyle} rowStyle={rowStyle} showType={true} />
+      ) : (<>
       <div className="card" style={{
         background: 'rgba(180,74,54,0.06)', border: '1px solid rgba(180,74,54,0.2)',
       }}>
@@ -586,6 +614,7 @@ export default function EditListing() {
             : 'If you offer free months, enter them here and the net effective rent is shown next to the gross rent.'}
         </p>
       </div>
+      </>)}
     </div>,
 
     // ── TAB 2: AMENITIES ──
@@ -795,22 +824,33 @@ export default function EditListing() {
         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', marginBottom: '16px' }}>Review changes</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {[
+            ['Listing', isSaleForm ? `For sale · ${propertyTypeLabel(form.property_type) || 'property type not chosen'}` : 'For rent'],
             ['Address', form.address + (neighborhoodName ? ` · ${neighborhoodName}` : '')],
             ['City / State', `${form.city}, ${form.state} ${form.zip_code}`],
             ['Map', geo ? (geo.label || 'Placed on the map') : 'Not on the map — address not found'],
-            ['Rent', form.price ? `$${parseInt(form.price).toLocaleString()}/mo` : '—'],
+            isSaleForm
+              ? ['Asking price', form.price ? `$${parseInt(form.price).toLocaleString()}` : '—']
+              : ['Rent', form.price ? `$${parseInt(form.price).toLocaleString()}/mo` : '—'],
             ['Bedrooms', form.bedrooms || '—'],
             ['Bathrooms', form.bathrooms || '—'],
             ['Sqft', form.sqft || '—'],
             ['Available', form.available_date || 'Immediately'],
-            ['Security deposit', form.security_deposit ? `$${parseInt(form.security_deposit).toLocaleString()}` : '—'],
-            ['Application fee', form.application_fee ? `$${parseInt(form.application_fee).toLocaleString()}` : '—'],
-            ['Move-in fee', form.move_in_fee ? `$${parseInt(form.move_in_fee).toLocaleString()}` : '—'],
-            ['Other fees', form.other_fees.length
-              ? form.other_fees.map(f => `${f.description}: $${parseInt(f.amount || 0).toLocaleString()}`).join(', ')
-              : 'None'],
-            ['Total at signing', `$${totalDueAtSigning().toLocaleString()}`],
-            ['Lease', `${parseInt(form.lease_term_months) || 12} months${parseFloat(form.months_free) > 0 ? `, ${form.months_free} free → net effective $${netPreview.toLocaleString()}/mo` : ''}`],
+            ...(isSaleForm ? [
+              form.property_type === 'coop'
+                ? ['Maintenance', form.maintenance ? `$${parseInt(form.maintenance).toLocaleString()}/mo` : '—']
+                : ['Charges + taxes', [form.common_charges && `$${parseInt(form.common_charges).toLocaleString()} common`, form.monthly_taxes && `$${parseInt(form.monthly_taxes).toLocaleString()} taxes`].filter(Boolean).join(', ') || '—'],
+              ['Tax deductible', form.tax_deductible_pct ? `${form.tax_deductible_pct}%` : '—'],
+              ['Financing allowed', form.financing_allowed_pct ? `${form.financing_allowed_pct}%` : '—'],
+            ] : [
+              ['Security deposit', form.security_deposit ? `$${parseInt(form.security_deposit).toLocaleString()}` : '—'],
+              ['Application fee', form.application_fee ? `$${parseInt(form.application_fee).toLocaleString()}` : '—'],
+              ['Move-in fee', form.move_in_fee ? `$${parseInt(form.move_in_fee).toLocaleString()}` : '—'],
+              ['Other fees', form.other_fees.length
+                ? form.other_fees.map(f => `${f.description}: $${parseInt(f.amount || 0).toLocaleString()}`).join(', ')
+                : 'None'],
+              ['Total at signing', `$${totalDueAtSigning().toLocaleString()}`],
+              ['Lease', `${parseInt(form.lease_term_months) || 12} months${parseFloat(form.months_free) > 0 ? `, ${form.months_free} free → net effective $${netPreview.toLocaleString()}/mo` : ''}`],
+            ]),
             ['Photos', `${totalPhotos} photo${totalPhotos !== 1 ? 's' : ''}${existingFloorPlans.length + floorPlans.length ? ` · ${existingFloorPlans.length + floorPlans.length} floor plan${existingFloorPlans.length + floorPlans.length !== 1 ? 's' : ''}` : ''}`],
             ['Video / 3D', [form.video_url.trim() && 'video', form.tour_3d_url.trim() && '3D tour'].filter(Boolean).join(', ') || 'None'],
             ['Pets', petsPolicyLabel(form.pets_policy) || 'Not selected'],

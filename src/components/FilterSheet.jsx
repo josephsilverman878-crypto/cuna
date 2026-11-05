@@ -4,6 +4,7 @@ import {
   SORTS, AMENITY_OPTIONS, PETS_OPTIONS, BEDS_OPTIONS, BATHS_OPTIONS, PRICE_BASIS_OPTIONS, EMPTY_FILTERS, normalizeFilters,
 } from '../lib/search'
 import { groupByBorough } from '../lib/areas'
+import { LISTING_TYPES } from '../lib/listingTypes'
 
 // Bottom-sheet filter panel for the feed. Edits a draft and hands the whole
 // set back on Apply, so a half-typed price never fires a search.
@@ -122,30 +123,42 @@ export default function FilterSheet({ open, onClose, filters, sort, neighborhood
         </div>
 
         <div style={{ overflowY: 'auto', padding: '0 20px', flex: 1 }}>
+          <Section title="Looking to">
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {LISTING_TYPES.map(t => (
+                <Chip key={t.id} active={draft.listing_type === t.id} onClick={() => set('listing_type', t.id)}>{t.label}</Chip>
+              ))}
+            </div>
+          </Section>
+
           <Section title="Sort by">
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {SORTS.map(s => (
+              {SORTS.filter(s => draft.listing_type !== 'sale' || s.id !== 'net_asc').map(s => (
                 <Chip key={s.id} active={draftSort === s.id} onClick={() => setDraftSort(s.id)}>{s.label}</Chip>
               ))}
             </div>
           </Section>
 
-          <Section title="Monthly rent">
+          <Section title={draft.listing_type === 'sale' ? 'Price' : 'Monthly rent'}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '10px', alignItems: 'center' }}>
-              <input type="number" inputMode="numeric" min="0" placeholder="Min $" aria-label="Minimum rent" value={draft.price_min}
+              <input type="number" inputMode="numeric" min="0" placeholder="Min $" aria-label="Minimum price" value={draft.price_min}
                 onChange={e => set('price_min', e.target.value)} style={inputStyle} />
               <span style={{ color: 'var(--warm-gray)' }}>to</span>
-              <input type="number" inputMode="numeric" min="0" placeholder="Max $" aria-label="Maximum rent" value={draft.price_max}
+              <input type="number" inputMode="numeric" min="0" placeholder="Max $" aria-label="Maximum price" value={draft.price_max}
                 onChange={e => set('price_max', e.target.value)} style={inputStyle} />
             </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
-              {PRICE_BASIS_OPTIONS.map(o => (
-                <Chip key={o.value} active={draft.price_basis === o.value} onClick={() => set('price_basis', o.value)}>{o.label}</Chip>
-              ))}
-            </div>
-            <p style={{ fontSize: '12px', color: 'var(--warm-gray)', margin: '6px 0 0', lineHeight: 1.5 }}>
-              Net effective spreads any free months over the lease. Cards show both when they differ.
-            </p>
+            {draft.listing_type !== 'sale' && (
+              <>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                  {PRICE_BASIS_OPTIONS.map(o => (
+                    <Chip key={o.value} active={draft.price_basis === o.value} onClick={() => set('price_basis', o.value)}>{o.label}</Chip>
+                  ))}
+                </div>
+                <p style={{ fontSize: '12px', color: 'var(--warm-gray)', margin: '6px 0 0', lineHeight: 1.5 }}>
+                  Net effective spreads any free months over the lease. Cards show both when they differ.
+                </p>
+              </>
+            )}
           </Section>
 
           <Section title="Bedrooms">
