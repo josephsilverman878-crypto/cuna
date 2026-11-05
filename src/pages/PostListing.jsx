@@ -9,6 +9,8 @@ import LocationCheck from '../components/LocationCheck'
 import { geocodeColumns } from '../lib/geocode'
 import { netEffective } from '../lib/netEffective'
 import { embedUrl } from '../components/ListingMedia'
+import SaleFinancialsFields, { saleColumns } from '../components/SaleFinancialsFields'
+import { LISTING_TYPES, propertyTypeLabel } from '../lib/listingTypes'
 import toast from 'react-hot-toast'
 import { Loader, ChevronLeft, X, Upload, ChevronRight, AlertTriangle } from 'lucide-react'
 
@@ -21,6 +23,9 @@ const EMPTY_FORM = {
   description: '', available_date: '',
   // costs & fees
   security_deposit: '', application_fee: '', move_in_fee: '', other_fees: [],
+  // rent or sale; the sale fields are used only when listing_type = 'sale'
+  listing_type: 'rent', property_type: '',
+  common_charges: '', maintenance: '', monthly_taxes: '', tax_deductible_pct: '', financing_allowed_pct: '',
   // lease terms (net effective rent = price x (term - free) / term)
   months_free: '', lease_term_months: '12',
   // media links (embedded, never hosted)
@@ -146,6 +151,7 @@ export default function PostListing() {
   const netPreview = netEffective(parseInt(form.price) || 0, parseFloat(form.months_free) || 0, parseInt(form.lease_term_months) || 12)
   const videoOk = !form.video_url.trim() || Boolean(embedUrl('video', form.video_url.trim()))
   const tourOk = !form.tour_3d_url.trim() || Boolean(embedUrl('tour', form.tour_3d_url.trim()))
+  const isSaleForm = form.listing_type === 'sale'
 
   // ── SUBMIT ────────────────────────────────────────────────────
   async function handleSubmit() {
@@ -171,8 +177,13 @@ export default function PostListing() {
       setTab(3)
       return
     }
-    const monthsFree = parseFloat(form.months_free) || 0
-    const leaseTerm = parseInt(form.lease_term_months) || 12
+    if (isSaleForm && !form.property_type) {
+      toast.error('Choose a property type for a sale listing.')
+      setTab(0)
+      return
+    }
+    const monthsFree = isSaleForm ? 0 : (parseFloat(form.months_free) || 0)
+    const leaseTerm = isSaleForm ? 12 : (parseInt(form.lease_term_months) || 12)
     if (monthsFree < 0 || monthsFree >= leaseTerm || leaseTerm < 1 || leaseTerm > 36) {
       toast.error('Free months must be less than the lease term (1–36 months).')
       setTab(1)
@@ -207,10 +218,11 @@ export default function PostListing() {
           bathrooms: parseFloat(form.bathrooms),
           sqft: form.sqft ? parseInt(form.sqft) : null,
           description: form.description || null,
-          security_deposit: form.security_deposit ? parseInt(form.security_deposit) : null,
-          application_fee: form.application_fee ? parseInt(form.application_fee) : null,
-          move_in_fee: form.move_in_fee ? parseInt(form.move_in_fee) : null,
-          other_fees: form.other_fees
+          ...saleColumns(form),
+          security_deposit: !isSaleForm && form.security_deposit ? parseInt(form.security_deposit) : null,
+          application_fee: !isSaleForm && form.application_fee ? parseInt(form.application_fee) : null,
+          move_in_fee: !isSaleForm && form.move_in_fee ? parseInt(form.move_in_fee) : null,
+          other_fees: isSaleForm ? [] : form.other_fees
             .filter(f => f.description && f.amount)
             .map(f => ({ description: f.description, amount: parseInt(f.amount) })),
           amenities: amenitiesArray,
@@ -309,6 +321,31 @@ export default function PostListing() {
 
     // ── TAB 0: DETAILS ──
     <div key="details" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', margin: 0 }}>What are you listing?</h3>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {LISTING_TYPES.map(t => (
+            <button key={t.id} type="button" onClick={() => update('listing_type', t.id)} aria-pressed={form.listing_type === t.id} style={{
+              flex: 1, padding: '12px 14px', borderRadius: '10px', textAlign: 'center',
+              border: `2px solid ${form.listing_type === t.id ? 'var(--terracotta)' : 'var(--sand-dark)'}`,
+              background: form.listing_type === t.id ? 'rgba(180,74,54,0.08)' : 'var(--white)',
+              color: form.listing_type === t.id ? 'var(--terracotta)' : 'var(--warm-gray)',
+              fontWeight: form.listing_type === t.id ? 600 : 400, fontSize: '14px', cursor: 'pointer',
+            }}>{t.verb}</button>
+          ))}
+        </div>
+        {isSaleForm && (
+          <div>
+            <label className="label">Property type *</label>
+            <select value={form.property_type} onChange={e => update('property_type', e.target.value)} style={inputStyle}>
+              <option value="">Select…</option>
+              {['coop', 'condo', 'house', 'multi_family', 'townhouse'].map(v => <option key={v} value={v}>{propertyTypeLabel(v)}</option>)}
+            </select>
+            <p style={{ fontSize: '12px', color: 'var(--warm-gray)', margin: '6px 0 0' }}>Sales listings are free to post.</p>
+          </div>
+        )}
+      </div>
+
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', margin: 0 }}>Location</h3>
 
@@ -348,8 +385,8 @@ export default function PostListing() {
         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', margin: 0 }}>Unit details</h3>
 
         <div>
-          <label className="label">Monthly rent ($) *</label>
-          <input required type="number" min="1" placeholder="3500" value={form.price}
+          <label className="label">{isSaleForm ? 'Asking price ($) *' : 'Monthly rent ($) *'}</label>
+          <input required type="number" min="1" placeholder={isSaleForm ? '850000' : '3500'} value={form.price}
             onChange={e => update('price', e.target.value)} style={inputStyle} />
         </div>
 
@@ -401,8 +438,11 @@ export default function PostListing() {
       </div>
     </div>,
 
-    // ── TAB 1: COSTS & FEES ──
+    // ── TAB 1: COSTS & FEES (rent) / SALE DETAILS (sale) ──
     <div key="fees" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {isSaleForm ? (
+        <SaleFinancialsFields form={form} update={update} inputStyle={inputStyle} rowStyle={rowStyle} showType={false} />
+      ) : (<>
       <div className="card" style={{
         background: 'rgba(180,74,54,0.06)', border: '1px solid rgba(180,74,54,0.2)',
       }}>
@@ -500,6 +540,7 @@ export default function PostListing() {
             : 'If you offer free months, enter them here and the net effective rent is shown next to the gross rent.'}
         </p>
       </div>
+      </>)}
     </div>,
 
     // ── TAB 2: AMENITIES ──
@@ -682,22 +723,33 @@ export default function PostListing() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {[
+            ['Listing', isSaleForm ? `For sale · ${propertyTypeLabel(form.property_type) || 'property type not chosen'}` : 'For rent'],
             ['Address', form.address + (neighborhoodName ? ` · ${neighborhoodName}` : '')],
             ['City / State', `${form.city}, ${form.state} ${form.zip_code}`],
             ['Map', geo ? (geo.label || 'Placed on the map') : 'Not on the map — address not found'],
-            ['Rent', form.price ? `$${parseInt(form.price).toLocaleString()}/mo` : '—'],
+            isSaleForm
+              ? ['Asking price', form.price ? `$${parseInt(form.price).toLocaleString()}` : '—']
+              : ['Rent', form.price ? `$${parseInt(form.price).toLocaleString()}/mo` : '—'],
             ['Bedrooms', form.bedrooms || '—'],
             ['Bathrooms', form.bathrooms || '—'],
             ['Sqft', form.sqft || '—'],
             ['Available', form.available_date || 'Immediately'],
-            ['Security deposit', form.security_deposit ? `$${parseInt(form.security_deposit).toLocaleString()}` : '—'],
-            ['Application fee', form.application_fee ? `$${parseInt(form.application_fee).toLocaleString()}` : '—'],
-            ['Move-in fee', form.move_in_fee ? `$${parseInt(form.move_in_fee).toLocaleString()}` : '—'],
-            ['Other fees', form.other_fees.length
-              ? form.other_fees.map(f => `${f.description}: $${parseInt(f.amount || 0).toLocaleString()}`).join(', ')
-              : 'None'],
-            ['Total at signing', `$${totalDueAtSigning().toLocaleString()}`],
-            ['Lease', `${parseInt(form.lease_term_months) || 12} months${parseFloat(form.months_free) > 0 ? `, ${form.months_free} free → net effective $${netPreview.toLocaleString()}/mo` : ''}`],
+            ...(isSaleForm ? [
+              form.property_type === 'coop'
+                ? ['Maintenance', form.maintenance ? `$${parseInt(form.maintenance).toLocaleString()}/mo` : '—']
+                : ['Charges + taxes', [form.common_charges && `$${parseInt(form.common_charges).toLocaleString()} common`, form.monthly_taxes && `$${parseInt(form.monthly_taxes).toLocaleString()} taxes`].filter(Boolean).join(', ') || '—'],
+              ['Tax deductible', form.tax_deductible_pct ? `${form.tax_deductible_pct}%` : '—'],
+              ['Financing allowed', form.financing_allowed_pct ? `${form.financing_allowed_pct}%` : '—'],
+            ] : [
+              ['Security deposit', form.security_deposit ? `$${parseInt(form.security_deposit).toLocaleString()}` : '—'],
+              ['Application fee', form.application_fee ? `$${parseInt(form.application_fee).toLocaleString()}` : '—'],
+              ['Move-in fee', form.move_in_fee ? `$${parseInt(form.move_in_fee).toLocaleString()}` : '—'],
+              ['Other fees', form.other_fees.length
+                ? form.other_fees.map(f => `${f.description}: $${parseInt(f.amount || 0).toLocaleString()}`).join(', ')
+                : 'None'],
+              ['Total at signing', `$${totalDueAtSigning().toLocaleString()}`],
+              ['Lease', `${parseInt(form.lease_term_months) || 12} months${parseFloat(form.months_free) > 0 ? `, ${form.months_free} free → net effective $${netPreview.toLocaleString()}/mo` : ''}`],
+            ]),
             ['Photos', `${photos.length} photo${photos.length !== 1 ? 's' : ''}${floorPlans.length ? ` · ${floorPlans.length} floor plan${floorPlans.length !== 1 ? 's' : ''}` : ''}`],
             ['Video / 3D', [form.video_url.trim() && 'video', form.tour_3d_url.trim() && '3D tour'].filter(Boolean).join(', ') || 'None'],
             ['Pets', petsPolicyLabel(form.pets_policy) || 'Not selected'],

@@ -8,14 +8,22 @@
 // link in any status through get_listing_public().
 
 export const LISTING_STATUSES = [
-  { id: 'active',      label: 'Active',      short: 'Active' },
-  { id: 'in_contract', label: 'In contract', short: 'In contract' },
-  { id: 'rented',      label: 'Rented',      short: 'Rented' },
-  { id: 'off_market',  label: 'Off-market',  short: 'Off-market' },
-  { id: 'delisted',    label: 'De-listed',   short: 'De-listed' },
+  { id: 'active',      label: 'Active',      short: 'Active',      types: ['rent', 'sale'] },
+  { id: 'in_contract', label: 'In contract', short: 'In contract', types: ['rent', 'sale'] },
+  { id: 'rented',      label: 'Rented',      short: 'Rented',      types: ['rent'] },
+  { id: 'sold',        label: 'Sold',        short: 'Sold',        types: ['sale'] },
+  { id: 'off_market',  label: 'Off-market',  short: 'Off-market',  types: ['rent', 'sale'] },
+  { id: 'delisted',    label: 'De-listed',   short: 'De-listed',   types: ['rent', 'sale'] },
 ]
 
 export const PUBLIC_STATUSES = ['active', 'in_contract']
+
+// The statuses a listing of this type may take: rentals end in Rented,
+// sales in Sold (the database refuses the other one).
+export function statusesFor(listingType) {
+  const t = listingType === 'sale' ? 'sale' : 'rent'
+  return LISTING_STATUSES.filter(s => s.types.includes(t))
+}
 
 export function statusLabel(id) {
   return LISTING_STATUSES.find(s => s.id === id)?.label || id || ''
@@ -72,6 +80,8 @@ export function availabilityBox(listing) {
       return { label: 'Available', value: date ? `In contract since ${date}` : 'In contract' }
     case 'rented':
       return { label: 'Unavailable', value: date ? `Rented on ${date}` : 'Rented' }
+    case 'sold':
+      return { label: 'Unavailable', value: date ? `Sold on ${date}` : 'Sold' }
     case 'off_market':
       return { label: 'Unavailable', value: date ? `Off-market since ${date}` : 'Off-market' }
     case 'delisted':

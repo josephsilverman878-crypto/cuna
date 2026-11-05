@@ -6,7 +6,8 @@ import BottomNav from '../components/BottomNav'
 import { getSaveCounts } from '../lib/swipes'
 import toast from 'react-hot-toast'
 import { Plus, Users, Eye, BedDouble, Bath, Pencil, ShieldCheck, CalendarCheck, Mail, Phone } from 'lucide-react'
-import { LISTING_STATUSES, statusLabel, isPublicStatus } from '../lib/listingStatus'
+import { statusesFor, statusLabel, isPublicStatus } from '../lib/listingStatus'
+import { priceText, isSale, propertyTypeLabel } from '../lib/listingTypes'
 
 export default function PosterDashboard() {
   const { user, profile } = useAuth()
@@ -251,8 +252,11 @@ export default function PosterDashboard() {
 
               <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: 'var(--terracotta)', fontWeight: 600 }}>
-                  ${listing.price?.toLocaleString()}/mo
+                  {priceText(listing)}
                 </span>
+                {isSale(listing) && (
+                  <span className="tag" style={{ alignSelf: 'center' }}>For sale{propertyTypeLabel(listing.property_type) ? ` · ${propertyTypeLabel(listing.property_type)}` : ''}</span>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: 'var(--charcoal-soft)' }}>
                   <BedDouble size={14} /> {listing.bedrooms} bed
                 </div>
@@ -290,7 +294,7 @@ export default function PosterDashboard() {
                       cursor: 'pointer',
                     }}
                   >
-                    {LISTING_STATUSES.map(st => (
+                    {statusesFor(listing.listing_type).map(st => (
                       <option key={st.id} value={st.id}>{st.label}</option>
                     ))}
                   </select>
