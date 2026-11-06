@@ -76,7 +76,12 @@ export default function RequestTour({ listing, onClose }) {
   // Human-readable list of the optional items being shared, for the preview.
   const sharedLabels = []
   if (shared.renterPhone) sharedLabels.push('Phone: ' + shared.renterPhone)
-  if (shared.moveInDate) sharedLabels.push('Move-in: ' + new Date(shared.moveInDate).toLocaleDateString())
+  // A date-only string through new Date() is read as UTC midnight and shows
+  // the previous day in New York; build the date from its parts instead.
+  if (shared.moveInDate) {
+    const [y, m, d] = String(shared.moveInDate).slice(0, 10).split('-').map(Number)
+    sharedLabels.push('Move-in: ' + new Date(y, m - 1, d).toLocaleDateString())
+  }
   if (shared.hasPets !== undefined) {
     sharedLabels.push(shared.hasPets
       ? 'Pets: has pets' + (shared.petDetails ? ` (${shared.petDetails})` : '')

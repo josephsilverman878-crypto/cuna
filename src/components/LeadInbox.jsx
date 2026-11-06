@@ -6,6 +6,14 @@ import { supabase } from '../lib/supabase'
 import { fetchLeads, setLeadStatus, LEAD_STATUSES, leadStatusLabel, mailtoFor } from '../lib/leads'
 import { documentUrl, documentLabel } from '../lib/applications'
 
+// Date-only strings ("2026-12-01") must not go through new Date(str), which
+// reads them as UTC midnight and shows the previous day in New York.
+function dateOnly(d) {
+  if (!d) return ''
+  const [y, m, day] = String(d).slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, day).toLocaleDateString()
+}
+
 // Every tour request and question on the poster's listings, in one list,
 // with a status the poster sets, filters, and a link back into the email
 // thread. Renter fields are the inquiry's own shared_* snapshot (what the
@@ -159,7 +167,7 @@ export default function LeadInbox({ compact = false }) {
 
             {(lead.shared_move_in_date || typeof lead.shared_has_pets === 'boolean' || lead.shared_credit_score_range) && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
-                {lead.shared_move_in_date && <span className="tag">🗓 Move in {new Date(lead.shared_move_in_date).toLocaleDateString()}</span>}
+                {lead.shared_move_in_date && <span className="tag">🗓 Move in {dateOnly(lead.shared_move_in_date)}</span>}
                 {lead.shared_has_pets === true && <span className="tag">🐾 Has pets{lead.shared_pet_details ? ` — ${lead.shared_pet_details}` : ''}</span>}
                 {lead.shared_has_pets === false && <span className="tag">No pets</span>}
                 {lead.shared_credit_score_range && <span className="tag">📊 Credit: {lead.shared_credit_score_range.replace('_', '-')}</span>}
@@ -183,7 +191,7 @@ export default function LeadInbox({ compact = false }) {
                 <div style={{ fontWeight: 600, marginBottom: '4px' }}>Rental application (shared by the renter)</div>
                 {lead.shared_application.employer && <div>Work: {lead.shared_application.job_title ? `${lead.shared_application.job_title}, ` : ''}{lead.shared_application.employer}</div>}
                 {lead.shared_application.annual_income != null && <div>Annual income: ${Number(lead.shared_application.annual_income).toLocaleString()}</div>}
-                {lead.shared_application.move_in_date && <div>Move-in: {new Date(lead.shared_application.move_in_date).toLocaleDateString()}</div>}
+                {lead.shared_application.move_in_date && <div>Move-in: {dateOnly(lead.shared_application.move_in_date)}</div>}
                 {lead.shared_application.current_address && <div>Current address: {lead.shared_application.current_address}</div>}
                 {(lead.shared_application.references || []).length > 0 && (
                   <div>References: {lead.shared_application.references.map(r => [r.name, r.relationship, r.contact].filter(Boolean).join(' · ')).join('; ')}</div>
