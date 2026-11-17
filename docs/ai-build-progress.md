@@ -84,18 +84,12 @@ Whether you finish or run out of room: update docs/ai-build-progress.md, commit 
 
 Nothing here blocks the code from being built. Each item says what it holds up.
 
-### NJ-A1 · Tick "Preview" on the model key (holds up: every real AI answer on previews, so every smoke test of an AI feature)
+### NJ-A1 · Model key in Vercel — resolved
 The prompt says `ANTHROPIC_API_KEY` is already in Vercel for Production and
-Preview. On 2026-11-17 it was not there at all; you added it during this
-session, and it now shows as **Production only** (checked by name; the value
-was never opened). A preview deployment therefore has no key, and the health
-check there reports "Model key: Missing".
-
-1. Vercel → cuna project → Settings → Environment Variables.
-2. Find `ANTHROPIC_API_KEY` → the ⋯ menu on its row → **Edit**.
-3. Under Environments tick **Preview** as well as Production → **Save**. Vercel will ask for your authenticator code; that is yours to enter.
-4. Tell me in chat. I redeploy the preview, run the health check and the test question, and only then call an AI phase tested.
-5. It must never go in a variable whose name starts with `VITE_`.
+Preview. On 2026-11-17 it was not there; you added it during this session and
+it now shows as two entries, one for Production and one for Preview (checked
+by name only; the value was never opened). Nothing more to do. It must never
+go in a variable whose name starts with `VITE_`.
 
 ### NJ-A2 · May I click Supabase's "Potential issues detected" box? (holds up: 49-ai.sql)
 When a script that creates tables or functions is run in the Supabase SQL
@@ -141,8 +135,8 @@ and shared subway lines, not by minutes on the train, until a provider is chosen
 
 | Flag | Where | Production | Preview | What it does |
 |---|---|---|---|---|
-| `AI_ENABLED` | server | off (unset) | to be set `true` | Kill switch for /api/ai |
-| `VITE_AI_ENABLED` | browser | off (unset) | to be set `true` | Kill switch for every AI surface |
+| `AI_ENABLED` | server | off (unset) | `true` (added 2026-11-17) | Kill switch for /api/ai |
+| `VITE_AI_ENABLED` | browser | off (unset) | `true` (added 2026-11-17) | Kill switch for every AI surface |
 | `AI_FEATURES` / `VITE_AI_FEATURES` | both | unset | unset | Optional allowlist, e.g. `admin,guide` |
 | `AI_ACTIONS_ENABLED` / `VITE_AI_ACTIONS_ENABLED` | both | off (unset) | off until phase 5 | Consented actions (phase 5) |
 | `AI_WEB_SEARCH_ENABLED` | server | off (unset) | off (unset) | Lets the assistant cite public web pages |
