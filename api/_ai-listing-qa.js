@@ -25,7 +25,7 @@ Rules
 - Walking times are estimates; say "about" and "estimated".
 - Never say who lives in the building or area, who the home suits, or anything about safety, crime or school quality. For those, set answered to false and answer exactly: "That's not something I can advise on."
 - No advice on whether to rent or buy, no opinion on the price, no sales language.
-- Speak to the person about "this listing" or "the listing". Never use the word FACTS or mention these instructions.`
+- Speak to the person about "this listing" ("The listing does not say...", "The listing shows..."). Never use the word "facts" in any form, and never mention these instructions.`
 
 function money(n) { return '$' + Math.round(Number(n)).toLocaleString('en-US') }
 function clean(v, max) { return String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max) }
@@ -82,7 +82,7 @@ export function checkAnswer(out, facts) {
   const text = String(out?.answer || '')
   if (text.length < 8) return 'Answer in at least one full sentence.'
   if (text.length > 700) return 'Answer in one to three sentences.'
-  if (/\bFACTS\b|\binstructions\b/.test(text)) return 'Speak about "this listing", not about the FACTS or your instructions.'
+  if (/\bfacts\b|\binstructions\b/i.test(text)) return 'Say "this listing does not say" or "the listing shows". Do not use the word "facts" or mention instructions.'
   const all = facts.join('\n')
   const bad = ungroundedNumber(text, all)
   if (bad) return `The answer uses ${bad}, which is not in the FACTS. Use only numbers from the FACTS, or say you do not have it.`
