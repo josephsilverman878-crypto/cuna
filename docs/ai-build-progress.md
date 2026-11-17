@@ -6,9 +6,10 @@ what needs Joseph. It is updated and committed after every finished item.
 
 ## Where things stand (2026-11-17, end of session)
 
-- **Merged and live with every AI flag off in production:** phase 1 (#34), phase 2 (#35), phase 3 (#36), phase 4 (#37), phase 5 (#38). main = `6ab97a0`. Users see no change.
-- **Open, waiting on Joseph:** the policy PR (#39), and `49-ai.sql` (the assistant's tables).
-- **Exact next item:** Joseph answers NJ-A2. Then: run `49-ai-test.sql` (must say 58 checks, 0 FAIL), apply `49-ai.sql`, re-run the health check (the "Limits, cache and usage log" line should read Working once a deployment has the service key), and smoke the pieces that need the tables: usage in /admin → AI, write-ups (Write / Hide / Show and the block on a neighborhood page), the answer cache, and the activity log in Profile.
+- **Merged and live with every AI flag off in production:** phase 1 (#34), phase 2 (#35), phase 3 (#36), phase 4 (#37), phase 5 (#38). The code on main is `6ab97a0`; later merges on top of it are docs only. Users see no change.
+- **Database:** `49-ai.sql` (the assistant's tables) was **applied 2026-11-17** after Joseph's "Yes, click it". Test first: 57 checks, 0 FAIL, rolled back. Four new empty tables; no existing table changed.
+- **Open, waiting on Joseph:** the policy PR (#39), and the sign-in checks on a preview (NJ-A5).
+- **Exact next item:** Joseph signs in on the newest preview and runs the NJ-A5 list, which can now include saving a write-up and the activity log. The limits, the answer cache and the usage log have still not run through the live app: that needs the service key on Preview (NJ-A3) or the admin-only switch-on in production (NJ-A4 step 1). Then the policy PR ("approved"), then production flags, which are Joseph's.
 
 ## The prompt (copied verbatim)
 
@@ -90,7 +91,36 @@ Whether you finish or run out of room: update docs/ai-build-progress.md, commit 
 
 Nothing here breaks what is merged: production has every AI flag off.
 
-### NJ-A2 · May I click Supabase's "Potential issues detected" box? (holds up: 49-ai.sql, and so the usage log, limits in the database, the cache, write-ups, the activity log)
+### NJ-A2 · Supabase's "Potential issues detected" box — resolved 2026-11-17
+Joseph answered "Yes, click it". What was done, each script in its own new
+SQL tab, each pasted text checked against the file's sha256 before Run:
+1. `49-ai-test.sql`: the box appeared ("Potential issue detected ... creates
+   tables without enabling Row Level Security"); clicked **Run without RLS**.
+   Result: `49-ai-test: 57 checks, 0 FAIL. ROLLED BACK.` (The script holds 57
+   checks. The "58" written here earlier was a miscount; all 57 ran and passed.)
+2. `49-ai.sql`: ran with **no box at all** this time. Result: `ai_usage`,
+   `ai_cache`, `neighborhood_writeups`, `ai_actions` each 0 rows; three
+   policies (two on `ai_actions`, one on `neighborhood_writeups`); none on
+   `ai_usage` or `ai_cache`, as designed.
+3. `49-ai-verify.sql` (read-only): RLS on all 4 tables, 5 functions, no grant
+   to visitors or signed-in users on `ai_usage` / `ai_cache`, `ai_take_slot`
+   callable by the service role only, 1 admin (unchanged). Row counts of the
+   24 existing tables match the morning backup, except `listing_views` 5 → 9:
+   four signed-out page views the site recorded at 19:25–19:30 UTC (2:25–2:30
+   pm New York), about two and a half hours before this script ran. That is
+   when the listing page was being opened for this build's page checks.
+4. Through the live API with the public key (reads only): write-ups readable
+   (0 rows), `updated_by` refused, `ai_usage`, `ai_cache`, `ai_actions` refused.
+Full output: `cuna-security/49-ai-results-2026-11-17.txt`. The yes covered
+this build's script only; a future script that raises the box is a new ask.
+
+Limits of the method: the role simulation proves what each role can do under
+RLS and grants. It does not prove the live app. Still not run through the
+live app: the daily limits, the cache and the usage log (they need the
+service key on a deployment with the flags on: NJ-A3 or NJ-A4 step 1), and
+saving a write-up and the activity log (they need a sign-in: NJ-A5).
+
+The original question, kept for the record:
 When a script that creates tables or functions is run in the Supabase SQL
 editor, Supabase shows a box titled "Potential issues detected" with the
 buttons "Run and enable RLS", "Run without RLS" and "Cancel". Until now I
@@ -106,21 +136,19 @@ Already done for it: a read-only backup taken 2026-11-17 the HANDOFF way
 (`cuna-security/backups/2026-11-17/`: row counts for 24 tables and a 351 KB
 JSON dump, no password hashes or tokens; the two geometry columns of
 `neighborhoods` are left out because 42-wave1-search.sql rebuilds them).
-If more than a day or two passes before the script is applied, I take a fresh one.
+The script was applied the same day, so that backup is the one in force.
 
-Until it is applied: previews count limits in memory, and nothing is cached,
-logged, stored or listed. Production must not be switched on before it is
-applied: the daily-limit counter lives in those tables, so every assistant
-request there would answer "could not answer just now".
+Previews still count limits in memory and cache and log nothing, because the
+service key is in Vercel for Production only (NJ-A3).
 
 ### NJ-A5 · Things only your sign-in can check on a preview
 Each was checked as far as possible without an account (real model calls
 through the API, and the screens on a local page at 375 px with sample data).
 Open the newest preview from Vercel → Deployments, sign in, and look at:
-1. **Admin** → /admin → **AI**: the usage cards, **Run health check**, **Ask a test question**, and (after 49) **Neighborhood write-ups**.
+1. **Admin** → /admin → **AI**: the usage cards (empty on a preview until NJ-A3), **Run health check**, **Ask a test question**, and **Neighborhood write-ups**: **Write** one, open that neighborhood's page and see the block with its sources, then **Hide** it and see it gone. A write-up saved from a preview is saved in the real database, and shows on hellocuna.com only once the `writeup` feature is switched on there.
 2. **Renter** → /new-to-ny: run the guide, tap **See listings** on a result, tap **Save this search**.
 3. **Renter** → /feed: the search box ("2 bed under $4,000 in Astoria, dishwasher" → chips → Show listings) and **Ask Cuna's assistant for suggestions**.
-4. **Renter** → Profile: "What the assistant did for you" (after 49, and after confirming one action).
+4. **Renter** → Profile: "What the assistant did for you" (after confirming one action, for example **Save this search** from the assistant panel).
 5. **Poster** → Post listing → **Draft description** → **Use this draft**.
 
 ### NJ-A6 · Policy text (PR #39): reply "approved" or send changes
@@ -147,7 +175,7 @@ with the flags still off for users.
 
 ### NJ-A4 · Turning the assistant on in production (yours, whenever you choose)
 Every AI flag is OFF in production and stays off until you turn it on.
-0. First: 49-ai.sql applied (NJ-A2) and the policy PR merged (NJ-A6).
+0. First: the policy PR merged (NJ-A6). 49-ai.sql is applied (2026-11-17).
 1. Admin tab only: in Vercel → cuna → Settings → Environment Variables, for **Production**, add `AI_ENABLED=true`, `VITE_AI_ENABLED=true`, `AI_FEATURES=admin`, `VITE_AI_FEATURES=admin` → Deployments → Redeploy. Sign in as admin → /admin → **AI** → **Run health check**. Every line should read Works / Reachable / Working. Users still see nothing.
 2. Then widen both lists one feature at a time. Names: `guide`, `search`, `listing_qa`, `draft`, `writeup`, `recommend` (for example `admin,guide`), or remove both `*_FEATURES` variables to allow everything.
 3. The action buttons (save a listing, save a search, request a tour from the assistant) need two more: `AI_ACTIONS_ENABLED=true` and `VITE_AI_ACTIONS_ENABLED=true`.
@@ -179,7 +207,7 @@ and shared subway lines, not by minutes on the train, until a provider is chosen
 
 | Script | State | What |
 |---|---|---|
-| `49-ai.sql` | written, NOT applied (NJ-A2); backup taken 2026-11-17 | `ai_usage`, `ai_cache`, `ai_take_slot()`, `admin_ai_usage()`, `neighborhood_writeups` + 3 admin functions, `ai_actions`. Additive only. Test: `49-ai-test.sql` (58 checks, rolls back). Reverse: `49-ai-rollback.sql`. All in `cuna-security/` |
+| `49-ai.sql` | **APPLIED 2026-11-17** (backup taken the same day; test 57 checks, 0 FAIL, rolled back; read-only verify after) | `ai_usage`, `ai_cache`, `ai_take_slot()`, `admin_ai_usage()`, `neighborhood_writeups` + 3 admin functions, `ai_actions`. Additive only. Test: `49-ai-test.sql` (cannot be re-run now: it creates the same tables). Check: `49-ai-verify.sql` (read-only). Reverse: `49-ai-rollback.sql` (drops the four tables; not run, and only on Joseph's command). Results: `49-ai-results-2026-11-17.txt`. All in `cuna-security/` |
 
 ## Merge log
 
@@ -201,10 +229,10 @@ States: todo · in progress · done · blocked.
 |---|---|---|
 | Rule added to CLAUDE.md | done | Hard rules, plus a short "Cuna's assistant (AI)" section |
 | 1.1 /api/ai shared helper | done | `api/ai.js` (one endpoint), `api/_ai.js` (pipeline: cache → limits → model → grounding + fair-housing check with one regeneration, then neutral fallback → log), `api/_ai-config.js` (models, prices, limits, house rules), `api/_ai-store.js` (who is asking, limits, cache, log), `api/_ai-registry.js`. 22 s per call, 1 retry, 60 s function limit. `npm run test:ai`: 16 tests, no network |
-| 1.2 Tables ai_usage, ai_cache | blocked (NJ-A2) | `49-ai.sql` written with its rollback-only test and reverse script; not applied |
+| 1.2 Tables ai_usage, ai_cache | done (applied 2026-11-17) | `49-ai.sql` applied after its rollback-only test (57 checks, 0 FAIL). Not yet exercised by the live app: no deployment has both the service key and the flags on (NJ-A3 / NJ-A4) |
 | 1.3 Admin "AI" tab | done (needs Joseph's look on a preview) | `src/components/AdminAi.jsx` in /admin: requests and estimated cost per day and per feature, cache hit rate, fair-housing regenerations, health check, test question. Hidden unless `VITE_AI_ENABLED=true` |
 | 1.4 Health check | done | `GET /api/ai?feature=health`: asks the provider about both models (no tokens, no cost), checks the tables; the key is never returned. Detail for admins only in production |
-| Phase 1 merge | done | PR #34 → main `c93e953`, live 2026-11-17 with every AI flag off in production (see Merge log). Still open: 1.2 (NJ-A2) and Joseph's look at the admin tab on a preview |
+| Phase 1 merge | done | PR #34 → main `c93e953`, live 2026-11-17 with every AI flag off in production (see Merge log). 1.2 applied later the same day. Still open: Joseph's look at the admin tab on a preview |
 
 ### Phase 2 — AI neighborhood guide (branch `feature/ai-2-neighborhood-guide`)
 
@@ -221,9 +249,9 @@ States: todo · in progress · done · blocked.
 
 | Item | State | Notes |
 |---|---|---|
-| 3.1 Neighborhood write-ups (stored, labelled, admin regenerate / hide) | built; storing is blocked (NJ-A2) | `api/_ai-writeup.js`: an admin asks for one neighborhood; the server gathers Cuna's facts for it (subway lines inside the boundary, reference figures, place notes, live listings), Sonnet writes 70 to 130 words, every number is checked against the facts, fair-housing scan, then saved through `admin_save_writeup()` (the database refuses non-admins). `GET /api/ai?feature=writeup&slug=` reads the stored, visible one; `NeighborhoodWriteup.jsx` shows it on `/neighborhoods/:slug` with "Written by Cuna's assistant from public data", the date and a Sources list. `AdminWriteups.jsx` in /admin → AI: Write / Rewrite / Hide / Show per neighborhood. Admin writing does not use the admin's own 30-a-day limit; the global cap still applies. Needs `49-ai.sql` (table `neighborhood_writeups`) before anything can be saved or shown |
+| 3.1 Neighborhood write-ups (stored, labelled, admin regenerate / hide) | built; table applied 2026-11-17; first real save needs Joseph's admin sign-in (NJ-A5) | `api/_ai-writeup.js`: an admin asks for one neighborhood; the server gathers Cuna's facts for it (subway lines inside the boundary, reference figures, place notes, live listings), Sonnet writes 70 to 130 words, every number is checked against the facts, fair-housing scan, then saved through `admin_save_writeup()` (the database refuses non-admins). `GET /api/ai?feature=writeup&slug=` reads the stored, visible one; `NeighborhoodWriteup.jsx` shows it on `/neighborhoods/:slug` with "Written by Cuna's assistant from public data", the date and a Sources list. `AdminWriteups.jsx` in /admin → AI: Write / Rewrite / Hide / Show per neighborhood. Admin writing does not use the admin's own 30-a-day limit; the global cap still applies. Needs `49-ai.sql` (table `neighborhood_writeups`) before anything can be saved or shown |
 | 3.2 Poster "Draft description" button | done (button needs a poster sign-in to see on the preview) | `api/_ai-draft.js` + `DraftDescription.jsx` on Post listing and Edit listing. Sends only fields the poster entered (never the street address). The draft may use a number only if the form holds it; fair-housing scan on the server; one redo, then a plain sentence built by code. The poster must tap "Use this draft"; the form's own fair-housing check still runs on save |
-| Phase 3 merge | done | PR #36 → main `cdb7580`, live 2026-11-17 with every AI flag off in production (see Merge log). 3.1 cannot store anything until 49-ai.sql is applied (NJ-A2) |
+| Phase 3 merge | done | PR #36 → main `cdb7580`, live 2026-11-17 with every AI flag off in production (see Merge log). 49-ai.sql was applied later the same day, so 3.1 can store; not yet tried with a sign-in |
 
 ### Phase 4 — search and listing Q&A (branch `feature/ai-4-search-qa`)
 
@@ -239,7 +267,7 @@ States: todo · in progress · done · blocked.
 |---|---|---|
 | 5.1 Assistant panel recommending real listings, thumbs up / down | done (the feed needs a renter sign-in to see on the preview; production has no active listings today) | `api/_ai-recommend.js` + `AssistantPanel.jsx` in the feed. Haiku reads the request into the feed's filters; the server takes the ACTIVE listings that match; Sonnet picks up to five by a short code and writes reasons; every number must be in that listing's line. The cards are built from Cuna's own rows, not from the model. Thumbs are kept for the visit only: a thumbs-down removes that listing from the next request, thumbs-up listings are shown to the model as "liked". No match → says so and offers the saved search |
 | 5.2 Consented actions (confirmation card per action) | done (flags off in production) | Save listing and Save search each open a card saying what will happen and what is shared, and nothing is written until **Confirm**. Request a tour opens the existing Request a tour form (dates, what you share, message, Send), the one tour path, with its existing rate limits. The `/api/ai` server cannot act at all, so typed text ("save it for me") can never trigger anything. Shown only when `VITE_AI_ACTIONS_ENABLED` and `AI_ACTIONS_ENABLED` are both `true` |
-| 5.3 Activity log in Profile | built; storing is blocked (NJ-A2) | `src/lib/aiActions.js`, `AssistantActivity.jsx` in Profile ("What the assistant did for you"). A row is written to `ai_actions` after each confirmed action. The table is part of `49-ai.sql`; until it is applied the actions still work but nothing is logged or listed |
+| 5.3 Activity log in Profile | built; table applied 2026-11-17; first real row needs Joseph's renter sign-in (NJ-A5) | `src/lib/aiActions.js`, `AssistantActivity.jsx` in Profile ("What the assistant did for you"). A row is written to `ai_actions` after each confirmed action. The table is part of `49-ai.sql`; until it is applied the actions still work but nothing is logged or listed |
 | Phase 5 merge (actions flags off in production) | done | PR #38 → main `6ab97a0`, live 2026-11-17 with every AI flag off in production. `AI_ACTIONS_ENABLED` and `VITE_AI_ACTIONS_ENABLED` are set for Preview only |
 
 ### Policy update
@@ -252,9 +280,9 @@ States: todo · in progress · done · blocked.
 
 These are estimates from the size of each request and the published prices
 (per million tokens, checked 2026-11-17: Haiku 5.5 $0.10 in / $0.50 out;
-Sonnet 5.5 $2 in / $10 out). They are NOT read from the usage log, which does
-not exist until 49-ai.sql is applied; the admin AI tab will show real figures
-after that.
+Sonnet 5.5 $2 in / $10 out). They are NOT read from the usage log: the table
+exists since 2026-11-17 but is empty until a deployment with the service key
+runs the assistant. The admin AI tab will show real figures after that.
 
 | Feature | Model | Time (measured on previews) | Est. cost each |
 |---|---|---|---|
@@ -288,9 +316,16 @@ Repeated identical requests cost nothing once the cache table exists.
   address (phase 2); buy mode failing on areas with a missing sale figure
   (phase 2); drafts ending with an invented closing line (phase 3); a number
   check that matched substrings (phase 4); answers saying "the facts" (phase 4).
-- 2026-11-17 — While the actions flags are on for Preview and 49-ai.sql is
-  not applied, confirming an action on a preview logs one "404" in the browser
-  console (the activity table does not exist yet). The action itself works.
+- 2026-11-17 — Before 49-ai.sql was applied, confirming an action on a preview
+  logged one "404" in the browser console (no activity table yet). The table
+  exists now, so that no longer applies.
+- 2026-11-17 — 49-ai.sql applied (see NJ-A2 for the full record). Two things
+  to know next time: Supabase raised its "Potential issue detected" box for
+  the test script but not for the apply script, and the test script cannot be
+  re-run once the tables exist (use `49-ai-verify.sql`, which is read-only).
+- 2026-11-17 — Opening a listing page records a row in `listing_views`, on
+  previews too (they share the one database). Page checks therefore move that
+  count; it is the site's own counter, not a script.
 - 2026-11-17 — Commute: the guide gives straight-line miles from the middle of
   a neighborhood and the subway lines it shares with stations near the
   destination. It never states minutes (no transit provider yet: NJ-4). The
