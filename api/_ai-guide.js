@@ -99,6 +99,12 @@ function hasCriteria(c) {
     c.lines.length > 0 || c.wants.length > 0 || c.must_haves.length > 0
 }
 
+// "GRAND CENTRAL TERMINAL, New York, NY, USA" -> "Grand Central Terminal, New York, NY"
+export function tidyPlace(label) {
+  return clean(label, 120).replace(/, USA$/, '')
+    .replace(/\b[A-Z][A-Z']{2,}\b/g, w => w[0] + w.slice(1).toLowerCase())
+}
+
 // NYC's own address search (a public city service; the same one the commute
 // calculator uses in the browser). Only the destination text is sent.
 async function findPlace(text) {
@@ -109,7 +115,7 @@ async function findPlace(text) {
     if (!res.ok) return null
     const f = ((await res.json()).features || [])[0]
     if (!f?.geometry?.coordinates) return null
-    return { label: clean(f.properties?.label || text, 120), point: f.geometry.coordinates.slice(0, 2) }
+    return { label: tidyPlace(f.properties?.label || text), point: f.geometry.coordinates.slice(0, 2) }
   } catch {
     return null
   }
@@ -148,7 +154,6 @@ export function rankCandidates(city, mode, c, dest) {
     if (c.budget_max != null && range) {
       if (c.budget_max >= range.max) score += 6
       else if (c.budget_max >= range.min) score += 4
-      else if (c.budget_max >= range.min * 0.9) score += 1
       else score -= 6
     }
     score += Math.min(liveFit, 3) * 2

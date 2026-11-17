@@ -4,7 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buildCity, figuresFor, milesBetween } from '../api/_ai-city.js'
-import { guide, normalizeCriteria, rankCandidates, checkPicks, REFUSAL, NEED_MORE } from '../api/_ai-guide.js'
+import { guide, normalizeCriteria, rankCandidates, checkPicks, tidyPlace, REFUSAL, NEED_MORE } from '../api/_ai-guide.js'
 
 const square = (lng, lat, d = 0.01) => ({ type: 'MultiPolygon', coordinates: [[[[lng - d, lat - d], [lng + d, lat - d], [lng + d, lat + d], [lng - d, lat + d], [lng - d, lat - d]]]] })
 const feature = (id, slug, name, borough, lng, lat, kind = 'neighborhood') => ({ type: 'Feature', properties: { id, slug, name, borough, kind }, geometry: square(lng, lat) })
@@ -88,6 +88,7 @@ test('criteria are bounded, and off-limits wording is dropped and flagged', () =
   assert.equal(c.budget_max, 3600); assert.deepEqual(c.lines, ['F']); assert.deepEqual(c.boroughs, ['Brooklyn'])
   assert.deepEqual(c.wants, ['dining']); assert.deepEqual(c.must_haves, ['elevator']); assert.equal(c.off_limits, true)
   assert.equal(normalizeCriteria({ budget_max: 12 }, 'rent').budget_max, null)
+  assert.equal(tidyPlace('GRAND CENTRAL TERMINAL, New York, NY, USA'), 'Grand Central Terminal, New York, NY')
   assert.equal(normalizeCriteria({ budget_max: 900000 }, 'buy').budget_max, 900000)
 })
 

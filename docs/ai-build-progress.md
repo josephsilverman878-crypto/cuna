@@ -173,11 +173,11 @@ States: todo · in progress · done · blocked.
 
 | Item | State | Notes |
 |---|---|---|
-| 2.1 New guide at /new-to-ny, classic quiz at /new-to-ny/classic, rent and buy | todo | |
-| 2.2 Plain-English input → 3–5 neighborhoods with reasons, figures, subway, "See listings" | in progress | Server done: `api/_ai-city.js` (grounding rows: Cuna boundaries, subway lines inside each, reference ranges with source / as-of / boundary, live Cuna listings), `api/_ai-guide.js` (Haiku reads the criteria, Sonnet picks from a server-built table; the server attaches every figure; unknown neighborhoods, invented dollar amounts and travel times in minutes are rejected). `tests/ai-guide.test.mjs` (11 tests). Page not built yet |
-| 2.3 Follow-up refinement in the session | todo | |
-| 2.4 "Save this search" (sign-in returns with results intact) | todo | |
-| 2.5 Existing quiz lead capture still works | todo | |
+| 2.1 New guide at /new-to-ny, classic quiz at /new-to-ny/classic, rent and buy | done | `src/pages/NeighborhoodGuide.jsx`. `/new-to-ny` shows the guide only when `VITE_AI_ENABLED=true` (and `guide` is allowed); otherwise the classic quiz, exactly as before. The classic quiz is always at `/new-to-ny/classic`. Rent / Buy toggle. If the assistant cannot answer (off, limit, error) the page says so and links to the classic quiz |
+| 2.2 Plain-English input → 3–5 neighborhoods with reasons, figures, subway, "See listings" | done | Server: `api/_ai-city.js` (grounding rows: Cuna boundaries, subway lines inside each, reference ranges with source / as-of / boundary, live Cuna listings), `api/_ai-guide.js` (Haiku reads the stated criteria; Sonnet picks from a server-built table of up to 36 candidates; the server attaches every figure, source and subway line; unknown neighborhoods, invented dollar amounts and travel times in minutes are rejected, one redo, then facts-only reasons written by code). Optional boxes: budget, bedrooms, where you need to get to, must-haves. "See listings" opens `/feed?hood=<id>&type=rent|sale` (neighborhood and rent/buy only). Price figures exist for the 30 reference areas (42 of Cuna's 209 neighborhoods); the rest say "Cuna does not hold a price figure" |
+| 2.3 Follow-up refinement in the session | done | "Change something" box sends the earlier criteria and the neighborhoods already shown; state lives in sessionStorage only |
+| 2.4 "Save this search" (sign-in returns with results intact) | done (signed-in save needs Joseph's sign-in to smoke) | Uses the existing `saved_searches` (price, bedrooms, the picked neighborhoods). Signed out: goes to sign-in with `next=/new-to-ny`; the results are restored from sessionStorage on return |
+| 2.5 Existing quiz lead capture still works | done | The classic quiz and its results page are untouched; its "Take / retake the quiz" buttons point at `/new-to-ny/classic` while the guide holds `/new-to-ny` |
 | Phase 2 merge | todo | |
 
 ### Phase 3 — write-ups and drafts (branch `feature/ai-3-writeups`)
@@ -213,8 +213,10 @@ States: todo · in progress · done · blocked.
 
 ## Cost estimate
 
-To be filled in from measured token counts once the guide runs against the real
-key. Prices used (per million tokens, checked 2026-11-17): Haiku 5.5 $0.10 in /
+Measured figures go here as each feature runs against the real key.
+- Test question (Haiku): about 2.7 s per answer.
+- Guide: the candidates table is about 19,000 characters (roughly 5,000 tokens)
+  per request to Sonnet, plus one small Haiku call to read the request. Prices used (per million tokens, checked 2026-11-17): Haiku 5.5 $0.10 in /
 $0.50 out; Sonnet 5.5 $2 in / $10 out.
 
 ## Session notes
@@ -226,5 +228,12 @@ $0.50 out; Sonnet 5.5 $2 in / $10 out.
 - 2026-11-17 — A request answered from the cache does not use one of the
   person's daily requests (no model call is made); it is still logged, as a
   cache hit, so the hit rate can be shown.
+- 2026-11-17 — Commute: the guide gives straight-line miles from the middle of
+  a neighborhood and the subway lines it shares with stations near the
+  destination. It never states minutes (no transit provider yet: NJ-4). The
+  destination text is looked up with NYC's public address search, the same
+  service the commute calculator already uses.
+- 2026-11-17 — The guide's second model call (Sonnet) never sees the person's
+  own words, only the criteria read from them.
 - 2026-11-17 — Account ids and IP addresses are not stored in `ai_usage` in
   readable form: the limit key is a keyed hash (the IP's changes daily).

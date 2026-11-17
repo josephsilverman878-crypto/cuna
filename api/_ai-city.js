@@ -47,9 +47,11 @@ function sortRoutes(set) {
 
 // The reference row for a Cuna neighborhood: same slug, or (for the areas
 // the city's map splits into parts, such as Bushwick East and West) the
-// reference area whose name the neighborhood's name starts with.
-function referenceFor(slug, name, reference) {
-  return reference.find(r => r.id === slug) || reference.find(r => name.startsWith(r.name)) || null
+// reference area in the same borough whose name the neighborhood's name
+// starts with. The borough check matters: Queens has its own Murray Hill.
+function referenceFor(slug, name, borough, reference) {
+  return reference.find(r => r.id === slug && r.borough === borough) ||
+    reference.find(r => r.borough === borough && name.startsWith(r.name)) || null
 }
 
 // Pure, so the tests can build a city from fixtures.
@@ -70,7 +72,7 @@ export function buildCity({ features = [], stations = [], listings = [], referen
     const mine = listings.filter(l => l.neighborhood_id === p.id)
     const rentals = mine.filter(l => l.listing_type !== 'sale')
     const sales = mine.filter(l => l.listing_type === 'sale')
-    const ref = referenceFor(p.slug, p.name, reference)
+    const ref = referenceFor(p.slug, p.name, p.borough, reference)
     hoods.push({
       id: p.id, slug: p.slug, name: p.name, borough: p.borough,
       center: [box.cx, box.cy],
