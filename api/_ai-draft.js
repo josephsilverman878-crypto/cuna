@@ -24,7 +24,9 @@ Rules
 - Describe the home, never the tenant or buyer: nothing about who it suits or who may apply.
 - Do not invent anything that is not in the FACTS: no light, views, layout, finishes, condition, renovation, floor, nearby places, transit or neighborhood character. If the FACTS are few, write fewer words.
 - No sales language ("stunning", "must-see", "won't last", "luxury", "dream").
-- Use a number only if it appears in the FACTS. Do not mention fees, deposits or broker terms.`
+- Use a number only if it appears in the FACTS. Do not mention fees, deposits or broker terms.
+- State amenities plainly as a list ("Amenities include an elevator, a dishwasher and laundry."). Do not say whether an amenity is in the home or the building unless the FACTS say.
+- End when the facts end. No closing line, no call to action, nothing about how to get more information, and never mention Cuna, the agent, or the listing itself.`
 
 function clean(v, max) {
   return String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max)
@@ -81,6 +83,9 @@ export function checkDraft(out, f) {
   const text = String(out?.text || '')
   if (text.length < 60) return 'The description is too short. Write at least two sentences from the FACTS.'
   if (text.length > 1000) return 'The description is too long. Keep it under 110 words.'
+  if (/\bcuna\b|more (detail|information|info)|reach out|get in touch|contact (us|the)|schedule a|book a|listing record/i.test(text)) {
+    return 'End when the facts end. Remove the closing line: nothing about Cuna, contacting anyone, or getting more information.'
+  }
   const allowed = new Set()
   const add = (v) => { if (v != null) { allowed.add(String(v)); allowed.add(String(v).replace(/\.0+$/, '')) } }
   for (const k of ['bedrooms', 'bathrooms', 'sqft', 'price', 'lease_term_months', 'months_free']) add(f[k])

@@ -40,6 +40,7 @@ test('a draft with a number the form does not hold, or wording about who it suit
   assert.equal(checkDraft({ text: GOOD_DRAFT }, f), null)
   assert.match(checkDraft({ text: GOOD_DRAFT + ' It is 5 minutes from the N train.' }, f), /number 5/)
   assert.match(checkDraft({ text: 'Nice.' }, f), /too short/)
+  assert.match(checkDraft({ text: GOOD_DRAFT + ' Anyone who wants more detail can ask Cuna for the full listing record.' }, f), /closing line/)
   const steering = GOOD_DRAFT + ' Perfect for young professionals in a safe area.'
   const client = fakeClient([reply({ text: steering }), reply({ text: steering })])
   const r = await draft(ctxOf(client, fakeStore()), { fields: FORM })
