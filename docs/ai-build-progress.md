@@ -154,6 +154,7 @@ and shared subway lines, not by minutes on the train, until a provider is chosen
 |---|---|---|---|---|---|
 | 2026-11-17 | [#34](https://github.com/josephsilverman878-crypto/cuna/pull/34) | 1 foundation | `c93e953` | Preview `1a8330d`: health ok (key works, both models reachable), real test question answered correctly in 2.7 s, 10 answers then the friendly limit message, unknown feature refused, key never in a response or the bundle, pages load with 0 console errors. Admin tab at 375 px checked on a local page with sample numbers (the preview needs Joseph's admin sign-in). Tables not covered: 49-ai.sql not applied | Production deployment `c93e953` Ready. hellocuna.com home, /feed, /neighborhoods/astoria, /listing/:id: 0 console errors, unchanged. `/api/ai` answers "disabled"; health shows only `ai_enabled: false`; no key name in the bundle |
 | 2026-11-17 | [#35](https://github.com/josephsilverman878-crypto/cuna/pull/35) | 2 neighborhood guide | `c1d0256` | Preview `951acc5`, real model: rent request → 5 real Cuna neighborhoods in 8 s, destination resolved to Grand Central station, every figure with source and as-of; buy request → Queens / Brooklyn only, Department of Finance figures; follow-up updated the criteria; "who lives there / is it safe" → the refusal line and no picks; guide page, classic quiz and home with 0 console errors. Signed-in "See listings" and "Save this search" need Joseph's sign-in. Two bugs found and fixed before merge (destination lookup, buy mode on areas with a missing figure) | Production deployment `c1d0256` Ready. hellocuna.com `/new-to-ny` is the classic quiz (no guide, no assistant label), home, /feed and /listing/:id unchanged, 0 console errors; `/api/ai` answers "disabled" |
+| 2026-11-17 | [#36](https://github.com/josephsilverman878-crypto/cuna/pull/36) | 3 write-ups and drafts | `cdb7580` | Preview `0878222`, real model: rental draft in 2.3 s and co-op sale draft in 1.9 s, only the form's numbers, no fallback; too few fields → asks for more with no model call; write-up request signed out → "Admins only"; stored write-up read → null; neighborhood page 0 console errors. Draft button and admin write-up panel checked on a local page at 375 px with sample data (the preview needs Joseph's poster / admin sign-in; saving a write-up needs 49-ai.sql). One fix before merge: drafts no longer end with an invented closing line | Production deployment `cdb7580` Ready. hellocuna.com /neighborhoods/astoria makes no assistant call and shows no write-up; home, /feed, /listing/:id unchanged, 0 console errors; `/api/ai` answers "disabled" |
 
 ## Checklist
 
@@ -187,14 +188,14 @@ States: todo · in progress · done · blocked.
 |---|---|---|
 | 3.1 Neighborhood write-ups (stored, labelled, admin regenerate / hide) | built; storing is blocked (NJ-A2) | `api/_ai-writeup.js`: an admin asks for one neighborhood; the server gathers Cuna's facts for it (subway lines inside the boundary, reference figures, place notes, live listings), Sonnet writes 70 to 130 words, every number is checked against the facts, fair-housing scan, then saved through `admin_save_writeup()` (the database refuses non-admins). `GET /api/ai?feature=writeup&slug=` reads the stored, visible one; `NeighborhoodWriteup.jsx` shows it on `/neighborhoods/:slug` with "Written by Cuna's assistant from public data", the date and a Sources list. `AdminWriteups.jsx` in /admin → AI: Write / Rewrite / Hide / Show per neighborhood. Admin writing does not use the admin's own 30-a-day limit; the global cap still applies. Needs `49-ai.sql` (table `neighborhood_writeups`) before anything can be saved or shown |
 | 3.2 Poster "Draft description" button | done (button needs a poster sign-in to see on the preview) | `api/_ai-draft.js` + `DraftDescription.jsx` on Post listing and Edit listing. Sends only fields the poster entered (never the street address). The draft may use a number only if the form holds it; fair-housing scan on the server; one redo, then a plain sentence built by code. The poster must tap "Use this draft"; the form's own fair-housing check still runs on save |
-| Phase 3 merge | todo | |
+| Phase 3 merge | done | PR #36 → main `cdb7580`, live 2026-11-17 with every AI flag off in production (see Merge log). 3.1 cannot store anything until 49-ai.sql is applied (NJ-A2) |
 
 ### Phase 4 — search and listing Q&A (branch `feature/ai-4-search-qa`)
 
 | Item | State | Notes |
 |---|---|---|
-| 4.1 Plain-English search → editable filter chips | todo | |
-| 4.2 "Ask about this listing" | todo | |
+| 4.1 Plain-English search → editable filter chips | done (the feed needs a renter sign-in to see on the preview) | `api/_ai-search.js` + `SmartSearch.jsx` at the top of the feed. Haiku turns one line into the feed's existing filters (rent/buy, price, beds, baths, sq ft, amenities, pets, sort); neighborhood names are matched to Cuna's table in code ("Bushwick" selects both Bushwick parts). What it understood is shown as removable chips; "Show listings" applies exactly those, starting from empty filters. Anything the filters cannot express (a subway line, a commute) is listed as "not searchable here, so not applied" |
+| 4.2 "Ask about this listing" | done | `api/_ai-listing-qa.js` + `AskAboutListing.jsx` on `/listing/:id`. Haiku answers from that listing's public row (price, fees, size, dates, pets, amenities, open houses, the agent's description), its Cuna neighborhood and the five nearest subway stations with the page's own estimated walks. Every number must be one of those facts (`api/_ai-check.js`); no other travel times. If the facts do not hold the answer: "I don't have that for this listing." with an **Ask the agent** button (the existing question form). The building's public records (PLUTO / DOB) are read in the browser by the Building page, not stored in Cuna's database, so they are not part of the facts yet |
 | Phase 4 merge | todo | |
 
 ### Phase 5 — recommendations and consented actions (branch `feature/ai-5-recommendations`)
@@ -221,7 +222,8 @@ Measured figures go here as each feature runs against the real key.
   on the preview: 6 to 8 seconds per answer. Estimated cost per guide request:
   about 2 to 3 cents (Sonnet at $2 in / $10 out per million tokens, including
   its thinking), under a tenth of a cent for the Haiku step. A repeated
-  identical request costs nothing once the cache table exists. Prices used (per million tokens, checked 2026-11-17): Haiku 5.5 $0.10 in /
+  identical request costs nothing once the cache table exists.
+- Description draft (Sonnet): about 2 seconds, roughly half a cent each. Prices used (per million tokens, checked 2026-11-17): Haiku 5.5 $0.10 in /
 $0.50 out; Sonnet 5.5 $2 in / $10 out.
 
 ## Session notes

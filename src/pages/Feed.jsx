@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { attachPosterContacts } from '../lib/posterContacts'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
+import SmartSearch from '../components/SmartSearch'
 import RequestTour from '../components/RequestTour'
 import FairHousingNotice from '../components/FairHousingNotice'
 import NotificationBell from '../components/NotificationBell'
@@ -631,6 +632,9 @@ export default function Feed() {
       </div>
 
       <div style={{ maxWidth: '520px', margin: '0 auto', padding: '16px 16px 20px' }}>
+        {ready && (
+          <SmartSearch currentType={criteria.filters.listing_type} currentSort={criteria.sort} onApply={(next) => applyCriteria(next)} />
+        )}
         {showMap && (
           <div style={{ marginBottom: '16px' }}>
             <FeedMap

@@ -6,6 +6,7 @@ import { hasPosterContact } from '../lib/posterContacts'
 import { statusBadge, availabilityBox, lastPriceChangeText, formatPriceDelta, withinDays } from '../lib/listingStatus'
 import RequestTour from '../components/RequestTour'
 import AskQuestion from '../components/AskQuestion'
+import AskAboutListing from '../components/AskAboutListing'
 import NotificationBell from '../components/NotificationBell'
 import { formatOpenHouse } from '../lib/openHouses'
 import FairHousingNotice from '../components/FairHousingNotice'
@@ -340,6 +341,7 @@ export default function ListingDetail() {
             <ListingMap lat={listing.lat} lng={listing.lng} neighborhoodId={listing.neighborhood_id} neighborhoodName={listing.neighborhood_id ? listing.neighborhood : null} address={listing.address} />
             <NearbySubway lat={listing.lat} lng={listing.lng} />
             <CommuteCalculator lat={listing.lat} lng={listing.lng} />
+            <AskAboutListing listingId={listing.id} onAskAgent={handleAskQuestion} />
 
             {isSale(listing) && <SaleDetails listing={listing} />}
             {isSale(listing) && <RecordedSales bbl={listing.bbl} propertyType={listing.property_type} />}
