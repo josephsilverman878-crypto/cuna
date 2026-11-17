@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import AdminReports from '../components/AdminReports'
 import AdminFlags from '../components/AdminFlags'
+import AdminAi from '../components/AdminAi'
+import { aiFeature } from '../lib/ai'
 import VerificationChecks from '../components/VerificationChecks'
 import toast from 'react-hot-toast'
 import { ChevronLeft, Check, ExternalLink } from 'lucide-react'
@@ -17,7 +19,7 @@ export default function Admin() {
   const [approving, setApproving] = useState(null)
   const [tab, setTab] = useState('pending')
 
-  useEffect(() => { if (profile?.is_admin && tab !== 'reports' && tab !== 'flags') fetchPosters() }, [profile, tab])
+  useEffect(() => { if (profile?.is_admin && tab !== 'reports' && tab !== 'flags' && tab !== 'ai') fetchPosters() }, [profile, tab])
 
   async function fetchPosters() {
     setLoading(true)
@@ -102,7 +104,7 @@ export default function Admin() {
 
       <div style={{ maxWidth: '640px', margin: '0 auto', padding: '24px' }}>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-          {[['pending', 'Pending'], ['verified', 'Verified'], ['reports', 'Reports'], ['flags', 'Flags']].map(([id, label]) => (
+          {[['pending', 'Pending'], ['verified', 'Verified'], ['reports', 'Reports'], ['flags', 'Flags'], ...(aiFeature('admin') ? [['ai', 'AI']] : [])].map(([id, label]) => (
             <button
               key={id}
               onClick={() => setTab(id)}
@@ -118,7 +120,7 @@ export default function Admin() {
           ))}
         </div>
 
-        {tab === 'reports' ? <AdminReports /> : tab === 'flags' ? <AdminFlags /> : (<>
+        {tab === 'reports' ? <AdminReports /> : tab === 'flags' ? <AdminFlags /> : tab === 'ai' ? <AdminAi /> : (<>
         <button
           onClick={() => window.open('https://dos.ny.gov/licensing/eaccessny.html', '_blank')}
           style={{
