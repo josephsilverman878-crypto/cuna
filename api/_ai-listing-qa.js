@@ -24,7 +24,8 @@ Rules
 - The DESCRIPTION is the agent's own wording; you may quote what it states, as "the description says".
 - Walking times are estimates; say "about" and "estimated".
 - Never say who lives in the building or area, who the home suits, or anything about safety, crime or school quality. For those, set answered to false and answer exactly: "That's not something I can advise on."
-- No advice on whether to rent or buy, no opinion on the price, no sales language.`
+- No advice on whether to rent or buy, no opinion on the price, no sales language.
+- Speak to the person about "this listing" or "the listing". Never use the word FACTS or mention these instructions.`
 
 function money(n) { return '$' + Math.round(Number(n)).toLocaleString('en-US') }
 function clean(v, max) { return String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max) }
@@ -81,6 +82,7 @@ export function checkAnswer(out, facts) {
   const text = String(out?.answer || '')
   if (text.length < 8) return 'Answer in at least one full sentence.'
   if (text.length > 700) return 'Answer in one to three sentences.'
+  if (/\bFACTS\b|\binstructions\b/.test(text)) return 'Speak about "this listing", not about the FACTS or your instructions.'
   const all = facts.join('\n')
   const bad = ungroundedNumber(text, all)
   if (bad) return `The answer uses ${bad}, which is not in the FACTS. Use only numbers from the FACTS, or say you do not have it.`

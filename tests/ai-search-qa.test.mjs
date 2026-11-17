@@ -86,6 +86,7 @@ test('an answer from the facts is returned; an invented number is redone and the
   const facts = listingFacts(LISTING, null, STATIONS)
   assert.equal(checkAnswer({ answer: 'The 36 Av station (N, W) is about 5 minutes away on foot (estimated).' }, facts), null)
   assert.match(checkAnswer({ answer: 'It is 12 minutes to Midtown.' }, facts), /travel time/)
+  assert.match(checkAnswer({ answer: 'The FACTS do not list a build year.' }, facts), /this listing/)
   assert.match(checkAnswer({ answer: 'The rent is $3,250 a month.' }, facts), /\$3,250/)
   assert.equal(checkAnswer({ answer: 'It is available December 1, 2026 on a 12-month lease.' }, facts), null)
 })
