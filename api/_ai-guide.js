@@ -65,7 +65,8 @@ Rules
 - Distances are straight-line miles from the middle of the neighborhood. Never state or estimate a travel time in minutes.
 - "Place notes" describe streets, parks, transit and storefronts. Use them only for criteria the person stated. Never describe who lives anywhere.
 - "missing": if a stated criterion cannot be checked from the table (a building feature, schools, a figure the table lacks), one sentence starting with "I don't have". Otherwise null.
-- "intro": one or two plain sentences on how the picks fit the criteria. No greeting, no sales language.`
+- "intro": one or two plain sentences on how the picks fit the criteria. No greeting, no sales language.
+- Write for a person, not a table: say "has a large park along its edge" or "rates high for green space in Cuna's notes", never "is rated 4 of 5 in the place notes". Do not mention rows, tables or slugs.`
 }
 
 function clean(v, max) {
@@ -106,8 +107,11 @@ export function tidyPlace(label) {
 }
 
 // NYC's own address search (a public city service; the same one the commute
-// calculator uses in the browser). Only the destination text is sent.
-async function findPlace(text) {
+// calculator uses in the browser). Only the destination text is sent. It is
+// built for street addresses, so its answer is kept only when it shares a
+// word with what the person wrote ("Grand Central" must not become an
+// unrelated street address).
+async function geoSearch(text, { strict }) {
   try {
     const res = await fetch(`https://geosearch.planninglabs.nyc/v2/search?size=1&text=${encodeURIComponent(text)}`, {
       headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(4000),
@@ -115,10 +119,69 @@ async function findPlace(text) {
     if (!res.ok) return null
     const f = ((await res.json()).features || [])[0]
     if (!f?.geometry?.coordinates) return null
-    return { label: tidyPlace(f.properties?.label || text), point: f.geometry.coordinates.slice(0, 2) }
+    const label = tidyPlace(f.properties?.label || text)
+    if (strict) {
+      const words = placeKey(text).split(' ').filter(w => w.length >= 4)
+      const hay = placeKey(label)
+      if (!words.some(w => hay.includes(w))) return null
+    }
+    return { label, point: f.geometry.coordinates.slice(0, 2) }
   } catch {
     return null
   }
+}
+
+// "Grand Central Terminal" and "Grand Central-42 St" both become
+// "grand central 42 st"-style keys so they can be compared.
+function placeKey(text) {
+  return String(text || '').toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, ' ')
+    .replace(/\b(\d+)(st|nd|rd|th)\b/g, '$1')
+    .replace(/\b(streets|street)\b/g, 'st').replace(/\b(avenue|ave)\b/g, 'av').replace(/\bsquare\b/g, 'sq')
+    .replace(/\b(the|near|by|around|my|office|work|job|station|terminal|subway|stop|area|neighborhood|nyc|new york|ny|in|at|to)\b/g, ' ')
+    .replace(/\s+/g, ' ').trim()
+}
+
+// A few places people name that are neither a station nor a neighborhood.
+const KNOWN_PLACES = {
+  nyu: { label: 'NYU, Washington Square', point: [-73.9973, 40.7308] },
+  jfk: { label: 'JFK Airport', point: [-73.7781, 40.6413] },
+  'jfk airport': { label: 'JFK Airport', point: [-73.7781, 40.6413] },
+  laguardia: { label: 'LaGuardia Airport', point: [-73.874, 40.7769] },
+  'laguardia airport': { label: 'LaGuardia Airport', point: [-73.874, 40.7769] },
+  lga: { label: 'LaGuardia Airport', point: [-73.874, 40.7769] },
+  fidi: { label: 'the Financial District', point: [-74.0094, 40.7075] },
+}
+
+// Where the person needs to get to. Street addresses go to the city's
+// address search. Names are matched against what Cuna already holds: subway
+// station names first, then Cuna's neighborhood names; only then the
+// address search, and only if its answer resembles the question.
+export async function resolvePlace(city, text, search = geoSearch) {
+  const key = placeKey(text)
+  if (!key) return null
+  if (/\d/.test(text) && !/^\d+( st| av)?$/.test(key)) {
+    const hit = await search(text, { strict: false })
+    if (hit) return hit
+  }
+  if (BOROUGHS.some(b => placeKey(b) === key)) return null
+  if (KNOWN_PLACES[key]) return KNOWN_PLACES[key]
+  const exact = city.hoods.find(h => placeKey(h.name) === key)
+  if (exact) return { label: exact.name, point: exact.center }
+  if (key.length >= 4) {
+    // Whole words only: "penn" must not match "Pennsylvania Av".
+    const stations = city.stations.filter(st => (' ' + placeKey(st.name) + ' ').includes(' ' + key + ' '))
+    if (stations.length) {
+      const st = stations.sort((x, y) => x.name.length - y.name.length)[0]
+      return { label: /station$/i.test(st.name) ? st.name : `${st.name} station`, point: [st.lng, st.lat] }
+    }
+    const hoods = city.hoods.filter(h => placeKey(h.name).startsWith(key + ' '))
+    if (hoods.length) {
+      const h = hoods.sort((x, y) => x.name.length - y.name.length)[0]
+      return { label: h.name, point: h.center }
+    }
+  }
+  return search(text, { strict: true })
 }
 
 const WANT_SCORE = {
@@ -167,7 +230,17 @@ export function rankCandidates(city, mode, c, dest) {
     rows.push({ hood, score, miles, shared, liveFit })
   }
   rows.sort((a, b) => b.score - a.score || a.hood.slug.localeCompare(b.hood.slug))
-  return rows.slice(0, MAX_CANDIDATES)
+  // Where the city's map splits one named area into parts (Harlem North and
+  // South, Bushwick East and West), the parts share one reference figure.
+  // Keep the best-ranked part so the list is not three versions of one area.
+  const refSeen = new Set()
+  const distinct = rows.filter(r => {
+    if (!r.hood.ref) return true
+    if (refSeen.has(r.hood.ref.id)) return false
+    refSeen.add(r.hood.ref.id)
+    return true
+  })
+  return distinct.slice(0, MAX_CANDIDATES)
 }
 
 function rowText(row, mode, c, asOf) {
@@ -331,7 +404,7 @@ export async function guide(ctx, body) {
 
   // 2. the candidates table, from Cuna's data
   const city = ctx.city || await loadCity(ctx.env)
-  const dest = c.commute_to ? await (ctx.findPlace || findPlace)(c.commute_to) : null
+  const dest = c.commute_to ? await (ctx.findPlace ? ctx.findPlace(c.commute_to) : resolvePlace(city, c.commute_to)) : null
   const rows = rankCandidates(city, mode, c, dest).map(r => ({ ...r }))
   if (rows.length === 0) {
     return { ok: true, cached: false, output: { kind: 'message', mode, criteria: c, message: "I don't have a neighborhood that matches those boroughs. Try widening them." } }

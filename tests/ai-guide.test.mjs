@@ -4,7 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buildCity, figuresFor, milesBetween } from '../api/_ai-city.js'
-import { guide, normalizeCriteria, rankCandidates, checkPicks, tidyPlace, REFUSAL, NEED_MORE } from '../api/_ai-guide.js'
+import { guide, normalizeCriteria, rankCandidates, checkPicks, tidyPlace, resolvePlace, REFUSAL, NEED_MORE } from '../api/_ai-guide.js'
 
 const square = (lng, lat, d = 0.01) => ({ type: 'MultiPolygon', coordinates: [[[[lng - d, lat - d], [lng + d, lat - d], [lng + d, lat + d], [lng - d, lat + d], [lng - d, lat - d]]]] })
 const feature = (id, slug, name, borough, lng, lat, kind = 'neighborhood') => ({ type: 'Feature', properties: { id, slug, name, borough, kind }, geometry: square(lng, lat) })
@@ -179,4 +179,25 @@ test('a follow-up starts from the earlier criteria and tells the model what was 
   assert.match(JSON.stringify(client.calls[0].messages), /CRITERIA SO FAR/)
   assert.match(JSON.stringify(client.calls[1].messages), /Already shown to the person: astoria, park-slope/)
   assert.equal(r.output.criteria.budget_max, 3000)
+})
+
+test('a named destination is matched to a subway station or a Cuna neighborhood before any address search', async () => {
+  let searched = 0
+  const search = async (text, { strict }) => { searched++; return strict ? null : { label: '350 5 Avenue, New York, NY', point: [-73.9857, 40.7484] } }
+  assert.deepEqual(await resolvePlace(city, 'near the Halsey St station', search), { label: 'Halsey St station', point: [-73.91, 40.69] })
+  assert.equal((await resolvePlace(city, 'Astoria', search)).label, 'Astoria')
+  assert.equal((await resolvePlace(city, 'NYU', search)).label, 'NYU, Washington Square')
+  assert.equal(searched, 0, 'no address search for names Cuna already holds')
+  assert.equal((await resolvePlace(city, '350 Fifth Avenue', search)).label, '350 5 Avenue, New York, NY')
+  assert.equal(await resolvePlace(city, 'Brooklyn', search), null, 'a borough is not a destination')
+  assert.equal(await resolvePlace(city, 'somewhere nice', search), null, 'an address-search answer that does not resemble the question is dropped')
+})
+
+test('parts of one named area appear once in the candidates', () => {
+  const two = buildCity({
+    features: [...FEATURES, feature('id-bw', 'bushwick-west', 'Bushwick (West)', 'Brooklyn', -73.93, 40.70)],
+    stations: STATIONS, listings: LISTINGS, today: '2026-11-17',
+  })
+  const rows = rankCandidates(two, 'rent', normalizeCriteria({ budget_max: 4000 }, 'rent'), null)
+  assert.equal(rows.filter(r => r.hood.refArea === 'Bushwick').length, 1)
 })
