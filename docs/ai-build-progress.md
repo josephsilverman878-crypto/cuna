@@ -153,6 +153,7 @@ and shared subway lines, not by minutes on the train, until a provider is chosen
 | Date | PR | Phase | main SHA | Preview smoke | Production spot-check |
 |---|---|---|---|---|---|
 | 2026-11-17 | [#34](https://github.com/josephsilverman878-crypto/cuna/pull/34) | 1 foundation | `c93e953` | Preview `1a8330d`: health ok (key works, both models reachable), real test question answered correctly in 2.7 s, 10 answers then the friendly limit message, unknown feature refused, key never in a response or the bundle, pages load with 0 console errors. Admin tab at 375 px checked on a local page with sample numbers (the preview needs Joseph's admin sign-in). Tables not covered: 49-ai.sql not applied | Production deployment `c93e953` Ready. hellocuna.com home, /feed, /neighborhoods/astoria, /listing/:id: 0 console errors, unchanged. `/api/ai` answers "disabled"; health shows only `ai_enabled: false`; no key name in the bundle |
+| 2026-11-17 | [#35](https://github.com/josephsilverman878-crypto/cuna/pull/35) | 2 neighborhood guide | `c1d0256` | Preview `951acc5`, real model: rent request → 5 real Cuna neighborhoods in 8 s, destination resolved to Grand Central station, every figure with source and as-of; buy request → Queens / Brooklyn only, Department of Finance figures; follow-up updated the criteria; "who lives there / is it safe" → the refusal line and no picks; guide page, classic quiz and home with 0 console errors. Signed-in "See listings" and "Save this search" need Joseph's sign-in. Two bugs found and fixed before merge (destination lookup, buy mode on areas with a missing figure) | Production deployment `c1d0256` Ready. hellocuna.com `/new-to-ny` is the classic quiz (no guide, no assistant label), home, /feed and /listing/:id unchanged, 0 console errors; `/api/ai` answers "disabled" |
 
 ## Checklist
 
@@ -178,7 +179,7 @@ States: todo · in progress · done · blocked.
 | 2.3 Follow-up refinement in the session | done | "Change something" box sends the earlier criteria and the neighborhoods already shown; state lives in sessionStorage only |
 | 2.4 "Save this search" (sign-in returns with results intact) | done (signed-in save needs Joseph's sign-in to smoke) | Uses the existing `saved_searches` (price, bedrooms, the picked neighborhoods). Signed out: goes to sign-in with `next=/new-to-ny`; the results are restored from sessionStorage on return |
 | 2.5 Existing quiz lead capture still works | done | The classic quiz and its results page are untouched; its "Take / retake the quiz" buttons point at `/new-to-ny/classic` while the guide holds `/new-to-ny` |
-| Phase 2 merge | todo | |
+| Phase 2 merge | done | PR #35 → main `c1d0256`, live 2026-11-17 with every AI flag off in production (see Merge log) |
 
 ### Phase 3 — write-ups and drafts (branch `feature/ai-3-writeups`)
 
@@ -216,7 +217,11 @@ States: todo · in progress · done · blocked.
 Measured figures go here as each feature runs against the real key.
 - Test question (Haiku): about 2.7 s per answer.
 - Guide: the candidates table is about 19,000 characters (roughly 5,000 tokens)
-  per request to Sonnet, plus one small Haiku call to read the request. Prices used (per million tokens, checked 2026-11-17): Haiku 5.5 $0.10 in /
+  per request to Sonnet, plus one small Haiku call to read the request. Measured
+  on the preview: 6 to 8 seconds per answer. Estimated cost per guide request:
+  about 2 to 3 cents (Sonnet at $2 in / $10 out per million tokens, including
+  its thinking), under a tenth of a cent for the Haiku step. A repeated
+  identical request costs nothing once the cache table exists. Prices used (per million tokens, checked 2026-11-17): Haiku 5.5 $0.10 in /
 $0.50 out; Sonnet 5.5 $2 in / $10 out.
 
 ## Session notes
