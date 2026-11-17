@@ -110,6 +110,41 @@ page that filters down to fewer than 10 rows does not end the feed early.
 - `listing_events`, `notifications`, `listing_open_houses` are written or gated
   by database triggers (33/34 scripts). Never insert into listing_events or
   notifications from the client; cancel an open house by setting cancelled_at.
+- If a security check blocks an action (2FA or authenticator code, password
+  re-entry, confirmation prompt, permission error), stop and ask Joseph. Do not
+  find another route to the same result.
+
+## Cuna's assistant (AI)
+Every model call happens in ONE server function, api/ai.js, through the shared
+pipeline in api/_ai.js: cache, daily limits, model call, grounding check,
+fair-housing scan, usage log. Features are small handler files listed in
+api/_ai-registry.js. Don't add a second endpoint or call the model anywhere
+else, and never from the browser.
+
+- Model names, prices, limits and the house rules live in api/_ai-config.js
+  and nowhere else. Haiku for cheap high-volume work, Sonnet for
+  recommendations and write-ups.
+- ANTHROPIC_API_KEY is server-only. Never a VITE_ variable, never in src/.
+- Kill switch: AI_ENABLED (server) and VITE_AI_ENABLED (client). Off means
+  every AI surface is gone and the classic quiz, search and filters work as
+  before. AI_FEATURES / VITE_AI_FEATURES are optional allowlists for switching
+  on one feature at a time. The browser reads its flags only in src/lib/ai.js.
+- Every AI feature ships with its production flag OFF. Joseph turns them on.
+- Every answer is grounded in rows the server fetched and handed to the model.
+  The handler validates the answer against those rows (a neighborhood or
+  listing the model names must be one it was given) before anything is shown.
+- Every output goes through scanAssistantOutput() in src/lib/fairHousing.js on
+  the server: one regeneration with a stricter instruction, then the neutral
+  fallback. Don't loosen that list to make an answer pass.
+- ai_usage holds counts, model, tokens, cost estimate and error codes. Never
+  what a person typed or what the assistant answered, never a raw IP.
+  ai_usage and ai_cache are service-role only (49-ai.sql); admins read
+  aggregates through admin_ai_usage().
+- Production refuses to run the assistant without SUPABASE_SERVICE_ROLE_KEY
+  (no limits without it). Previews without the key use in-memory limits.
+- Web search is off unless AI_WEB_SEARCH_ENABLED=true, and never fetches
+  StreetEasy pages or stores another site's content.
+- Tests: `npm run test:ai` (fake model, fake store; no network, no cost).
 
 ## Debugging lesson
 Failures in this project are usually SILENT: a missing RLS policy returning zero

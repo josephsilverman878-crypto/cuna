@@ -4,5 +4,8 @@
   ],
   "crons": [
     { "path": "/api/alerts-digest", "schedule": "0 14 * * *" }
-  ]
+  ],
+  "functions": {
+    "api/ai.js": { "maxDuration": 60 }
+  }
 }

@@ -1,0 +1,236 @@
+# Cuna's assistant (AI) — build progress
+
+Started 2026-11-17. This file is the record of the five-phase AI build: the
+prompt it follows (copied word for word), the checklist, what is merged, and
+what needs Joseph. It is updated and committed after every finished item.
+
+## The prompt (copied verbatim)
+
+```text
+You are building Cuna's AI assistant in five phases. Work through as much as you can in this session, phase by phase, without stopping for routine questions. Read CLAUDE.md, ~/Desktop/CUNA/cuna-security/HANDOFF.md and docs/audit-build-progress.md first and follow every rule in them, except where the permissions below explicitly expand them.
+
+=== FIRST, ADD THIS RULE TO CLAUDE.md (commit it with phase 1) ===
+"If a security check blocks an action (2FA or authenticator code, password re-entry, confirmation prompt, permission error), stop and ask Joseph. Do not find another route to the same result."
+
+=== PERMISSIONS FOR THIS PROMPT ===
+I explicitly allow you to:
+- Create feature branches, commit, and push them.
+- Open pull requests and SQUASH-MERGE them into main, which deploys to production on hellocuna.com, following the merge rules below.
+- Run ADDITIVE SQL in Supabase (create table/column/index/function/policy), only after a backup export the way HANDOFF.md describes and a role-simulation test in the SQL editor ending in ROLLBACK. If your safety rules block a privilege-changing statement, write it out for me with click-by-click steps instead.
+
+I do NOT allow, without my explicit command in chat:
+- Any SQL that drops, deletes, truncates, renames, or rewrites existing data.
+- Sending email to real people. On previews, send only to INQUIRY_TEST_RECIPIENT.
+- Turning on any feature flag in production. Every AI feature ships with its production flag OFF. You may turn flags on for Preview only.
+- Changing who is admin.
+- Force-pushing to main or rewriting main's history.
+- Committing any secret, or putting ANTHROPIC_API_KEY in any VITE_ variable or client code.
+
+=== HOW TO WORK ===
+1. Copy this entire prompt into the top of a new file docs/ai-build-progress.md, with a checklist (todo / in progress / done / blocked) and a "Needs Joseph" section. Update and commit it after every finished item. This file is how a new session resumes.
+2. One branch per phase from the latest main: feature/ai-1-foundation, feature/ai-2-neighborhood-guide, feature/ai-3-writeups, feature/ai-4-search-qa, feature/ai-5-recommendations. Finish and merge a phase before starting the next.
+3. If an item needs me, don't stop: mark it blocked, add the exact question or click-by-click steps to "Needs Joseph", and move on. Blocked items must not break a phase.
+4. Before marking an item done: npm run build passes, no console errors, works at 375px, and all AI output passes src/lib/fairHousing.js.
+5. MERGE RULES per phase: push and open a PR listing what was built, SQL applied, env vars needed, flags added, and a smoke checklist of at most 8 steps (flag steps that need my sign-in). Wait for the preview, verify its commit SHA, run the smoke checklist on the preview with the phase's flag on for Preview. Only if it passes, squash-merge. Verify the production SHA and spot-check hellocuna.com (home, feed, a listing page) to confirm nothing changed for users while the flag is off. If production breaks, revert immediately with a revert PR, confirm the site is healthy, then fix on a new branch. Log every merge in the progress file.
+6. Mobile-first, existing brand (terracotta #C4714A, sand #F5F0E8, Cormorant Garamond + DM Sans), existing component patterns.
+
+=== RULES FOR EVERY AI FEATURE ===
+- Model calls happen only in server functions under /api, using ANTHROPIC_API_KEY (already in Vercel for Production and Preview). Use claude-haiku-5-5 for cheap, high-volume tasks (filter parsing, short Q&A) and claude-sonnet-5-5 for recommendations and write-ups. Put model names in one config file.
+- Ground every answer in Cuna's database: listings, neighborhoods, DOF/ACRIS sales, schools, hospitals, subway stations, market data. Pass the relevant rows to the model; instruct it to answer only from them and say "I don't have that" otherwise. Never invent a listing, price, school or statistic.
+- Every figure shown carries its source and "as of" date (e.g. "Source: NYC Department of Finance, as of Sept 2026"). When a figure is tied to a boundary, say which (Cuna's neighborhood boundary).
+- Web search: build it behind AI_WEB_SEARCH_ENABLED (default off everywhere). When on, it may cite and link StreetEasy or other public pages for a specific answer, but never store their content and never fetch StreetEasy pages directly. No StreetEasy scraping anywhere.
+- Fair housing: recommend only on criteria the user stated (price, size, commute, amenities, transit, schools by district if asked). Never infer or ask about race, religion, national origin, family status, disability, source of income, or other protected traits. Never describe areas as "safe", "good for families", "up and coming", or similar. Refuse demographic questions politely and offer criteria-based help instead. Run every output through fairHousing.js on the server; if it fails, regenerate once with a stricter instruction, then fall back to a neutral message.
+- Label shown near every AI surface: "Cuna's assistant recommends neighborhoods in NYC and listings from Cuna based on what you share." Never call Cuna a broker or "not a broker".
+- Limits: per signed-in user 30 AI requests/day, per IP for logged-out users 10/day, plus a global daily cap from env AI_DAILY_REQUEST_CAP (default 500). When a cap hits, show a friendly message, not an error.
+- Cache: identical requests (same normalized input + same data version) return the stored answer without a model call. Stored write-ups are generated once and refreshed only on demand.
+- Privacy: don't store conversation text long-term. Log only request counts, model, tokens, cost estimate and errors (no message content) in an ai_usage table. Ephemeral conversation state lives in the browser session.
+- Kill switch: AI_ENABLED (server) and VITE_AI_ENABLED (client). When off, every AI surface disappears and the old quiz and search keep working.
+
+=== PHASE 1: FOUNDATION ===
+1.1 /api/ai shared helper: model call, timeout, retries, error handling, rate limits, cache, fair-housing post-check, usage logging.
+1.2 Tables: ai_usage (no content), ai_cache (input hash, output, data version, created_at). RLS: service role only; admins may read ai_usage aggregates.
+1.3 Admin: an "AI" tab in /admin showing requests and estimated cost per day and per feature, cache hit rate, and fair-housing regenerations.
+1.4 A health-check endpoint that confirms the key works without exposing it.
+
+=== PHASE 2: AI NEIGHBORHOOD GUIDE ===
+2.1 New guide at /new-to-ny (keep the old quiz reachable at /new-to-ny/classic, and fall back to it when AI is off). Rent and buy paths.
+2.2 User describes what they want in plain English (optional prompts: budget, bedrooms, commute destination, must-haves). The guide returns 3–5 neighborhoods from the neighborhoods table, each with plain reasons tied to the user's own criteria, key figures with sources, nearby subway lines, and a "See listings" button that opens the feed filtered to that neighborhood.
+2.3 Follow-up refinement ("cheaper", "closer to downtown") within the session.
+2.4 "Save this search": signed-in users save the criteria as a saved search (existing saved_searches), so they get alerts and the demand dashboard counts it. Logged-out users are prompted to sign in, then returned with their results intact.
+2.5 Keep the existing quiz lead capture working.
+
+=== PHASE 3: WRITE-UPS AND POSTER HELPER ===
+3.1 Neighborhood write-ups: a short, factual summary for each neighborhood page, generated from our data only, stored in the database, shown with "Written by Cuna's assistant from public data" and sources. Admin can regenerate or hide any one.
+3.2 Poster "Draft description" button on Post and Edit listing: writes a description only from the fields the poster entered; poster can edit it; it must pass the fair-housing scan before save, like any description.
+
+=== PHASE 4: PLAIN-ENGLISH SEARCH AND Q&A ===
+4.1 Search box in the feed: turns a sentence into the existing filters (price, beds, baths, sqft, neighborhoods, amenities, pets, rent/buy, near a subway line). Show the filters it applied as editable chips so the user can see and fix them. Never apply a filter the user didn't ask for.
+4.2 "Ask about this listing" on listing pages: answers only from that listing's data, its building and neighborhood rows, and nearby subway. If the answer isn't in the data, say so and suggest "Ask the agent" (the existing question form).
+
+=== PHASE 5: RECOMMENDATIONS AND CONSENTED ACTIONS ===
+Build fully, ship with VITE_AI_ACTIONS_ENABLED and AI_ACTIONS_ENABLED off in production.
+5.1 Assistant panel: the user describes what they want; it recommends matching Cuna listings (only real, active listings from the database), explains each match against the user's stated criteria, and refines from thumbs up/down.
+5.2 Consented actions: save a listing, save a search, send a tour request. Each requires an explicit tap on a confirmation card that shows exactly what will happen (for a tour request: listing, agent, the renter's details that will be shared per their privacy toggles, message text). No action ever runs from chat text alone. Tour requests reuse /api/send-inquiry and its existing rate limits.
+5.3 Activity log: the user can see every action the assistant took for them, in Profile.
+
+=== POLICY UPDATE ===
+Draft updates to Privacy.jsx and Terms.jsx covering the AI features (what's sent to the AI provider, what's logged, no long-term storage of conversation text, consented actions, that recommendations come from Cuna's listings and public data). Put the full text in its own PR and do NOT merge it until I reply "approved" in chat.
+
+=== WHEN YOU STOP ===
+Whether you finish or run out of room: update docs/ai-build-progress.md, commit and push the current branch, and give me a short summary: what's merged, which flags exist and their state, estimated cost per 100 users, the "Needs Joseph" list, and the exact next item.
+```
+
+## Needs Joseph
+
+Nothing here blocks the code from being built. Each item says what it holds up.
+
+### NJ-A1 · Tick "Preview" on the model key (holds up: every real AI answer on previews, so every smoke test of an AI feature)
+The prompt says `ANTHROPIC_API_KEY` is already in Vercel for Production and
+Preview. On 2026-11-17 it was not there at all; you added it during this
+session, and it now shows as **Production only** (checked by name; the value
+was never opened). A preview deployment therefore has no key, and the health
+check there reports "Model key: Missing".
+
+1. Vercel → cuna project → Settings → Environment Variables.
+2. Find `ANTHROPIC_API_KEY` → the ⋯ menu on its row → **Edit**.
+3. Under Environments tick **Preview** as well as Production → **Save**. Vercel will ask for your authenticator code; that is yours to enter.
+4. Tell me in chat. I redeploy the preview, run the health check and the test question, and only then call an AI phase tested.
+5. It must never go in a variable whose name starts with `VITE_`.
+
+### NJ-A2 · May I click Supabase's "Potential issues detected" box? (holds up: 49-ai.sql)
+When a script that creates tables or functions is run in the Supabase SQL
+editor, Supabase shows a box titled "Potential issues detected" with the
+buttons "Run and enable RLS", "Run without RLS" and "Cancel". Until now I
+clicked "Run without RLS" (our scripts switch RLS on themselves). Under the new
+rule ("If a security check blocks an action ... confirmation prompt ... stop
+and ask Joseph") I am not clicking it without your say-so.
+
+Reply with one of:
+- **"yes, click it"** — I run `49-ai-test.sql` (rolls back, changes nothing), then `49-ai.sql`, clicking "Run without RLS" each time, for this build's additive scripts only.
+- **"I'll run it"** — steps for you: Supabase → SQL Editor → **+ New query** → paste the whole of `~/Desktop/CUNA/cuna-security/49-ai-test.sql` → **Run** → in the box choose **Run without RLS**. It must end in a red error that starts `49-ai-test: 58 checks, 0 FAIL. ROLLED BACK.` (the error is how the test undoes itself). Only if it says 0 FAIL: **+ New query** again → paste `~/Desktop/CUNA/cuna-security/49-ai.sql` → **Run** → **Run without RLS**. It ends with a small table (ai_usage rows 0, ai_cache rows 0, ...).
+
+Until then the assistant's tables do not exist: previews run with in-memory
+limits, production stays off, and the admin AI tab says the tables are missing.
+
+### NJ-A3 · Service key on Preview (optional; holds up: testing limits, cache and the usage log on previews)
+`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` exist in Vercel for Production
+only. Without them a preview cannot write the usage log, so previews count
+limits in memory, never cache, and show no usage in /admin. To test those on a
+preview: Vercel → cuna → Settings → Environment Variables → open each of the
+two → tick **Preview** as well → Save (Vercel will ask for your authenticator
+code; that is yours to enter). The alternative is to leave it: those paths are
+then proven by the role-simulation test and by the health check in production
+with the flags still off for users.
+
+### NJ-A4 · Turning the assistant on in production (yours, whenever you choose)
+Every AI flag is OFF in production and stays off until you turn it on. When
+you want to, in Vercel → cuna → Settings → Environment Variables, for
+**Production**:
+1. Admin tab only first: `AI_ENABLED=true`, `VITE_AI_ENABLED=true`, `AI_FEATURES=admin`, `VITE_AI_FEATURES=admin` → Deployments → Redeploy. Sign in as admin → /admin → **AI** → **Run health check**. Every line should read Works / Reachable / Working.
+2. Then widen both lists one feature at a time (for example `admin,guide`), or remove both `*_FEATURES` variables to allow everything that is merged.
+3. To switch everything off again: set `AI_ENABLED` and `VITE_AI_ENABLED` to anything other than `true` and redeploy.
+
+### Carried over from the audit build (unchanged)
+NJ-1 (names for trimmed areas), NJ-2 (Mapbox token URL restriction), NJ-3
+(Brooklyn splits), NJ-4 (transit commute provider), NJ-5 (XML feed questions),
+NJ-6 (Google sign-in), NJ-7 (Apple sign-in): see `docs/audit-build-progress.md`.
+NJ-4 matters here: the assistant describes commutes by straight-line distance
+and shared subway lines, not by minutes on the train, until a provider is chosen.
+
+## Flags
+
+| Flag | Where | Production | Preview | What it does |
+|---|---|---|---|---|
+| `AI_ENABLED` | server | off (unset) | to be set `true` | Kill switch for /api/ai |
+| `VITE_AI_ENABLED` | browser | off (unset) | to be set `true` | Kill switch for every AI surface |
+| `AI_FEATURES` / `VITE_AI_FEATURES` | both | unset | unset | Optional allowlist, e.g. `admin,guide` |
+| `AI_ACTIONS_ENABLED` / `VITE_AI_ACTIONS_ENABLED` | both | off (unset) | off until phase 5 | Consented actions (phase 5) |
+| `AI_WEB_SEARCH_ENABLED` | server | off (unset) | off (unset) | Lets the assistant cite public web pages |
+| `AI_DAILY_REQUEST_CAP` | server | unset (500) | unset (500) | Global requests per New York day |
+
+## Database changes
+
+| Script | State | What |
+|---|---|---|
+| `49-ai.sql` | written, NOT applied (NJ-A2) | `ai_usage`, `ai_cache`, `ai_take_slot()`, `admin_ai_usage()`, `neighborhood_writeups` + 3 admin functions, `ai_actions`. Additive only. Test: `49-ai-test.sql` (58 checks, rolls back). Reverse: `49-ai-rollback.sql`. All in `cuna-security/` |
+
+## Merge log
+
+| Date | PR | Phase | main SHA | Preview smoke | Production spot-check |
+|---|---|---|---|---|---|
+| | | | | | |
+
+## Checklist
+
+States: todo · in progress · done · blocked.
+
+### Phase 1 — foundation (branch `feature/ai-1-foundation`)
+
+| Item | State | Notes |
+|---|---|---|
+| Rule added to CLAUDE.md | done | Hard rules, plus a short "Cuna's assistant (AI)" section |
+| 1.1 /api/ai shared helper | done | `api/ai.js` (one endpoint), `api/_ai.js` (pipeline: cache → limits → model → grounding + fair-housing check with one regeneration, then neutral fallback → log), `api/_ai-config.js` (models, prices, limits, house rules), `api/_ai-store.js` (who is asking, limits, cache, log), `api/_ai-registry.js`. 22 s per call, 1 retry, 60 s function limit. `npm run test:ai`: 16 tests, no network |
+| 1.2 Tables ai_usage, ai_cache | blocked (NJ-A2) | `49-ai.sql` written with its rollback-only test and reverse script; not applied |
+| 1.3 Admin "AI" tab | done | `src/components/AdminAi.jsx` in /admin: requests and estimated cost per day and per feature, cache hit rate, fair-housing regenerations, health check, test question. Hidden unless `VITE_AI_ENABLED=true` |
+| 1.4 Health check | done | `GET /api/ai?feature=health`: asks the provider about both models (no tokens, no cost), checks the tables; the key is never returned. Detail for admins only in production |
+| Phase 1 merge | todo | |
+
+### Phase 2 — AI neighborhood guide (branch `feature/ai-2-neighborhood-guide`)
+
+| Item | State | Notes |
+|---|---|---|
+| 2.1 New guide at /new-to-ny, classic quiz at /new-to-ny/classic, rent and buy | todo | |
+| 2.2 Plain-English input → 3–5 neighborhoods with reasons, figures, subway, "See listings" | todo | |
+| 2.3 Follow-up refinement in the session | todo | |
+| 2.4 "Save this search" (sign-in returns with results intact) | todo | |
+| 2.5 Existing quiz lead capture still works | todo | |
+| Phase 2 merge | todo | |
+
+### Phase 3 — write-ups and drafts (branch `feature/ai-3-writeups`)
+
+| Item | State | Notes |
+|---|---|---|
+| 3.1 Neighborhood write-ups (stored, labelled, admin regenerate / hide) | todo | |
+| 3.2 Poster "Draft description" button | todo | |
+| Phase 3 merge | todo | |
+
+### Phase 4 — search and listing Q&A (branch `feature/ai-4-search-qa`)
+
+| Item | State | Notes |
+|---|---|---|
+| 4.1 Plain-English search → editable filter chips | todo | |
+| 4.2 "Ask about this listing" | todo | |
+| Phase 4 merge | todo | |
+
+### Phase 5 — recommendations and consented actions (branch `feature/ai-5-recommendations`)
+
+| Item | State | Notes |
+|---|---|---|
+| 5.1 Assistant panel recommending real listings, thumbs up / down | todo | |
+| 5.2 Consented actions (confirmation card per action) | todo | |
+| 5.3 Activity log in Profile | todo | |
+| Phase 5 merge (actions flags off in production) | todo | |
+
+### Policy update
+
+| Item | State | Notes |
+|---|---|---|
+| Privacy.jsx and Terms.jsx draft in its own PR | todo | Not merged until Joseph replies "approved" |
+
+## Cost estimate
+
+To be filled in from measured token counts once the guide runs against the real
+key. Prices used (per million tokens, checked 2026-11-17): Haiku 5.5 $0.10 in /
+$0.50 out; Sonnet 5.5 $2 in / $10 out.
+
+## Session notes
+
+- 2026-11-17 — Sonnet calls are sent with Anthropic's server-side fallback
+  switched on (`fallbacks: 'default'`): if Sonnet 5.5 declines a request, the
+  provider retries it on the previous Sonnet inside the same call. Told to
+  Joseph in chat. The usage log records which model actually answered.
+- 2026-11-17 — A request answered from the cache does not use one of the
+  person's daily requests (no model call is made); it is still logged, as a
+  cache hit, so the hit rate can be shown.
+- 2026-11-17 — Account ids and IP addresses are not stored in `ai_usage` in
+  readable form: the limit key is a keyed hash (the IP's changes daily).

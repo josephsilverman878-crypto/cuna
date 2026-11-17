@@ -196,4 +196,52 @@ export function scanDescription(text) {
   return result
 }
 
+// ---------------------------------------------------------------------------
+// Assistant output scan (Cuna's AI features).
+//
+// Stricter than the listing scan: besides everything scanDescription blocks or
+// flags, the assistant must never describe a place by who lives there, who it
+// suits, or how "safe" or "good" it is (steering). api/_ai.js runs this on the
+// server on every answer: on a hit it regenerates once with a stricter
+// instruction, then falls back to a neutral message.
+//
+// scanAssistantOutput(text) -> { ok: boolean, hits: [{ label, phrase }] }
+const STEERING_PHRASES = [
+  // safety and crime
+  'safe', 'safer', 'safest', 'safety', 'unsafe', 'dangerous', 'crime', 'low-crime', 'high-crime',
+  'sketchy', 'rough area', 'rough neighborhood', 'bad area', 'bad neighborhood', 'good area',
+  'good neighborhood', 'nice neighborhood', 'nice area',
+  // who it suits
+  'good for families', 'great for families', 'perfect for families', 'ideal for families',
+  'popular with families', 'family-friendly', 'family friendly', 'family-oriented', 'family oriented',
+  'kid-friendly', 'kid friendly', 'good for kids', 'great for kids', 'young families',
+  'popular with students', 'popular with young', 'college crowd', 'retirees', 'singles', 'hipster', 'yuppie',
+  // character and change
+  'up and coming', 'up-and-coming', 'gentrifying', 'gentrified', 'gentrification', 'transitional neighborhood',
+  'changing neighborhood', 'desirable', 'exclusive', 'prestigious', 'diverse', 'diversity', 'ethnic',
+  'demographic', 'demographics', 'predominantly', 'immigrant community',
+  // school quality
+  'good schools', 'great schools', 'best schools', 'top schools', 'top-rated schools', 'excellent schools',
+  'bad schools', 'school quality',
+  // places of worship as a selling point
+  'near a church', 'near a synagogue', 'near a mosque', 'close to church', 'close to synagogue', 'close to mosque',
+]
+const STEERING_RULES = STEERING_PHRASES.map(phrase => ({ phrase, regex: phraseToRegex(phrase.replace(/-/g, ' ')), alt: phraseToRegex(phrase) }))
+
+export function scanAssistantOutput(text) {
+  const hits = []
+  if (!text) return { ok: true, hits }
+  const base = scanDescription(text)
+  for (const h of [...base.blocked, ...base.flagged]) hits.push({ label: h.label, phrase: h.phrase })
+  const seen = new Set(hits.map(h => h.phrase))
+  for (const rule of STEERING_RULES) {
+    if (seen.has(rule.phrase)) continue
+    if (rule.regex.test(text) || rule.alt.test(text)) {
+      seen.add(rule.phrase)
+      hits.push({ label: 'Steering language', phrase: rule.phrase })
+    }
+  }
+  return { ok: hits.length === 0, hits }
+}
+
 export default scanDescription
