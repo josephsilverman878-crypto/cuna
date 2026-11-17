@@ -372,6 +372,20 @@ export default function Feed() {
       setSearchParams({}, { replace: true })
     }
 
+    // ?hood=<neighborhood id>&type=rent|sale from the neighborhood guide's
+    // "See listings" opens the feed on that one neighborhood. Only the
+    // neighborhood and rent/buy are applied; no other filter is assumed.
+    const hoodId = searchParams.get('hood')
+    if (hoodId) {
+      if (hoods.some(h => h.id === hoodId)) {
+        next = criteriaFromState({
+          filters: { ...EMPTY_FILTERS, listing_type: searchParams.get('type') === 'sale' ? 'sale' : 'rent' },
+          sort: next.sort, neighborhood_ids: [hoodId], area: null, view: next.view,
+        })
+      }
+      setSearchParams({}, { replace: true })
+    }
+
     setCriteria(next)
     setReady(true)
     await runSearch(next, hidden)

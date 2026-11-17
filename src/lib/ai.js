@@ -24,6 +24,10 @@ export function aiFeature(name) {
   return AI_ENABLED && (ALLOW.length === 0 || ALLOW.includes(name))
 }
 
+// Where "take the quiz" links point: the classic quiz moves to
+// /new-to-ny/classic only while the assistant's guide holds /new-to-ny.
+export const QUIZ_PATH = aiFeature('guide') ? '/new-to-ny/classic' : '/new-to-ny'
+
 export const AI_ACTIONS_ENABLED = AI_ENABLED && String(import.meta.env.VITE_AI_ACTIONS_ENABLED || '') === 'true'
 
 // Shown near every AI surface (src/components/AiLabel.jsx).

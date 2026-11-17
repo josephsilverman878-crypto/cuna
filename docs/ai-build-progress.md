@@ -152,7 +152,7 @@ and shared subway lines, not by minutes on the train, until a provider is chosen
 
 | Date | PR | Phase | main SHA | Preview smoke | Production spot-check |
 |---|---|---|---|---|---|
-| | | | | | |
+| 2026-11-17 | [#34](https://github.com/josephsilverman878-crypto/cuna/pull/34) | 1 foundation | `c93e953` | Preview `1a8330d`: health ok (key works, both models reachable), real test question answered correctly in 2.7 s, 10 answers then the friendly limit message, unknown feature refused, key never in a response or the bundle, pages load with 0 console errors. Admin tab at 375 px checked on a local page with sample numbers (the preview needs Joseph's admin sign-in). Tables not covered: 49-ai.sql not applied | Production deployment `c93e953` Ready. hellocuna.com home, /feed, /neighborhoods/astoria, /listing/:id: 0 console errors, unchanged. `/api/ai` answers "disabled"; health shows only `ai_enabled: false`; no key name in the bundle |
 
 ## Checklist
 
@@ -165,19 +165,19 @@ States: todo · in progress · done · blocked.
 | Rule added to CLAUDE.md | done | Hard rules, plus a short "Cuna's assistant (AI)" section |
 | 1.1 /api/ai shared helper | done | `api/ai.js` (one endpoint), `api/_ai.js` (pipeline: cache → limits → model → grounding + fair-housing check with one regeneration, then neutral fallback → log), `api/_ai-config.js` (models, prices, limits, house rules), `api/_ai-store.js` (who is asking, limits, cache, log), `api/_ai-registry.js`. 22 s per call, 1 retry, 60 s function limit. `npm run test:ai`: 16 tests, no network |
 | 1.2 Tables ai_usage, ai_cache | blocked (NJ-A2) | `49-ai.sql` written with its rollback-only test and reverse script; not applied |
-| 1.3 Admin "AI" tab | done | `src/components/AdminAi.jsx` in /admin: requests and estimated cost per day and per feature, cache hit rate, fair-housing regenerations, health check, test question. Hidden unless `VITE_AI_ENABLED=true` |
+| 1.3 Admin "AI" tab | done (needs Joseph's look on a preview) | `src/components/AdminAi.jsx` in /admin: requests and estimated cost per day and per feature, cache hit rate, fair-housing regenerations, health check, test question. Hidden unless `VITE_AI_ENABLED=true` |
 | 1.4 Health check | done | `GET /api/ai?feature=health`: asks the provider about both models (no tokens, no cost), checks the tables; the key is never returned. Detail for admins only in production |
-| Phase 1 merge | todo | |
+| Phase 1 merge | done | PR #34 → main `c93e953`, live 2026-11-17 with every AI flag off in production (see Merge log). Still open: 1.2 (NJ-A2) and Joseph's look at the admin tab on a preview |
 
 ### Phase 2 — AI neighborhood guide (branch `feature/ai-2-neighborhood-guide`)
 
 | Item | State | Notes |
 |---|---|---|
-| 2.1 New guide at /new-to-ny, classic quiz at /new-to-ny/classic, rent and buy | todo | |
-| 2.2 Plain-English input → 3–5 neighborhoods with reasons, figures, subway, "See listings" | todo | |
-| 2.3 Follow-up refinement in the session | todo | |
-| 2.4 "Save this search" (sign-in returns with results intact) | todo | |
-| 2.5 Existing quiz lead capture still works | todo | |
+| 2.1 New guide at /new-to-ny, classic quiz at /new-to-ny/classic, rent and buy | done | `src/pages/NeighborhoodGuide.jsx`. `/new-to-ny` shows the guide only when `VITE_AI_ENABLED=true` (and `guide` is allowed); otherwise the classic quiz, exactly as before. The classic quiz is always at `/new-to-ny/classic`. Rent / Buy toggle. If the assistant cannot answer (off, limit, error) the page says so and links to the classic quiz |
+| 2.2 Plain-English input → 3–5 neighborhoods with reasons, figures, subway, "See listings" | done | Server: `api/_ai-city.js` (grounding rows: Cuna boundaries, subway lines inside each, reference ranges with source / as-of / boundary, live Cuna listings), `api/_ai-guide.js` (Haiku reads the stated criteria; Sonnet picks from a server-built table of up to 36 candidates; the server attaches every figure, source and subway line; unknown neighborhoods, invented dollar amounts and travel times in minutes are rejected, one redo, then facts-only reasons written by code). Optional boxes: budget, bedrooms, where you need to get to, must-haves. "See listings" opens `/feed?hood=<id>&type=rent|sale` (neighborhood and rent/buy only). Price figures exist for the 30 reference areas (42 of Cuna's 209 neighborhoods); the rest say "Cuna does not hold a price figure" |
+| 2.3 Follow-up refinement in the session | done | "Change something" box sends the earlier criteria and the neighborhoods already shown; state lives in sessionStorage only |
+| 2.4 "Save this search" (sign-in returns with results intact) | done (signed-in save needs Joseph's sign-in to smoke) | Uses the existing `saved_searches` (price, bedrooms, the picked neighborhoods). Signed out: goes to sign-in with `next=/new-to-ny`; the results are restored from sessionStorage on return |
+| 2.5 Existing quiz lead capture still works | done | The classic quiz and its results page are untouched; its "Take / retake the quiz" buttons point at `/new-to-ny/classic` while the guide holds `/new-to-ny` |
 | Phase 2 merge | todo | |
 
 ### Phase 3 — write-ups and drafts (branch `feature/ai-3-writeups`)
@@ -213,8 +213,10 @@ States: todo · in progress · done · blocked.
 
 ## Cost estimate
 
-To be filled in from measured token counts once the guide runs against the real
-key. Prices used (per million tokens, checked 2026-11-17): Haiku 5.5 $0.10 in /
+Measured figures go here as each feature runs against the real key.
+- Test question (Haiku): about 2.7 s per answer.
+- Guide: the candidates table is about 19,000 characters (roughly 5,000 tokens)
+  per request to Sonnet, plus one small Haiku call to read the request. Prices used (per million tokens, checked 2026-11-17): Haiku 5.5 $0.10 in /
 $0.50 out; Sonnet 5.5 $2 in / $10 out.
 
 ## Session notes
@@ -226,5 +228,12 @@ $0.50 out; Sonnet 5.5 $2 in / $10 out.
 - 2026-11-17 — A request answered from the cache does not use one of the
   person's daily requests (no model call is made); it is still logged, as a
   cache hit, so the hit rate can be shown.
+- 2026-11-17 — Commute: the guide gives straight-line miles from the middle of
+  a neighborhood and the subway lines it shares with stations near the
+  destination. It never states minutes (no transit provider yet: NJ-4). The
+  destination text is looked up with NYC's public address search, the same
+  service the commute calculator already uses.
+- 2026-11-17 — The guide's second model call (Sonnet) never sees the person's
+  own words, only the criteria read from them.
 - 2026-11-17 — Account ids and IP addresses are not stored in `ai_usage` in
   readable form: the limit key is a keyed hash (the IP's changes daily).

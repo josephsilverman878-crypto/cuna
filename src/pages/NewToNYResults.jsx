@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Train, Clock, Check, Info, Mail, BedDouble, Bath, Lock, School, Cross, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { QUIZ_PATH } from '../lib/ai'
 import { describeAnswers } from '../lib/quizQuestions'
 import { quizOwnerId, loadQuizDraft } from '../lib/quizStorage'
 import { NEIGHBORHOODS } from '../lib/neighborhoods'
@@ -536,7 +537,7 @@ export default function NewToNYResults() {
         <p style={{ fontSize: '16px', color: 'var(--warm-gray)', lineHeight: 1.6, marginBottom: '28px' }}>
           Take the quiz and we'll show you the neighborhoods that fit.
         </p>
-        <button className="btn-primary" onClick={() => navigate('/new-to-ny')}>Take the quiz</button>
+        <button className="btn-primary" onClick={() => navigate(QUIZ_PATH)}>Take the quiz</button>
       </Shell>
     )
   }
@@ -660,7 +661,7 @@ export default function NewToNYResults() {
           <p style={{ fontSize: '13px', color: 'var(--warm-gray)', lineHeight: 1.6, marginBottom: '20px' }}>
             We would rather show you nothing than a place you cannot afford.
           </p>
-          <button className="btn-primary" onClick={() => navigate('/new-to-ny')}>Adjust your answers</button>
+          <button className="btn-primary" onClick={() => navigate(QUIZ_PATH)}>Adjust your answers</button>
         </div>
       )}
 
@@ -685,7 +686,7 @@ export default function NewToNYResults() {
       </details>
 
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: '28px' }}>
-        <button className="btn-secondary" onClick={() => navigate('/new-to-ny')}>Retake the quiz</button>
+        <button className="btn-secondary" onClick={() => navigate(QUIZ_PATH)}>Retake the quiz</button>
       </div>
     </Shell>
   )

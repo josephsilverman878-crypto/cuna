@@ -47,7 +47,7 @@ export function limits(env = process.env) {
 // request reuses a stored answer (0 = never cached).
 export const FEATURES = {
   selftest: { tier: 'fast', effort: 'low', maxTokens: 2000, cacheDays: 0 },
-  guide_parse: { tier: 'fast', effort: 'low', maxTokens: 3000, cacheDays: 0 },
+  guide_parse: { tier: 'fast', effort: 'low', maxTokens: 3000, cacheDays: 7 },
   guide: { tier: 'smart', effort: 'low', maxTokens: 8000, cacheDays: 7 },
   writeup: { tier: 'smart', effort: 'low', maxTokens: 6000, cacheDays: 0 },
   draft: { tier: 'smart', effort: 'low', maxTokens: 6000, cacheDays: 0 },

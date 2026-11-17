@@ -24,6 +24,8 @@ import Admin from './pages/Admin'
 import ListingDetail from './pages/ListingDetail'
 import NewToNY from './pages/NewToNY'
 import NewToNYResults from './pages/NewToNYResults'
+import NeighborhoodGuide from './pages/NeighborhoodGuide'
+import { aiFeature } from './lib/ai'
 import AgentPage from './pages/AgentPage'
 import Leads from './pages/Leads'
 import Team from './pages/Team'
@@ -53,7 +55,7 @@ function AppRoutes() {
 
   if (loading) return <div className="center" style={{ height: '100dvh' }}><div className="spinner" /></div>
 
-  const publicPaths = ['/reset-password', '/terms', '/privacy', '/new-to-ny', '/new-to-ny/results', '/help', '/market', '/neighborhoods', '/auth/callback']
+  const publicPaths = ['/reset-password', '/terms', '/privacy', '/new-to-ny', '/new-to-ny/classic', '/new-to-ny/results', '/help', '/market', '/neighborhoods', '/auth/callback']
   const publicPrefixes = ['/listing/', '/agent/', '/building/', '/neighborhoods/']
   if (user && !profile && !publicPaths.includes(location.pathname) && !publicPrefixes.some(p => location.pathname.startsWith(p))) {
     return <CompleteProfile />
@@ -81,7 +83,9 @@ function AppRoutes() {
       <Route path="/neighborhoods" element={<Neighborhoods />} />
       <Route path="/neighborhoods/:slug" element={<Neighborhood />} />
       <Route path="/privacy" element={<Privacy />} />
-      <Route path="/new-to-ny" element={<NewToNY />} />
+      {/* The assistant's guide when it is switched on; the classic quiz otherwise, and always at /new-to-ny/classic. */}
+      <Route path="/new-to-ny" element={aiFeature('guide') ? <NeighborhoodGuide /> : <NewToNY />} />
+      <Route path="/new-to-ny/classic" element={<NewToNY />} />
       <Route path="/new-to-ny/results" element={<NewToNYResults />} />
 
       <Route path="/feed" element={
