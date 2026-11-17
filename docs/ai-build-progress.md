@@ -138,7 +138,7 @@ and shared subway lines, not by minutes on the train, until a provider is chosen
 | `AI_ENABLED` | server | off (unset) | `true` (added 2026-11-17) | Kill switch for /api/ai |
 | `VITE_AI_ENABLED` | browser | off (unset) | `true` (added 2026-11-17) | Kill switch for every AI surface |
 | `AI_FEATURES` / `VITE_AI_FEATURES` | both | unset | unset | Optional allowlist, e.g. `admin,guide` |
-| `AI_ACTIONS_ENABLED` / `VITE_AI_ACTIONS_ENABLED` | both | off (unset) | off until phase 5 | Consented actions (phase 5) |
+| `AI_ACTIONS_ENABLED` / `VITE_AI_ACTIONS_ENABLED` | both | off (unset) | `true` (added 2026-11-17) | Consented actions (phase 5) |
 | `AI_WEB_SEARCH_ENABLED` | server | off (unset) | off (unset) | Lets the assistant cite public web pages |
 | `AI_DAILY_REQUEST_CAP` | server | unset (500) | unset (500) | Global requests per New York day |
 
@@ -203,9 +203,9 @@ States: todo · in progress · done · blocked.
 
 | Item | State | Notes |
 |---|---|---|
-| 5.1 Assistant panel recommending real listings, thumbs up / down | todo | |
-| 5.2 Consented actions (confirmation card per action) | todo | |
-| 5.3 Activity log in Profile | todo | |
+| 5.1 Assistant panel recommending real listings, thumbs up / down | done (the feed needs a renter sign-in to see on the preview; production has no active listings today) | `api/_ai-recommend.js` + `AssistantPanel.jsx` in the feed. Haiku reads the request into the feed's filters; the server takes the ACTIVE listings that match; Sonnet picks up to five by a short code and writes reasons; every number must be in that listing's line. The cards are built from Cuna's own rows, not from the model. Thumbs are kept for the visit only: a thumbs-down removes that listing from the next request, thumbs-up listings are shown to the model as "liked". No match → says so and offers the saved search |
+| 5.2 Consented actions (confirmation card per action) | done (flags off in production) | Save listing and Save search each open a card saying what will happen and what is shared, and nothing is written until **Confirm**. Request a tour opens the existing Request a tour form (dates, what you share, message, Send), the one tour path, with its existing rate limits. The `/api/ai` server cannot act at all, so typed text ("save it for me") can never trigger anything. Shown only when `VITE_AI_ACTIONS_ENABLED` and `AI_ACTIONS_ENABLED` are both `true` |
+| 5.3 Activity log in Profile | built; storing is blocked (NJ-A2) | `src/lib/aiActions.js`, `AssistantActivity.jsx` in Profile ("What the assistant did for you"). A row is written to `ai_actions` after each confirmed action. The table is part of `49-ai.sql`; until it is applied the actions still work but nothing is logged or listed |
 | Phase 5 merge (actions flags off in production) | todo | |
 
 ### Policy update

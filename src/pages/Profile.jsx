@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import SavedSearchesCard from '../components/SavedSearchesCard'
+import AssistantActivity from '../components/AssistantActivity'
 import toast from 'react-hot-toast'
 import { LogOut, Save, ExternalLink, MapPin } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -377,6 +378,7 @@ export default function Profile() {
         {profile?.role === 'renter' && (
           <>
             <SavedSearchesCard userId={user.id} />
+            <AssistantActivity />
 
             {APPLICATIONS_ENABLED && (
               <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
