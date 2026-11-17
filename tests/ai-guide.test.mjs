@@ -4,6 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buildCity, figuresFor, milesBetween } from '../api/_ai-city.js'
+import { NEIGHBORHOODS as REFERENCE } from '../src/lib/neighborhoods.js'
 import { guide, normalizeCriteria, rankCandidates, checkPicks, tidyPlace, resolvePlace, REFUSAL, NEED_MORE } from '../api/_ai-guide.js'
 
 const square = (lng, lat, d = 0.01) => ({ type: 'MultiPolygon', coordinates: [[[[lng - d, lat - d], [lng + d, lat - d], [lng + d, lat + d], [lng - d, lat + d], [lng - d, lat - d]]]] })
@@ -200,4 +201,24 @@ test('parts of one named area appear once in the candidates', () => {
   })
   const rows = rankCandidates(two, 'rent', normalizeCriteria({ budget_max: 4000 }, 'rent'), null)
   assert.equal(rows.filter(r => r.hood.refArea === 'Bushwick').length, 1)
+})
+
+test('every reference area can be ranked and shown in both rent and buy, including areas with a missing figure', async () => {
+  const all = buildCity({
+    features: REFERENCE.map((r, i) => feature('id-' + r.id, r.id, r.name, r.borough, -74 + i * 0.03, 40.6 + i * 0.01)),
+    stations: [], listings: [], today: '2026-11-17',
+  })
+  assert.equal(all.hoods.filter(h => h.ref).length, REFERENCE.length)
+  for (const mode of ['rent', 'buy']) {
+    for (const bedrooms of [null, 'studio', '1', '2', '3+']) {
+      const c = normalizeCriteria({ budget_max: mode === 'buy' ? 900000 : 3200, bedrooms }, mode)
+      const rows = rankCandidates(all, mode, c, null)
+      assert.ok(rows.length > 0)
+      for (const h of all.hoods) for (const f of figuresFor(h, mode, bedrooms, all.asOf)) assert.match(f.value, /^\$[\d,]+/)
+    }
+  }
+  const slugs = REFERENCE.slice(0, 3).map(r => r.id)
+  const client = fakeClient([reply({ intro: 'Three areas with recorded sales under your budget.', picks: slugs.map(s => ({ slug: s, reasons: ['It has recorded sales in your price range.'] })), missing: null })])
+  const r = await guide(ctxOf(client, fakeStore(), { city: all }), { mode: 'buy', hints: { budget: '900000', bedrooms: '2' } })
+  assert.equal(r.ok, true); assert.equal(r.output.kind, 'picks')
 })

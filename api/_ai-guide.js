@@ -197,9 +197,11 @@ function priceRange(hood, mode, bedrooms) {
   if (!ref) return null
   if (mode === 'rent') {
     const key = { studio: 'studio', '1': 'one_bed', '2': 'two_bed' }[bedrooms || '1']
-    return key ? ref.rent_ranges?.[key] || null : null
+    const r = key ? ref.rent_ranges?.[key] : null
+    return r && Number.isFinite(r.min) && Number.isFinite(r.max) ? r : null
   }
-  const all = Object.values(ref.sale_ranges || {})
+  // Some areas have no figure for a home type (too few recorded sales).
+  const all = Object.values(ref.sale_ranges || {}).filter(r => r && Number.isFinite(r.min) && Number.isFinite(r.max))
   return all.length ? { min: Math.min(...all.map(r => r.min)), max: Math.max(...all.map(r => r.max)) } : null
 }
 

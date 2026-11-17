@@ -130,7 +130,7 @@ export function figuresFor(hood, mode, bedrooms, asOf) {
     const keys = bedrooms && RENT_KEYS[bedrooms] ? [bedrooms] : bedrooms === '3+' ? [] : ['studio', '1', '2']
     for (const k of keys) {
       const r = ref?.rent_ranges?.[RENT_KEYS[k]]
-      if (!r) continue
+      if (!r || !Number.isFinite(r.min) || !Number.isFinite(r.max)) continue
       out.push({
         key: 'rent_' + k, min: r.min, max: r.max,
         label: `Typical asking rent, ${RENT_LABEL[k]}`,
@@ -151,7 +151,7 @@ export function figuresFor(hood, mode, bedrooms, asOf) {
   } else {
     for (const k of ['condo', 'coop', 'townhouse_multifamily']) {
       const r = ref?.sale_ranges?.[k]
-      if (!r) continue
+      if (!r || !Number.isFinite(r.min) || !Number.isFinite(r.max)) continue
       out.push({
         key: 'sale_' + k, min: r.min, max: r.max,
         label: `${SALE_LABEL[k]}, recorded sale prices`,

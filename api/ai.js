@@ -83,7 +83,9 @@ export default async function handler(req, res) {
     const result = await run(ctx, body)
     return res.status(200).json(result)
   } catch (err) {
-    console.error('AI handler failed:', feature, err?.code || err?.name || 'error')
+    // The message is logged only for our own code's errors (a TypeError and
+    // the like), never for a provider error, so no request text can reach the log.
+    console.error('AI handler failed:', feature, err?.code || err?.name || 'error', err?.status ? '' : String(err?.message || '').slice(0, 160))
     return res.status(200).json({ ok: false, reason: 'error', message: "Cuna's assistant could not answer just now. Please try again in a moment." })
   }
 }
