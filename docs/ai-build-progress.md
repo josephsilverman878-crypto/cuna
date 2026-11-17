@@ -194,8 +194,8 @@ States: todo · in progress · done · blocked.
 
 | Item | State | Notes |
 |---|---|---|
-| 4.1 Plain-English search → editable filter chips | todo | |
-| 4.2 "Ask about this listing" | todo | |
+| 4.1 Plain-English search → editable filter chips | done (the feed needs a renter sign-in to see on the preview) | `api/_ai-search.js` + `SmartSearch.jsx` at the top of the feed. Haiku turns one line into the feed's existing filters (rent/buy, price, beds, baths, sq ft, amenities, pets, sort); neighborhood names are matched to Cuna's table in code ("Bushwick" selects both Bushwick parts). What it understood is shown as removable chips; "Show listings" applies exactly those, starting from empty filters. Anything the filters cannot express (a subway line, a commute) is listed as "not searchable here, so not applied" |
+| 4.2 "Ask about this listing" | done | `api/_ai-listing-qa.js` + `AskAboutListing.jsx` on `/listing/:id`. Haiku answers from that listing's public row (price, fees, size, dates, pets, amenities, open houses, the agent's description), its Cuna neighborhood and the five nearest subway stations with the page's own estimated walks. Every number must be one of those facts (`api/_ai-check.js`); no other travel times. If the facts do not hold the answer: "I don't have that for this listing." with an **Ask the agent** button (the existing question form). The building's public records (PLUTO / DOB) are read in the browser by the Building page, not stored in Cuna's database, so they are not part of the facts yet |
 | Phase 4 merge | todo | |
 
 ### Phase 5 — recommendations and consented actions (branch `feature/ai-5-recommendations`)

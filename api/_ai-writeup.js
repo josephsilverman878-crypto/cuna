@@ -12,6 +12,7 @@ import { runAi } from './_ai.js'
 import { isAdmin, userClient, publicClient } from './_ai-store.js'
 import { loadCity, figuresFor } from './_ai-city.js'
 import { MODELS } from './_ai-config.js'
+import { ungroundedNumber } from './_ai-check.js'
 
 const schema = z.object({ body: z.string() })
 export const WRITEUP_LABEL = "Written by Cuna's assistant from public data"
@@ -52,11 +53,8 @@ export function checkWriteup(out, facts) {
   const text = String(out?.body || '')
   if (text.length < 180) return 'The summary is too short. Write 70 to 130 words from the FACTS.'
   if (text.length > 1400) return 'The summary is too long. Keep it under 130 words.'
-  const hay = facts.join('\n').replace(/,/g, '')
-  for (const m of text.matchAll(/\$?\d[\d,]*(?:\.\d+)?/g)) {
-    const n = m[0].replace(/,/g, '').replace(/\.$/, '')
-    if (!hay.includes(n)) return `The summary uses ${m[0]}, which is not in the FACTS. Use only numbers from the FACTS.`
-  }
+  const bad = ungroundedNumber(text, facts.join('\n'))
+  if (bad) return `The summary uses ${bad}, which is not in the FACTS. Use only numbers from the FACTS.`
   return null
 }
 
