@@ -7,6 +7,7 @@ import { fetchSchoolsIn, fetchHospitalsIn, fetchStationsIn, fetchListingsIn, lis
 import { fetchDofMarket } from '../lib/market'
 import { priceText, money } from '../lib/listingTypes'
 import { ROUTE_COLORS } from '../lib/subway'
+import NeighborhoodWriteup from '../components/NeighborhoodWriteup'
 
 // /neighborhoods/:slug — the live version of the pre-rendered neighborhood
 // page. Same data module as the build script (src/lib/neighborhoodPage.js).
@@ -86,6 +87,8 @@ export default function Neighborhood() {
             Homes on Cuna, how to get around, nearby public schools and hospitals, and what has sold, all from public records and Cuna’s own listings.
           </p>
         </div>
+
+        <NeighborhoodWriteup slug={hood.slug} />
 
         <Section title={`On Cuna now${listings ? ` (${summary.count})` : ''}`} source="Cuna listings marked Active or In contract, read live.">
           {listings === null ? <Loading /> : listings.length === 0 ? (

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import { scanDescription } from '../lib/fairHousing'
+import DraftDescription from '../components/DraftDescription'
 import { validateListing } from '../lib/listingQuality'
 import { isDuplicateAddressError, DUPLICATE_ADDRESS_MESSAGE } from '../lib/flags'
 import { PETS_POLICY_OPTIONS, PETS_POLICY_NOTE, petsPolicyLabel } from '../lib/petsPolicy'
@@ -439,6 +440,7 @@ export default function PostListing() {
             apply — including vouchers or rental assistance, children, or any protected
             characteristic.
           </p>
+          <DraftDescription form={form} onUse={(text) => update('description', text)} />
 
           {(fhScan.blocked.length > 0 || fhScan.flagged.length > 0) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>

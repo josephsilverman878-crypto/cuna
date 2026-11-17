@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { runAi } from './_ai.js'
 import { isAdmin, publicClient } from './_ai-store.js'
 import { guide } from './_ai-guide.js'
+import { draft } from './_ai-draft.js'
+import { writeup } from './_ai-writeup.js'
 
 // One tiny grounded question through the whole pipeline (limits, model,
 // fair-housing check, log). Admins only in production; previews sit behind
@@ -27,4 +29,4 @@ async function selftest(ctx) {
   })
 }
 
-export const handlers = { selftest, guide }
+export const handlers = { selftest, guide, draft, writeup }

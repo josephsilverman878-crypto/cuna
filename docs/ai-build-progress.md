@@ -185,8 +185,8 @@ States: todo · in progress · done · blocked.
 
 | Item | State | Notes |
 |---|---|---|
-| 3.1 Neighborhood write-ups (stored, labelled, admin regenerate / hide) | todo | |
-| 3.2 Poster "Draft description" button | todo | |
+| 3.1 Neighborhood write-ups (stored, labelled, admin regenerate / hide) | built; storing is blocked (NJ-A2) | `api/_ai-writeup.js`: an admin asks for one neighborhood; the server gathers Cuna's facts for it (subway lines inside the boundary, reference figures, place notes, live listings), Sonnet writes 70 to 130 words, every number is checked against the facts, fair-housing scan, then saved through `admin_save_writeup()` (the database refuses non-admins). `GET /api/ai?feature=writeup&slug=` reads the stored, visible one; `NeighborhoodWriteup.jsx` shows it on `/neighborhoods/:slug` with "Written by Cuna's assistant from public data", the date and a Sources list. `AdminWriteups.jsx` in /admin → AI: Write / Rewrite / Hide / Show per neighborhood. Admin writing does not use the admin's own 30-a-day limit; the global cap still applies. Needs `49-ai.sql` (table `neighborhood_writeups`) before anything can be saved or shown |
+| 3.2 Poster "Draft description" button | done (button needs a poster sign-in to see on the preview) | `api/_ai-draft.js` + `DraftDescription.jsx` on Post listing and Edit listing. Sends only fields the poster entered (never the street address). The draft may use a number only if the form holds it; fair-housing scan on the server; one redo, then a plain sentence built by code. The poster must tap "Use this draft"; the form's own fair-housing check still runs on save |
 | Phase 3 merge | todo | |
 
 ### Phase 4 — search and listing Q&A (branch `feature/ai-4-search-qa`)

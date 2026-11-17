@@ -19,6 +19,7 @@ import { modelClient } from './_ai.js'
 import { handlers } from './_ai-registry.js'
 import { MODELS, aiEnabled, featureAllowed, webSearchEnabled, actionsEnabled, UNAVAILABLE_MESSAGE, limits } from './_ai-config.js'
 import { getStore, identify, isAdmin, newRequestId } from './_ai-store.js'
+import { readWriteup } from './_ai-writeup.js'
 
 // ---------------------------------------------------------------- health
 // Confirms the key works by asking the Models API about the two configured
@@ -61,6 +62,14 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store')
 
   if (feature === 'health') return health(req, res, env)
+
+  // The stored write-up for a neighborhood page: a plain read, no model call.
+  if (feature === 'writeup' && req.method === 'GET') {
+    if (!aiEnabled(env) || !featureAllowed('writeup', env)) return res.status(200).json({ ok: false, reason: 'disabled' })
+    const output = await readWriteup(req.query?.slug, env).catch(() => null)
+    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
+    return res.status(200).json({ ok: true, output })
+  }
   if (req.method !== 'POST') return res.status(405).json({ ok: false, reason: 'method' })
 
   if (!aiEnabled(env) || !featureAllowed(feature, env)) {

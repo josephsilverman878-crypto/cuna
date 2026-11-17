@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { adminAiUsage, aiHealth, aiRequest } from '../lib/ai'
+import { adminAiUsage, aiHealth, aiRequest, aiFeature } from '../lib/ai'
 import AiLabel from './AiLabel'
+import AdminWriteups from './AdminWriteups'
 
 // /admin → AI: how much Cuna's assistant is used and what it costs.
 // Reads aggregates only (admin_ai_usage, 49-ai.sql): requests and estimated
@@ -269,6 +270,7 @@ export default function AdminAi() {
           </div>
         )}
       </div>
+      {aiFeature('writeup') && <AdminWriteups />}
       <AiLabel style={{ marginTop: '16px' }} />
     </div>
   )

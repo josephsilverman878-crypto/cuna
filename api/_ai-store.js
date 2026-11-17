@@ -168,7 +168,8 @@ function memoryStore(env) {
       const lim = limits(env)
       const used = mem.actors.get(actor.key) || 0
       if (mem.total >= lim.globalPerDay) return { ok: false, reason: 'global' }
-      if (used >= (actor.kind === 'user' ? lim.userPerDay : lim.ipPerDay)) return { ok: false, reason: actor.kind === 'user' ? 'user' : 'ip' }
+      const cap = actor.kind === 'user' ? lim.userPerDay : actor.kind === 'ip' ? lim.ipPerDay : Infinity
+      if (used >= cap) return { ok: false, reason: actor.kind === 'user' ? 'user' : 'ip' }
       mem.actors.set(actor.key, used + 1); mem.total++
       return { ok: true, id: null }
     },
