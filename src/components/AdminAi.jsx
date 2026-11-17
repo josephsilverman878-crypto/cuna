@@ -21,7 +21,7 @@ const FEATURE_LABELS = {
 
 function usd(n) {
   const v = Number(n) || 0
-  return '$' + (v >= 100 ? v.toFixed(0) : v >= 1 ? v.toFixed(2) : v.toFixed(4))
+  return '$' + (v >= 100 ? v.toFixed(0) : v >= 0.1 ? v.toFixed(2) : v.toFixed(3))
 }
 
 function dayLabel(iso) {
@@ -51,8 +51,8 @@ function groupBy(rows, key) {
 const card = {
   background: 'var(--white)', borderRadius: 'var(--radius-sm)', padding: '14px 16px', boxShadow: 'var(--shadow-sm)',
 }
-const th = { textAlign: 'right', fontSize: '11px', fontWeight: 600, color: 'var(--warm-gray)', padding: '6px 0 6px 8px', whiteSpace: 'nowrap' }
-const td = { textAlign: 'right', fontSize: '13px', padding: '8px 0 8px 8px', borderTop: '1px solid var(--sand-dark)', whiteSpace: 'nowrap' }
+const th = { textAlign: 'right', fontSize: '11px', fontWeight: 600, color: 'var(--warm-gray)', padding: '6px 0 6px 6px', whiteSpace: 'nowrap' }
+const td = { textAlign: 'right', fontSize: '13px', padding: '8px 0 8px 6px', borderTop: '1px solid var(--sand-dark)', whiteSpace: 'nowrap' }
 
 export default function AdminAi() {
   const [days, setDays] = useState(14)
@@ -116,7 +116,7 @@ export default function AdminAi() {
     border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-sm)',
   })
   const line = (label, value, good) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '13px', padding: '6px 0', borderTop: '1px solid var(--sand-dark)' }}>
+    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '13px', padding: '6px 0', borderTop: '1px solid var(--sand-dark)' }}>
       <span style={{ color: 'var(--warm-gray)' }}>{label}</span>
       <span style={{ fontWeight: 600, textAlign: 'right', color: good === false ? 'var(--terracotta-dark)' : 'var(--charcoal)' }}>{value}</span>
     </div>
@@ -168,14 +168,17 @@ export default function AdminAi() {
             <>
               <div style={{ ...card, marginBottom: '16px', overflowX: 'auto' }}>
                 <h2 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px' }}>By feature</h2>
+                <p style={{ fontSize: '11px', color: 'var(--warm-gray)', lineHeight: 1.5, marginBottom: '4px' }}>
+                  Asked = requests. Cached = answered from a stored answer, no model call. Redone = rewritten after the fair-housing check. Cost is an estimate.
+                </p>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
                       <th style={{ ...th, textAlign: 'left', paddingLeft: 0 }}>Feature</th>
-                      <th style={th}>Requests</th>
-                      <th style={th}>From cache</th>
-                      <th style={th}>Regen.</th>
-                      <th style={th}>Est. cost</th>
+                      <th style={th}>Asked</th>
+                      <th style={th}>Cached</th>
+                      <th style={th} title="Fair-housing regenerations">Redone</th>
+                      <th style={th}>Cost</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -197,9 +200,9 @@ export default function AdminAi() {
                   <thead>
                     <tr>
                       <th style={{ ...th, textAlign: 'left', paddingLeft: 0 }}>Day</th>
-                      <th style={th}>Requests</th>
-                      <th style={th}>From cache</th>
-                      <th style={th}>Est. cost</th>
+                      <th style={th}>Asked</th>
+                      <th style={th}>Cached</th>
+                      <th style={th}>Cost</th>
                     </tr>
                   </thead>
                   <tbody>
