@@ -85,11 +85,13 @@ export function toFilters(o) {
   return f
 }
 
-export async function searchParse(ctx, body) {
-  const text = String(body.text ?? '').replace(/\s+/g, ' ').trim().slice(0, 300)
-  if (text.length < 2) return { ok: true, cached: false, output: { kind: 'message', message: 'Type what you are looking for, for example "2 bed under $4,000 in Astoria, dishwasher".' } }
+// Reads one line into filters. Shared by the feed's search box and the
+// listing recommendations. Returns { r } alone when the model step failed
+// or a limit was reached.
+export async function readFilters(ctx, text, { counted = true } = {}) {
   const r = await runAi(ctx, {
     feature: 'search_parse',
+    counted,
     system: SYSTEM,
     user: 'WHAT THEY TYPED: """' + text + '"""',
     schema,
@@ -98,7 +100,7 @@ export async function searchParse(ctx, body) {
     scanText: (o) => [...(o.unsupported || []), ...(o.neighborhoods || [])].join(' . '),
     fallback: { listing_type: null, price_min: null, price_max: null, beds_min: null, baths_min: null, sqft_min: null, amenities: [], pets: [], neighborhoods: [], sort: null, unsupported: [], off_limits: true },
   })
-  if (!r.ok) return r
+  if (!r.ok) return { r }
   const o = r.output
   const filters = toFilters(o)
   const city = ctx.city || await loadCity(ctx.env)
@@ -106,9 +108,17 @@ export async function searchParse(ctx, body) {
   const sort = SORTS.includes(o.sort) ? o.sort : null
   const unsupported = (Array.isArray(o.unsupported) ? o.unsupported : []).map(s => String(s).replace(/\s+/g, ' ').trim().slice(0, 60)).filter(Boolean).slice(0, 5)
   const empty = Object.keys(filters).length === 0 && matched.length === 0 && !sort
-  if (empty && o.off_limits) return { ok: true, cached: r.cached, output: { kind: 'message', message: SEARCH_REFUSAL } }
+  return { r, filters, matched, unmatched, sort, unsupported, offLimits: o.off_limits === true, empty }
+}
+
+export async function searchParse(ctx, body) {
+  const text = String(body.text ?? '').replace(/\s+/g, ' ').trim().slice(0, 300)
+  if (text.length < 2) return { ok: true, cached: false, output: { kind: 'message', message: 'Type what you are looking for, for example "2 bed under $4,000 in Astoria, dishwasher".' } }
+  const p = await readFilters(ctx, text)
+  if (!p.r.ok) return p.r
+  if (p.empty && p.offLimits) return { ok: true, cached: p.r.cached, output: { kind: 'message', message: SEARCH_REFUSAL } }
   return {
-    ok: true, cached: r.cached,
-    output: { kind: 'filters', filters, neighborhoods: matched, unmatched_neighborhoods: unmatched, sort, unsupported, note: o.off_limits ? SEARCH_REFUSAL : null, empty },
+    ok: true, cached: p.r.cached,
+    output: { kind: 'filters', filters: p.filters, neighborhoods: p.matched, unmatched_neighborhoods: p.unmatched, sort: p.sort, unsupported: p.unsupported, note: p.offLimits ? SEARCH_REFUSAL : null, empty: p.empty },
   }
 }

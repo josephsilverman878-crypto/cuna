@@ -4,6 +4,8 @@ import { attachPosterContacts } from '../lib/posterContacts'
 import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import SmartSearch from '../components/SmartSearch'
+import AssistantPanel from '../components/AssistantPanel'
+import { logAiAction } from '../lib/aiActions'
 import RequestTour from '../components/RequestTour'
 import FairHousingNotice from '../components/FairHousingNotice'
 import NotificationBell from '../components/NotificationBell'
@@ -339,6 +341,7 @@ export default function Feed() {
   const requestSeq = useRef(0)
   const persistTimer = useRef(null)
   const criteriaRef = useRef(criteria)
+  const tourFromAssistant = useRef(null)
   criteriaRef.current = criteria
 
   useEffect(() => { init() }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -635,6 +638,13 @@ export default function Feed() {
         {ready && (
           <SmartSearch currentType={criteria.filters.listing_type} currentSort={criteria.sort} onApply={(next) => applyCriteria(next)} />
         )}
+        {ready && (
+          <AssistantPanel
+            user={user}
+            onSavedListing={(id) => setLikedIds(prev => new Set(prev).add(id))}
+            onRequestTour={(l) => { tourFromAssistant.current = l.id; setTourListing(l) }}
+          />
+        )}
         {showMap && (
           <div style={{ marginBottom: '16px' }}>
             <FeedMap
@@ -752,7 +762,14 @@ export default function Feed() {
       )}
 
       {tourListing && (
-        <RequestTour listing={tourListing} onClose={() => setTourListing(null)} />
+        <RequestTour
+          listing={tourListing}
+          onClose={() => { tourFromAssistant.current = null; setTourListing(null) }}
+          onSent={(l) => {
+            // Logged only when the form was opened from the assistant panel.
+            if (tourFromAssistant.current === l.id) logAiAction({ kind: 'tour_request', listingId: l.id, summary: `Sent a tour request for ${l.address}.` })
+          }}
+        />
       )}
 
       <BottomNav />

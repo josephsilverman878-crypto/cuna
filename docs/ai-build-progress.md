@@ -138,7 +138,7 @@ and shared subway lines, not by minutes on the train, until a provider is chosen
 | `AI_ENABLED` | server | off (unset) | `true` (added 2026-11-17) | Kill switch for /api/ai |
 | `VITE_AI_ENABLED` | browser | off (unset) | `true` (added 2026-11-17) | Kill switch for every AI surface |
 | `AI_FEATURES` / `VITE_AI_FEATURES` | both | unset | unset | Optional allowlist, e.g. `admin,guide` |
-| `AI_ACTIONS_ENABLED` / `VITE_AI_ACTIONS_ENABLED` | both | off (unset) | off until phase 5 | Consented actions (phase 5) |
+| `AI_ACTIONS_ENABLED` / `VITE_AI_ACTIONS_ENABLED` | both | off (unset) | `true` (added 2026-11-17) | Consented actions (phase 5) |
 | `AI_WEB_SEARCH_ENABLED` | server | off (unset) | off (unset) | Lets the assistant cite public web pages |
 | `AI_DAILY_REQUEST_CAP` | server | unset (500) | unset (500) | Global requests per New York day |
 
@@ -155,6 +155,7 @@ and shared subway lines, not by minutes on the train, until a provider is chosen
 | 2026-11-17 | [#34](https://github.com/josephsilverman878-crypto/cuna/pull/34) | 1 foundation | `c93e953` | Preview `1a8330d`: health ok (key works, both models reachable), real test question answered correctly in 2.7 s, 10 answers then the friendly limit message, unknown feature refused, key never in a response or the bundle, pages load with 0 console errors. Admin tab at 375 px checked on a local page with sample numbers (the preview needs Joseph's admin sign-in). Tables not covered: 49-ai.sql not applied | Production deployment `c93e953` Ready. hellocuna.com home, /feed, /neighborhoods/astoria, /listing/:id: 0 console errors, unchanged. `/api/ai` answers "disabled"; health shows only `ai_enabled: false`; no key name in the bundle |
 | 2026-11-17 | [#35](https://github.com/josephsilverman878-crypto/cuna/pull/35) | 2 neighborhood guide | `c1d0256` | Preview `951acc5`, real model: rent request → 5 real Cuna neighborhoods in 8 s, destination resolved to Grand Central station, every figure with source and as-of; buy request → Queens / Brooklyn only, Department of Finance figures; follow-up updated the criteria; "who lives there / is it safe" → the refusal line and no picks; guide page, classic quiz and home with 0 console errors. Signed-in "See listings" and "Save this search" need Joseph's sign-in. Two bugs found and fixed before merge (destination lookup, buy mode on areas with a missing figure) | Production deployment `c1d0256` Ready. hellocuna.com `/new-to-ny` is the classic quiz (no guide, no assistant label), home, /feed and /listing/:id unchanged, 0 console errors; `/api/ai` answers "disabled" |
 | 2026-11-17 | [#36](https://github.com/josephsilverman878-crypto/cuna/pull/36) | 3 write-ups and drafts | `cdb7580` | Preview `0878222`, real model: rental draft in 2.3 s and co-op sale draft in 1.9 s, only the form's numbers, no fallback; too few fields → asks for more with no model call; write-up request signed out → "Admins only"; stored write-up read → null; neighborhood page 0 console errors. Draft button and admin write-up panel checked on a local page at 375 px with sample data (the preview needs Joseph's poster / admin sign-in; saving a write-up needs 49-ai.sql). One fix before merge: drafts no longer end with an invented closing line | Production deployment `cdb7580` Ready. hellocuna.com /neighborhoods/astoria makes no assistant call and shows no write-up; home, /feed, /listing/:id unchanged, 0 console errors; `/api/ai` answers "disabled" |
+| 2026-11-17 | [#37](https://github.com/josephsilverman878-crypto/cuna/pull/37) | 4 search and listing Q&A | `1d763ed` | Preview `ffe24ac`, real model: search line → only the asked filters (price, beds, dishwasher, cats; Astoria + both Bushwick parts; rent/buy not assumed; "near the N train" reported as not searchable); "cheapest studios for sale" → sale, studio, price low to high; a search about who lives somewhere → refusal. Listing question answered from the listing ($2,900, fees, pets); build year / nearest subway → "I don't have that for this listing" with Ask the agent; safety → refusal. Question box works in the real listing page, 0 console errors. Feed search box checked on a local page at 375 px (the feed needs Joseph's renter sign-in) | Production deployment `1d763ed` Ready. hellocuna.com listing page has no question box and makes no assistant call; /feed has no search box; home unchanged; 0 console errors; `/api/ai` answers "disabled" |
 
 ## Checklist
 
@@ -196,15 +197,15 @@ States: todo · in progress · done · blocked.
 |---|---|---|
 | 4.1 Plain-English search → editable filter chips | done (the feed needs a renter sign-in to see on the preview) | `api/_ai-search.js` + `SmartSearch.jsx` at the top of the feed. Haiku turns one line into the feed's existing filters (rent/buy, price, beds, baths, sq ft, amenities, pets, sort); neighborhood names are matched to Cuna's table in code ("Bushwick" selects both Bushwick parts). What it understood is shown as removable chips; "Show listings" applies exactly those, starting from empty filters. Anything the filters cannot express (a subway line, a commute) is listed as "not searchable here, so not applied" |
 | 4.2 "Ask about this listing" | done | `api/_ai-listing-qa.js` + `AskAboutListing.jsx` on `/listing/:id`. Haiku answers from that listing's public row (price, fees, size, dates, pets, amenities, open houses, the agent's description), its Cuna neighborhood and the five nearest subway stations with the page's own estimated walks. Every number must be one of those facts (`api/_ai-check.js`); no other travel times. If the facts do not hold the answer: "I don't have that for this listing." with an **Ask the agent** button (the existing question form). The building's public records (PLUTO / DOB) are read in the browser by the Building page, not stored in Cuna's database, so they are not part of the facts yet |
-| Phase 4 merge | todo | |
+| Phase 4 merge | done | PR #37 → main `1d763ed`, live 2026-11-17 with every AI flag off in production (see Merge log) |
 
 ### Phase 5 — recommendations and consented actions (branch `feature/ai-5-recommendations`)
 
 | Item | State | Notes |
 |---|---|---|
-| 5.1 Assistant panel recommending real listings, thumbs up / down | todo | |
-| 5.2 Consented actions (confirmation card per action) | todo | |
-| 5.3 Activity log in Profile | todo | |
+| 5.1 Assistant panel recommending real listings, thumbs up / down | done (the feed needs a renter sign-in to see on the preview; production has no active listings today) | `api/_ai-recommend.js` + `AssistantPanel.jsx` in the feed. Haiku reads the request into the feed's filters; the server takes the ACTIVE listings that match; Sonnet picks up to five by a short code and writes reasons; every number must be in that listing's line. The cards are built from Cuna's own rows, not from the model. Thumbs are kept for the visit only: a thumbs-down removes that listing from the next request, thumbs-up listings are shown to the model as "liked". No match → says so and offers the saved search |
+| 5.2 Consented actions (confirmation card per action) | done (flags off in production) | Save listing and Save search each open a card saying what will happen and what is shared, and nothing is written until **Confirm**. Request a tour opens the existing Request a tour form (dates, what you share, message, Send), the one tour path, with its existing rate limits. The `/api/ai` server cannot act at all, so typed text ("save it for me") can never trigger anything. Shown only when `VITE_AI_ACTIONS_ENABLED` and `AI_ACTIONS_ENABLED` are both `true` |
+| 5.3 Activity log in Profile | built; storing is blocked (NJ-A2) | `src/lib/aiActions.js`, `AssistantActivity.jsx` in Profile ("What the assistant did for you"). A row is written to `ai_actions` after each confirmed action. The table is part of `49-ai.sql`; until it is applied the actions still work but nothing is logged or listed |
 | Phase 5 merge (actions flags off in production) | todo | |
 
 ### Policy update
@@ -223,7 +224,8 @@ Measured figures go here as each feature runs against the real key.
   about 2 to 3 cents (Sonnet at $2 in / $10 out per million tokens, including
   its thinking), under a tenth of a cent for the Haiku step. A repeated
   identical request costs nothing once the cache table exists.
-- Description draft (Sonnet): about 2 seconds, roughly half a cent each. Prices used (per million tokens, checked 2026-11-17): Haiku 5.5 $0.10 in /
+- Description draft (Sonnet): about 2 seconds, roughly half a cent each.
+- Plain-English search and listing questions (Haiku): about 1 to 3 seconds, well under a tenth of a cent each. Prices used (per million tokens, checked 2026-11-17): Haiku 5.5 $0.10 in /
 $0.50 out; Sonnet 5.5 $2 in / $10 out.
 
 ## Session notes

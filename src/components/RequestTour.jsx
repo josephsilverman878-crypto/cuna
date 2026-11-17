@@ -5,7 +5,8 @@ import toast from 'react-hot-toast'
 import { X, CalendarCheck } from 'lucide-react'
 import { APPLICATIONS_ENABLED, getMyApplication, snapshotOf } from '../lib/applications'
 
-export default function RequestTour({ listing, onClose }) {
+// onSent (optional) is called once, as soon as the request row is saved.
+export default function RequestTour({ listing, onClose, onSent }) {
   const { user, profile } = useAuth()
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
@@ -184,6 +185,8 @@ export default function RequestTour({ listing, onClose }) {
       const { error: dbError } = await supabase
         .from('inquiries').insert(insertPayload)
       if (dbError) throw new Error(dbError.message || 'Could not save your request')
+      // The request now exists for the agent, whatever happens to the email.
+      onSent?.(listing)
 
       const resp = await fetch('/api/send-inquiry', {
         method: 'POST',
