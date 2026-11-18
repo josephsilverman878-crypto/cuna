@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { adminAiUsage, aiHealth, aiRequest, aiFeature } from '../lib/ai'
+import { adminAiCosts, adminAiDays, loadUsage, aiHealth, aiRequest, aiFeature } from '../lib/ai'
 import AiLabel from './AiLabel'
 import AdminWriteups from './AdminWriteups'
 
 // /admin → AI: how much Cuna's assistant is used and what it costs.
-// Reads aggregates only (admin_ai_usage, 49-ai.sql): requests and estimated
-// cost per day and per feature, cache hit rate, fair-housing regenerations.
-// The usage table holds no message content, so none can appear here.
+// Reads aggregates only (admin_ai_costs and admin_ai_days,
+// 50-ai-allowance.sql): estimated cost per day and per feature, the
+// web-search part of it, cache hit rate, fair-housing regenerations, how
+// many people reached 100% of their daily allowance, and whether the
+// global daily cap has paused the assistant. The usage table holds no
+// message content, so none can appear here. Dollar amounts are shown on
+// this admin page only; everyone else sees a percentage.
 
 const FEATURE_LABELS = {
   selftest: 'Test question',
@@ -18,6 +22,10 @@ const FEATURE_LABELS = {
   search_parse: 'Plain-English search',
   listing_qa: 'Ask about a listing',
   recommend: 'Listing recommendations',
+  listing_web: 'Ask about a listing: web search',
+  fill_notes: 'Poster: fill from notes',
+  checkup: 'Poster: checkup wording fix',
+  posting_help: 'Poster: posting help',
 }
 
 function usd(n) {
@@ -46,6 +54,7 @@ function groupBy(rows, key) {
     requests: sum(list, 'requests'), model_calls: sum(list, 'model_calls'), cache_hits: sum(list, 'cache_hits'),
     limited: sum(list, 'limited'), errors: sum(list, 'errors'), fh_regenerations: sum(list, 'fh_regenerations'),
     fh_fallbacks: sum(list, 'fh_fallbacks'), cost_usd: sum(list, 'cost_usd'),
+    web_searches: sum(list, 'web_searches'), search_cost_usd: sum(list, 'search_cost_usd'),
   }))
 }
 
@@ -58,6 +67,8 @@ const td = { textAlign: 'right', fontSize: '13px', padding: '8px 0 8px 6px', bor
 export default function AdminAi() {
   const [days, setDays] = useState(14)
   const [rows, setRows] = useState(null)
+  const [dayRows, setDayRows] = useState([])
+  const [status, setStatus] = useState(null)   // { allowance, spent_today, paused, store }
   const [missing, setMissing] = useState(false)
   const [health, setHealth] = useState(null)
   const [checking, setChecking] = useState(false)
@@ -67,18 +78,29 @@ export default function AdminAi() {
   useEffect(() => {
     let cancelled = false
     setRows(null)
-    adminAiUsage(days).then(({ data, error }) => {
+    ;(async () => {
+      // Today's allowances and total come from the server (they are env
+      // settings); the database then counts who reached 100% of theirs.
+      const u = await loadUsage(true)
+      const admin = u?.admin || null
+      const [costs, perDay] = await Promise.all([
+        adminAiCosts(days),
+        adminAiDays(days, admin?.allowance?.user ?? null, admin?.allowance?.visitor ?? null),
+      ])
       if (cancelled) return
+      setStatus(admin)
+      const error = costs.error || perDay.error
       if (error) {
-        // PGRST202 / 42883: the function is not in the database yet.
+        // PGRST202 / 42883: the functions are not in the database yet.
         const notApplied = error.code === 'PGRST202' || error.code === '42883'
         setMissing(notApplied)
         if (!notApplied) { console.error('AI usage failed:', error); toast.error('Could not load AI usage') }
       } else {
         setMissing(false)
       }
-      setRows(data || [])
-    })
+      setRows(costs.data || [])
+      setDayRows(perDay.data || [])
+    })()
     return () => { cancelled = true }
   }, [days])
 
@@ -87,13 +109,15 @@ export default function AdminAi() {
     const requests = sum(r, 'requests')
     const hits = sum(r, 'cache_hits')
     return {
-      requests, hits, cost: sum(r, 'cost_usd'), limited: sum(r, 'limited'), errors: sum(r, 'errors'),
+      requests, hits, cost: sum(r, 'cost_usd'), searchCost: sum(r, 'search_cost_usd'), searches: sum(r, 'web_searches'),
+      limited: sum(r, 'limited'), errors: sum(r, 'errors'),
       regen: sum(r, 'fh_regenerations'), fallbacks: sum(r, 'fh_fallbacks'),
       hitRate: requests > 0 ? Math.round((hits / requests) * 100) : null,
+      usersAtLimit: sum(dayRows, 'users_at_limit'), visitorsAtLimit: sum(dayRows, 'visitors_at_limit'),
+      pausedDays: dayRows.filter(d => d.paused).length,
     }
-  }, [rows])
-  const byDay = useMemo(() => groupBy(rows || [], 'day'), [rows])
-  const byFeature = useMemo(() => groupBy(rows || [], 'feature').sort((a, b) => b.requests - a.requests), [rows])
+  }, [rows, dayRows])
+  const byFeature = useMemo(() => groupBy(rows || [], 'feature').sort((a, b) => b.cost_usd - a.cost_usd || b.requests - a.requests), [rows])
 
   async function runHealth() {
     setChecking(true)
@@ -131,33 +155,49 @@ export default function AdminAi() {
         ))}
       </div>
       <p style={{ fontSize: '12px', color: 'var(--warm-gray)', lineHeight: 1.5, marginBottom: '16px' }}>
-        Counts, tokens and a cost estimate only. Cuna does not keep what people type to the assistant or what it answers. Days are New York days. The cost is an estimate from the published token prices; the provider's invoice is the real figure.
+        Counts, tokens and a cost estimate only. Cuna does not keep what people type to the assistant or what it answers. Days are New York days. The cost is an estimate from the published token and web-search prices; the provider's invoice is the real figure. Dollar amounts appear on this page only: everyone else sees a percentage of their daily allowance.
       </p>
 
       {rows === null ? (
         <div className="center" style={{ padding: '40px' }}><div className="spinner" /></div>
       ) : missing ? (
         <div style={{ ...card, fontSize: '13px', lineHeight: 1.5 }}>
-          The AI tables are not in the database yet. Run <strong>49-ai.sql</strong> in the Supabase SQL editor, then reload this page.
+          The usage-allowance functions are not in the database yet. Run <strong>50-ai-allowance.sql</strong> in the Supabase SQL editor, then reload this page.
         </div>
       ) : (
         <>
+          {status && (
+            <div style={{ ...card, marginBottom: '16px', border: status.paused ? '1px solid var(--terracotta)' : 'none' }}>
+              <div style={{ fontSize: '11px', color: 'var(--warm-gray)', marginBottom: '4px' }}>Today (New York day)</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, lineHeight: 1.2 }}>
+                {usd(status.spent_today)} of the {usd(status.allowance.global)} daily cap
+              </div>
+              <p style={{ fontSize: '12px', lineHeight: 1.5, margin: '6px 0 0', color: status.paused ? 'var(--terracotta-dark)' : 'var(--warm-gray)', fontWeight: status.paused ? 600 : 400 }}>
+                {status.paused
+                  ? 'Paused: the daily cap was reached. The assistant is off for everyone until midnight New York time.'
+                  : `Running. Each signed-in user may use ${usd(status.allowance.user)} a day, each logged-out visitor ${usd(status.allowance.visitor)}.`}
+                {status.store !== 'service' ? ' This deployment counts in memory only (no service key), so the tables below stay empty.' : ''}
+              </p>
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
             {[
-              ['Requests', totals.requests.toLocaleString('en-US')],
               ['Estimated cost', usd(totals.cost)],
+              ['Of which web search', `${usd(totals.searchCost)} (${totals.searches} ${totals.searches === 1 ? 'search' : 'searches'})`],
               ['Cache hit rate', totals.hitRate === null ? 'No requests yet' : totals.hitRate + '%'],
+              ['Reached 100% of their day', `${totals.usersAtLimit} signed in · ${totals.visitorsAtLimit} visitors`],
+              ['Requests', totals.requests.toLocaleString('en-US')],
               ['Fair-housing regenerations', `${totals.regen}${totals.fallbacks ? ` (${totals.fallbacks} fell back)` : ''}`],
             ].map(([label, value]) => (
               <div key={label} style={card}>
                 <div style={{ fontSize: '11px', color: 'var(--warm-gray)', marginBottom: '4px' }}>{label}</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, lineHeight: 1.2 }}>{value}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, lineHeight: 1.2 }}>{value}</div>
               </div>
             ))}
           </div>
-          {(totals.limited > 0 || totals.errors > 0) && (
+          {(totals.limited > 0 || totals.errors > 0 || totals.pausedDays > 0) && (
             <p style={{ fontSize: '12px', color: 'var(--warm-gray)', marginBottom: '16px' }}>
-              {totals.limited} turned away at a daily limit · {totals.errors} failed
+              {totals.limited} turned away at an allowance or the cap · {totals.errors} failed{totals.pausedDays > 0 ? ` · the daily cap was reached on ${totals.pausedDays} ${totals.pausedDays === 1 ? 'day' : 'days'}` : ''}
             </p>
           )}
 
@@ -168,9 +208,9 @@ export default function AdminAi() {
           ) : (
             <>
               <div style={{ ...card, marginBottom: '16px', overflowX: 'auto' }}>
-                <h2 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px' }}>By feature</h2>
+                <h2 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px' }}>Cost by feature</h2>
                 <p style={{ fontSize: '11px', color: 'var(--warm-gray)', lineHeight: 1.5, marginBottom: '4px' }}>
-                  Asked = requests. Cached = answered from a stored answer, no model call. Redone = rewritten after the fair-housing check. Cost is an estimate.
+                  Asked = requests. Cached = answered from a stored answer: no model call, no cost, and the person's usage bar does not move. Redone = rewritten after the fair-housing check. Search = the web-search part of the cost. Cost is an estimate and includes the search part.
                 </p>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
@@ -179,6 +219,7 @@ export default function AdminAi() {
                       <th style={th}>Asked</th>
                       <th style={th}>Cached</th>
                       <th style={th} title="Fair-housing regenerations">Redone</th>
+                      <th style={th}>Search</th>
                       <th style={th}>Cost</th>
                     </tr>
                   </thead>
@@ -189,6 +230,7 @@ export default function AdminAi() {
                         <td style={td}>{f.requests}</td>
                         <td style={td}>{f.cache_hits}</td>
                         <td style={td}>{f.fh_regenerations}</td>
+                        <td style={td}>{f.search_cost_usd > 0 ? usd(f.search_cost_usd) : '—'}</td>
                         <td style={td}>{usd(f.cost_usd)}</td>
                       </tr>
                     ))}
@@ -196,22 +238,29 @@ export default function AdminAi() {
                 </table>
               </div>
               <div style={{ ...card, marginBottom: '16px', overflowX: 'auto' }}>
-                <h2 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px' }}>By day</h2>
+                <h2 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px' }}>Cost by day</h2>
+                <p style={{ fontSize: '11px', color: 'var(--warm-gray)', lineHeight: 1.5, marginBottom: '4px' }}>
+                  At 100% = people whose day reached their whole allowance (signed in + visitors).
+                </p>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
                       <th style={{ ...th, textAlign: 'left', paddingLeft: 0 }}>Day</th>
                       <th style={th}>Asked</th>
                       <th style={th}>Cached</th>
+                      <th style={th}>At 100%</th>
+                      <th style={th}>Search</th>
                       <th style={th}>Cost</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {byDay.map(d => (
-                      <tr key={d.key}>
-                        <td style={{ ...td, textAlign: 'left', paddingLeft: 0 }}>{dayLabel(d.key)}</td>
+                    {dayRows.map(d => (
+                      <tr key={d.day}>
+                        <td style={{ ...td, textAlign: 'left', paddingLeft: 0 }}>{dayLabel(d.day)}{d.paused ? ' (cap reached)' : ''}</td>
                         <td style={td}>{d.requests}</td>
                         <td style={td}>{d.cache_hits}</td>
+                        <td style={td}>{(Number(d.users_at_limit) || 0) + (Number(d.visitors_at_limit) || 0)}</td>
+                        <td style={td}>{Number(d.search_cost_usd) > 0 ? usd(d.search_cost_usd) : '—'}</td>
                         <td style={td}>{usd(d.cost_usd)}</td>
                       </tr>
                     ))}
@@ -226,7 +275,7 @@ export default function AdminAi() {
       <div style={{ ...card, marginTop: '16px' }}>
         <h2 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '6px' }}>Health check</h2>
         <p style={{ fontSize: '12px', color: 'var(--warm-gray)', lineHeight: 1.5, marginBottom: '12px' }}>
-          Confirms the model key works and the tables are reachable. The key is never shown. The check itself costs nothing; the test question uses one request from today's limit.
+          Confirms the model key works and the tables are reachable. The key is never shown. The check itself costs nothing; the test question costs a fraction of a cent of your own daily allowance.
         </p>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: health ? '12px' : 0 }}>
           <button className="btn btn-primary" onClick={runHealth} disabled={checking} style={{ padding: '10px 16px', fontSize: '13px' }}>
@@ -245,8 +294,8 @@ export default function AdminAi() {
               <>
                 {line('Model key', health.key === 'present' ? 'Works' : health.key === 'rejected' ? 'Rejected by the provider' : 'Missing', health.key === 'present')}
                 {Object.entries(health.models || {}).map(([tier, v]) => line(tier === 'fast' ? 'Fast model' : 'Smart model', v === 'ok' ? 'Reachable' : v, v === 'ok'))}
-                {line('Limits, cache and usage log', health.store === 'service' ? (health.store_tables === 'ok' ? 'Working' : health.store_tables) : health.store === 'memory' ? 'In memory only (no service key on this deployment)' : 'Missing service key', health.store === 'service' && health.store_tables === 'ok')}
-                {health.limits && line('Daily limits', `${health.limits.userPerDay} signed in · ${health.limits.ipPerDay} signed out · ${health.limits.globalPerDay} overall`)}
+                {line('Allowance, cache and usage log', health.store === 'service' ? (health.store_tables === 'ok' ? 'Working' : health.store_tables) : health.store === 'memory' ? 'In memory only (no service key on this deployment)' : 'Missing service key', health.store === 'service' && health.store_tables === 'ok')}
+                {health.allowance && line('Daily allowance', `${usd(health.allowance.user)} signed in · ${usd(health.allowance.visitor)} visitor · ${usd(health.allowance.global)} cap for everyone`)}
                 {line('Web search', health.web_search ? 'On' : 'Off')}
                 {line('Assistant actions', health.actions ? 'On' : 'Off')}
                 {line('Deployment', health.environment)}

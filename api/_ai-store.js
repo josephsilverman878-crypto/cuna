@@ -1,11 +1,12 @@
-// Storage for Cuna's assistant: who is asking, the daily limits, the answer
-// cache and the usage log (ai_usage / ai_cache, 49-ai.sql).
+// Storage for Cuna's assistant: who is asking, the daily usage allowance,
+// the answer cache and the usage log (ai_usage / ai_cache, 49-ai.sql and
+// 50-ai-allowance.sql).
 //
 // Two stores with the same interface:
 //   - serviceStore: the real one. Uses the Supabase service-role key, which
 //     only exists on the server. ai_usage and ai_cache have no policies for
 //     anon or authenticated, so nothing else can read or write them.
-//   - memoryStore: per-instance counters, no cache, nothing persisted. Used
+//   - memoryStore: per-instance cost counters, no cache, nothing persisted. Used
 //     only OUTSIDE production when the service-role key is absent (preview
 //     deployments sit behind Vercel login). Production refuses to run the
 //     assistant without the real store, so the limits can never be skipped
@@ -16,7 +17,7 @@
 // limited time and without any account or IP.
 import { createClient } from '@supabase/supabase-js'
 import { createHash, createHmac, randomUUID } from 'node:crypto'
-import { limits } from './_ai-config.js'
+import { allowance, capFor } from './_ai-config.js'
 
 export function nyDay(d = new Date()) {
   return d.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
@@ -110,28 +111,43 @@ export async function isAdmin(actor, env = process.env) {
 }
 
 // ---------------------------------------------------------------- stores
+// Both stores share one interface:
+//   takeSlot({ requestId, feature, actor })  checks the person's daily usage
+//       allowance and the global daily cost cap, then opens a usage row.
+//       -> { ok: true, id, spent, global } | { ok: false, reason, spent, global }
+//       reason: 'user' | 'ip' (their own allowance) | 'global' (the cap)
+//   finish(id, fields)   closes that row with tokens, cost and status
+//   log(row)             an extra row: a second model call, or a cache hit
+//   spent(actor)         -> { actor, global } estimated dollars so far today
+// The allowance is measured in estimated cost, so it is counted from the
+// cost_usd of the rows themselves; a cache hit costs nothing and moves nothing.
 function serviceStore(db, env) {
   return {
     kind: 'service',
-    // One counted row per request, taken atomically with the cap checks.
     async takeSlot({ requestId, feature, actor }) {
-      const lim = limits(env)
-      const { data, error } = await db.rpc('ai_take_slot', {
+      const a = allowance(env)
+      const { data, error } = await db.rpc('ai_begin', {
         p_request: requestId, p_feature: feature, p_actor_kind: actor.kind, p_actor_key: actor.key,
-        p_user: actor.userId, p_user_cap: lim.userPerDay, p_ip_cap: lim.ipPerDay, p_global_cap: lim.globalPerDay,
+        p_user: actor.userId, p_actor_cap: capFor(actor, env), p_global_cap: a.global, p_reserve: a.reserve,
       })
-      if (error) throw Object.assign(new Error('ai_take_slot failed: ' + error.message), { code: 'store' })
-      return data // { ok, id } or { ok: false, reason }
+      if (error) throw Object.assign(new Error('ai_begin failed: ' + error.message), { code: 'store' })
+      return data
     },
     async finish(id, fields) {
       if (!id) return
       const { error } = await db.from('ai_usage').update(fields).eq('id', id)
       if (error) console.error('ai_usage update failed:', error.code, error.message)
     },
-    // Extra rows: second model calls of one request, cache hits. Never counted.
+    // Extra rows: second model calls of one request, cache hits. Their cost
+    // (zero for a cache hit) counts toward the allowance like any other row.
     async log(row) {
       const { error } = await db.from('ai_usage').insert({ counted: false, ...row })
       if (error) console.error('ai_usage insert failed:', error.code, error.message)
+    },
+    async spent(actor) {
+      const { data, error } = await db.rpc('ai_spent', { p_actor_key: actor.key })
+      if (error) throw Object.assign(new Error('ai_spent failed: ' + error.message), { code: 'store' })
+      return { actor: Number(data?.actor) || 0, global: Number(data?.global) || 0 }
     },
     async cacheGet(hash, dataVersion, maxAgeDays) {
       const { data, error } = await db.from('ai_cache').select('output, model, created_at, data_version').eq('input_hash', hash).maybeSingle()
@@ -150,32 +166,45 @@ function serviceStore(db, env) {
       const cutoff = new Date(Date.now() - 30 * 86400000).toISOString()
       await db.from('ai_cache').delete().lt('created_at', cutoff)
     },
+    // The tables of 49-ai.sql and the allowance pieces of 50-ai-allowance.sql.
     async selfTest() {
-      const { error: e1 } = await db.from('ai_usage').select('id').limit(1)
+      const { error: e1 } = await db.from('ai_usage').select('id, web_searches, search_cost_usd').limit(1)
       const { error: e2 } = await db.from('ai_cache').select('input_hash').limit(1)
-      return { usage: !e1, cache: !e2, error: (e1 || e2)?.message || null }
+      const { error: e3 } = await db.rpc('ai_spent', { p_actor_key: 'selftest' })
+      return { usage: !e1, cache: !e2, allowance: !e3, error: (e1 || e2 || e3)?.message || null }
     },
   }
 }
 
 const mem = { day: null, actors: new Map(), total: 0 }
+function memToday() {
+  const today = nyDay()
+  if (mem.day !== today) { mem.day = today; mem.actors = new Map(); mem.total = 0 }
+}
+function memAdd(key, cost) {
+  const c = Number(cost) || 0
+  if (!key || c <= 0) return
+  memToday()
+  mem.actors.set(key, (mem.actors.get(key) || 0) + c); mem.total += c
+}
 function memoryStore(env) {
   return {
     kind: 'memory',
     async takeSlot({ actor }) {
-      const today = nyDay()
-      if (mem.day !== today) { mem.day = today; mem.actors = new Map(); mem.total = 0 }
-      const lim = limits(env)
-      const used = mem.actors.get(actor.key) || 0
-      if (mem.total >= lim.globalPerDay) return { ok: false, reason: 'global' }
-      const cap = actor.kind === 'user' ? lim.userPerDay : actor.kind === 'ip' ? lim.ipPerDay : Infinity
-      if (used >= cap) return { ok: false, reason: actor.kind === 'user' ? 'user' : 'ip' }
-      mem.actors.set(actor.key, used + 1); mem.total++
-      return { ok: true, id: null }
+      memToday()
+      const a = allowance(env)
+      const spent = mem.actors.get(actor.key) || 0
+      const cap = capFor(actor, env)
+      const state = { spent, global: mem.total }
+      if (mem.total >= a.global) return { ok: false, reason: 'global', ...state }
+      if (cap != null && spent >= cap) return { ok: false, reason: actor.kind === 'user' ? 'user' : 'ip', ...state }
+      return { ok: true, id: 'm:' + actor.key, ...state }
     },
-    async finish() {}, async log() {},
+    async finish(id, fields) { if (typeof id === 'string' && id.startsWith('m:')) memAdd(id.slice(2), fields?.cost_usd) },
+    async log(row) { memAdd(row?.actor_key, row?.cost_usd) },
+    async spent(actor) { memToday(); return { actor: mem.actors.get(actor.key) || 0, global: mem.total } },
     async cacheGet() { return null }, async cacheSet() {},
-    async selfTest() { return { usage: false, cache: false, error: 'no service-role key on this deployment' } },
+    async selfTest() { return { usage: false, cache: false, allowance: false, error: 'no service-role key on this deployment' } },
   }
 }
 

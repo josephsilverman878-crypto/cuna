@@ -7,6 +7,7 @@ import { getSaveCounts } from '../lib/swipes'
 import { listingStats } from '../lib/stats'
 import ListingStats from '../components/ListingStats'
 import LeadInbox from '../components/LeadInbox'
+import PostingHelp from '../components/PostingHelp'
 import toast from 'react-hot-toast'
 import { Plus, Users, Eye, BedDouble, Bath, Pencil, ShieldCheck, CalendarCheck, BarChart3, Inbox, UsersRound, TrendingUp, Upload } from 'lucide-react'
 import { statusesFor, statusLabel, isPublicStatus } from '../lib/listingStatus'
@@ -223,6 +224,7 @@ export default function PosterDashboard() {
 
       <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
+        {activeTab === 'listings' && <PostingHelp />}
         {activeTab === 'listings' && (
           listings.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 0' }}>

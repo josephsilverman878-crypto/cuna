@@ -11,7 +11,7 @@
 // validateListing returns [{ tab, message }] where tab is the form tab to
 // open (0 details, 1 costs, 2 amenities, 3 photos). Empty means clean.
 
-import { scanDescription } from './fairHousing'
+import { scanDescription } from './fairHousing.js'
 
 export const MIN_PHOTOS = 3
 

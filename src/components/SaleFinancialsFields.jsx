@@ -3,8 +3,11 @@ import { PROPERTY_TYPES } from '../lib/listingTypes'
 // The sale-only fields of the Post / Edit forms (Costs tab). `form` holds
 // strings; the page converts on submit. Co-ops carry maintenance, condos and
 // houses carry common charges and taxes; all are optional except the type.
-export default function SaleFinancialsFields({ form, update, inputStyle, rowStyle, showType = true }) {
+// fieldStyle(field) is optional: Post listing passes it to outline a field
+// that "Fill from notes" filled and the poster has not checked yet.
+export default function SaleFinancialsFields({ form, update, inputStyle, fieldStyle, rowStyle, showType = true }) {
   const isCoop = form.property_type === 'coop'
+  const fs = (field) => (fieldStyle ? fieldStyle(field) : inputStyle)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div className="card" style={{ background: 'rgba(76,175,125,0.06)', border: '1px solid rgba(76,175,125,0.25)' }}>
@@ -19,7 +22,7 @@ export default function SaleFinancialsFields({ form, update, inputStyle, rowStyl
         {showType && (
           <div>
             <label className="label">Property type *</label>
-            <select value={form.property_type} onChange={e => update('property_type', e.target.value)} style={inputStyle}>
+            <select value={form.property_type} onChange={e => update('property_type', e.target.value)} style={fs('property_type')}>
               <option value="">Select…</option>
               {PROPERTY_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
             </select>
@@ -29,7 +32,7 @@ export default function SaleFinancialsFields({ form, update, inputStyle, rowStyl
           <div>
             <label className="label">Maintenance ($ per month)</label>
             <input type="number" min="0" placeholder="1200" value={form.maintenance}
-              onChange={e => update('maintenance', e.target.value)} style={inputStyle} />
+              onChange={e => update('maintenance', e.target.value)} style={fs('maintenance')} />
             <p style={{ fontSize: '12px', color: 'var(--warm-gray)', margin: '6px 0 0' }}>Co-op maintenance usually includes the building's taxes.</p>
           </div>
         ) : (
@@ -37,12 +40,12 @@ export default function SaleFinancialsFields({ form, update, inputStyle, rowStyl
             <div>
               <label className="label">Common charges ($ per month)</label>
               <input type="number" min="0" placeholder="900" value={form.common_charges}
-                onChange={e => update('common_charges', e.target.value)} style={inputStyle} />
+                onChange={e => update('common_charges', e.target.value)} style={fs('common_charges')} />
             </div>
             <div>
               <label className="label">Taxes ($ per month)</label>
               <input type="number" min="0" placeholder="600" value={form.monthly_taxes}
-                onChange={e => update('monthly_taxes', e.target.value)} style={inputStyle} />
+                onChange={e => update('monthly_taxes', e.target.value)} style={fs('monthly_taxes')} />
             </div>
           </div>
         )}
@@ -50,12 +53,12 @@ export default function SaleFinancialsFields({ form, update, inputStyle, rowStyl
           <div>
             <label className="label">Tax deductible (%)</label>
             <input type="number" min="0" max="100" placeholder="40" value={form.tax_deductible_pct}
-              onChange={e => update('tax_deductible_pct', e.target.value)} style={inputStyle} />
+              onChange={e => update('tax_deductible_pct', e.target.value)} style={fs('tax_deductible_pct')} />
           </div>
           <div>
             <label className="label">Financing allowed (%)</label>
             <input type="number" min="0" max="100" placeholder="80" value={form.financing_allowed_pct}
-              onChange={e => update('financing_allowed_pct', e.target.value)} style={inputStyle} />
+              onChange={e => update('financing_allowed_pct', e.target.value)} style={fs('financing_allowed_pct')} />
           </div>
         </div>
         <p style={{ fontSize: '12px', color: 'var(--warm-gray)', margin: 0, lineHeight: 1.55 }}>

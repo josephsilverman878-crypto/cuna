@@ -2,14 +2,16 @@
 //
 //   runAi(ctx, spec)
 //     1. cache   identical request + same data version -> stored answer, no model call
-//     2. limits  per user / per IP / global daily caps (ai_take_slot)
+//     2. limits  the person's daily usage allowance and the global daily
+//                cost cap, both in estimated dollars (ai_begin)
 //     3. model   one Claude call with timeout and retries (the SDK retries
 //                429 / 5xx / connection errors itself)
 //     4. checks  the feature's own grounding check, then the fair-housing scan
 //                (src/lib/fairHousing.js). A failure regenerates ONCE with a
 //                stricter instruction; a second failure returns a neutral
 //                message instead of the model's words.
-//     5. log     counts, model, tokens, cost estimate, errors. Never content.
+//     5. log     counts, model, tokens, web searches, cost estimate, errors.
+//                Never content.
 //
 // Model calls happen only here, on the server, with ANTHROPIC_API_KEY. The
 // key is never sent to the browser and never logged.
@@ -18,7 +20,7 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import { scanAssistantOutput } from '../src/lib/fairHousing.js'
 import {
   MODELS, FEATURES, PROMPT_VERSION, HOUSE_RULES, NEUTRAL_FALLBACK, LIMIT_MESSAGES,
-  estimateCost, webSearchEnabled,
+  estimateCost, searchCost, webSearchEnabled,
 } from './_ai-config.js'
 import { sha256, stableJson, nyDay } from './_ai-store.js'
 
@@ -34,16 +36,28 @@ export function modelClient(env = process.env) {
   return sharedClient
 }
 
+// The answer's words. After a web search only the text that follows the
+// last search result counts, so "let me look that up" never reaches a page.
 function textOf(content) {
-  return (content || []).filter(b => b.type === 'text').map(b => b.text).join('')
+  const blocks = content || []
+  let from = 0
+  blocks.forEach((b, i) => { if (b.type === 'web_search_tool_result') from = i + 1 })
+  return blocks.slice(from).filter(b => b.type === 'text').map(b => b.text).join('')
 }
 
+// The web pages the answer actually cites (title and link only; the page's
+// content is never kept). A page that was found but not cited is not listed.
 function sourcesOf(content) {
   const out = []
+  const seen = new Set()
   for (const b of content || []) {
-    if (b.type !== 'web_search_tool_result' || !Array.isArray(b.content)) continue
-    for (const r of b.content) {
-      if (r?.type === 'web_search_result' && r.url) out.push({ url: r.url, title: r.title || r.url })
+    if (b.type !== 'text' || !Array.isArray(b.citations)) continue
+    for (const c of b.citations) {
+      if (c?.type !== 'web_search_result_location' || !/^https?:\/\//i.test(String(c.url || ''))) continue
+      const url = String(c.url).slice(0, 400)
+      if (seen.has(url)) continue
+      seen.add(url)
+      out.push({ url, title: String(c.title || url).replace(/\s+/g, ' ').trim().slice(0, 140) })
     }
   }
   return out.slice(0, 6)
@@ -53,6 +67,10 @@ function addUsage(total, u = {}) {
   for (const k of ['input_tokens', 'output_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens']) {
     total[k] = (total[k] || 0) + (u[k] || 0)
   }
+  // Web searches arrive as usage.server_tool_use.web_search_requests from the
+  // API, and as web_search_requests once added up here.
+  total.web_search_requests = (total.web_search_requests || 0) +
+    (u.server_tool_use?.web_search_requests || u.web_search_requests || 0)
   return total
 }
 
@@ -83,6 +101,7 @@ export async function callModel(client, { feature, system, user, schema, extraNo
     params.tools = [{
       type: cfg.tier === 'smart' ? 'web_search_20260209' : 'web_search_20250305',
       name: 'web_search', max_uses: 2,
+      user_location: { type: 'approximate', city: 'New York', region: 'New York', country: 'US', timezone: 'America/New_York' },
     }]
   }
 
@@ -135,7 +154,8 @@ function errorCode(err) {
 //   cacheInput     anything JSON-able that identifies the request, or null to skip the cache
 //   dataVersion    string that changes when the grounding data changes
 //   scanText(out)  the words to run through the fair-housing scan (default: all strings)
-//   validate(out)  returns a correction note if the answer is not grounded, else null
+//   validate(out, { sources })  returns a correction note if the answer is
+//                  not grounded, else null (sources: the cited web pages)
 //   fallback       the neutral answer in this feature's shape
 //   counted        false for the second model call of one request
 //   webSearch      true to allow search (only when AI_WEB_SEARCH_ENABLED=true)
@@ -212,7 +232,7 @@ export async function runAi(ctx, spec) {
 
       // 4. checks: grounding first, then fair housing; one regeneration in all
       const problem = () => {
-        const note = spec.validate ? spec.validate(out) : null
+        const note = spec.validate ? spec.validate(out, { sources }) : null
         if (note) return { kind: 'grounding', note }
         const fh = scan(out)
         if (!fh.ok) {
@@ -251,6 +271,7 @@ export async function runAi(ctx, spec) {
     input_tokens: usage.input_tokens || 0, output_tokens: usage.output_tokens || 0,
     cache_read_tokens: usage.cache_read_input_tokens || 0, cache_write_tokens: usage.cache_creation_input_tokens || 0,
     cost_usd: Number(estimateCost(answeredBy, usage).toFixed(6)),
+    web_searches: usage.web_search_requests || 0, search_cost_usd: Number(searchCost(usage).toFixed(6)),
     fh_regenerations: regenerations, fh_fallback: usedFallback && code === 'fair_housing',
     web_search: useSearch, duration_ms: Date.now() - t0,
   }

@@ -9,9 +9,11 @@ import { supabase } from './supabase'
 //                            every one of them; the classic quiz, search and
 //                            filters keep working untouched.
 //   VITE_AI_FEATURES         optional comma list (guide, writeup, draft,
-//                            search, listing_qa, recommend, admin). Unset =
-//                            every feature. Lets one phase be switched on
-//                            without the others.
+//                            search, listing_qa, recommend, poster, admin).
+//                            Unset = every feature. Lets one phase be
+//                            switched on without the others. "poster" is the
+//                            poster assistant: Fill from notes, Listing
+//                            checkup and Posting help.
 //   VITE_AI_ACTIONS_ENABLED  'true' for the consented-actions phase.
 // The server has its own switches (AI_ENABLED, AI_FEATURES,
 // AI_ACTIONS_ENABLED); both sides must be on for a feature to work.
@@ -35,6 +37,50 @@ export const AI_LABEL =
   "Cuna's assistant recommends neighborhoods in NYC and listings from Cuna based on what you share."
 
 const GENERIC = "Cuna's assistant could not answer just now. Please try again in a moment."
+
+// ---------------------------------------------------------------- usage
+// How much of today's AI allowance this person has used. The server sends
+// a percentage and a level with every answer, never an amount:
+//   { percent: 0-100, level: 'ok' | 'near' | 'full', paused: boolean }
+// One shared value for the page, so every usage bar shows the same thing
+// and moves as soon as an answer arrives.
+let usageState = null
+let usageLoad = null
+const usageListeners = new Set()
+
+function setUsage(u) {
+  if (!u || typeof u.percent !== 'number') return
+  usageState = { percent: u.percent, level: u.level || 'ok', paused: Boolean(u.paused) }
+  usageListeners.forEach(fn => fn(usageState))
+}
+
+export function getUsage() {
+  return usageState
+}
+
+export function subscribeUsage(fn) {
+  usageListeners.add(fn)
+  return () => usageListeners.delete(fn)
+}
+
+// Reads the current value once per page load (no model call, no cost).
+// Returns the whole reply, which for an admin also carries the day's total.
+export function loadUsage(force = false) {
+  if (!AI_ENABLED) return Promise.resolve(null)
+  if (!usageLoad || force) {
+    usageLoad = (async () => {
+      try {
+        const res = await fetch('/api/ai?feature=usage', { headers: await authHeader() })
+        const body = await res.json()
+        if (body?.ok) setUsage(body.usage)
+        return body
+      } catch {
+        return null
+      }
+    })()
+  }
+  return usageLoad
+}
 
 async function authHeader() {
   try {
@@ -62,6 +108,8 @@ export async function aiRequest(feature, payload = {}, { signal } = {}) {
     const body = await res.json().catch(() => null)
     if (!body || typeof body !== 'object') return { ok: false, reason: 'error', message: GENERIC }
     if (!body.ok && !body.message) body.message = GENERIC
+    if (body.usage) setUsage(body.usage)
+    else if (body.reason === 'limit') setUsage({ percent: body.limit === 'global' ? (usageState?.percent ?? 0) : 100, level: body.limit === 'global' ? (usageState?.level ?? 'ok') : 'full', paused: body.limit === 'global' })
     return body
   } catch (err) {
     if (err?.name === 'AbortError') return { ok: false, reason: 'aborted', message: '' }
@@ -82,8 +130,15 @@ export async function aiHealth() {
   }
 }
 
-// Usage aggregates for /admin (admin_ai_usage, 49-ai.sql). Rows are per
-// day and feature; no row-level data and no content ever leaves the table.
-export async function adminAiUsage(days = 14) {
-  return supabase.rpc('admin_ai_usage', { p_days: days })
+// Usage aggregates for /admin (admin_ai_costs and admin_ai_days,
+// 50-ai-allowance.sql). Rows are per day and feature, or per day; no
+// row-level data and no content ever leaves the table.
+export async function adminAiCosts(days = 14) {
+  return supabase.rpc('admin_ai_costs', { p_days: days })
+}
+
+// userCap / visitorCap: today's allowances, so the database can count the
+// people whose day reached 100% of theirs.
+export async function adminAiDays(days = 14, userCap = null, visitorCap = null) {
+  return supabase.rpc('admin_ai_days', { p_days: days, p_user_cap: userCap, p_visitor_cap: visitorCap })
 }
