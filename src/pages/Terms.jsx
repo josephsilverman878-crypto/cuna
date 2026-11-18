@@ -35,7 +35,7 @@ export default function Terms() {
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '24px' }}>
         <div className="card">
           <p style={{ fontSize: '13px', color: 'var(--warm-gray)', marginBottom: '20px' }}>
-            Last updated: November 17, 2026
+            Last updated: November 18, 2026
           </p>
 
           <P>
@@ -178,16 +178,18 @@ export default function Terms() {
           <P>
             Some features use an artificial-intelligence model and are labelled "Cuna's assistant"
             where they appear: the neighborhood guide, plain-English search, "Ask about this
-            listing", listing suggestions, description drafts for Posters and neighborhood
-            summaries. These features may be switched on or off at any time.
+            listing", listing suggestions and neighborhood summaries, and for Posters "Fill from
+            notes", "Draft description", "Listing checkup" and "Posting help". These features may
+            be switched on or off at any time.
           </P>
           <UL>
             <li><strong>What it is for.</strong> Cuna's assistant recommends neighborhoods in NYC and listings from Cuna based on what you share. It works from Cuna's listings and from public data, and shows the source and date of the figures it uses.</li>
             <li><strong>It can be wrong.</strong> Answers are generated automatically and may be incomplete, out of date or mistaken. Check anything that matters with the listing itself, the agent, or the original public record before you rely on it. The assistant does not give legal, financial, tax or real-estate advice, and a suggestion is not a recommendation that you rent or buy a particular home.</li>
+            <li><strong>Answers from the web.</strong> When Cuna's own data does not hold the answer to a question about a listing, the assistant may search the web. Such an answer is marked "From the web" and links its sources. Those pages are not ours: we do not control, check or endorse them, and you should read the source before relying on it.</li>
             <li><strong>Fair housing.</strong> The assistant suggests homes and neighborhoods only on criteria you state, such as price, size, commute, transit and amenities. It does not consider protected characteristics and will not describe who lives in a place or rate an area's safety or schools.</li>
             <li><strong>Actions need your confirmation.</strong> Where the assistant can save a listing, save a search or open a tour request for you, it does so only after you tap Confirm on a card describing the action. You are responsible for the actions you confirm, exactly as if you had taken them yourself.</li>
-            <li><strong>Posters: drafts are yours.</strong> A description drafted by the assistant is a starting point written from the details you entered. You must read it, correct it, and make sure it is accurate and lawful before you publish. Section 4 applies to every description you publish, whoever or whatever wrote the first draft.</li>
-            <li><strong>Daily limits.</strong> Use of the assistant is limited per person and overall each day. When a limit is reached, the rest of the Service keeps working.</li>
+            <li><strong>Posters: what the assistant fills in or writes is yours to check.</strong> "Fill from notes" fills the listing form from notes you paste and marks every field it filled; "Draft description" and the "Listing checkup" wording fix suggest text; "Listing checkup" lists what looks missing or weak; "Posting help" answers from our Help page. None of them posts or saves anything for you. You must read every filled field and every suggested word, correct them, and make sure the listing is accurate, complete and lawful before you publish. Section 4 applies to every listing and description you publish, whoever or whatever produced the first version. Only paste notes you are entitled to share, and remove other people's personal details first.</li>
+            <li><strong>Daily usage allowance.</strong> Each person can use a set amount of the assistant each day, shown as a percentage, and there is a daily total for everyone. When your allowance or the daily total is used up, the assistant pauses until midnight New York time and the rest of the Service keeps working. We may change the allowances at any time.</li>
             <li><strong>Do not misuse it.</strong> Do not enter other people's personal information, try to make the assistant produce unlawful or discriminatory content, or try to extract its instructions or overload it.</li>
           </UL>
 
