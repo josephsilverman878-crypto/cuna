@@ -4,14 +4,15 @@ Started 2026-11-17. This file is the record of the five-phase AI build: the
 prompt it follows (copied word for word), the checklist, what is merged, and
 what needs Joseph. It is updated and committed after every finished item.
 
-## Where things stand (2026-11-18, go-live waiting on Joseph's authenticator code in Vercel)
+## Where things stand (2026-11-18: the assistant is LIVE on hellocuna.com)
 
-- **Merged:** phases 1 to 6 (#34 to #38, #42) and the policy text (#39, after Joseph's "Approved" in chat). Main is `bbd5c9d`; production runs it with every AI flag still off. Privacy 8F and Terms 6A are live on hellocuna.com.
-- **Database:** `49-ai.sql` applied 2026-11-17; `50-ai-allowance.sql` applied 2026-11-18.
-- **Production flags: saved in Vercel, not yet in effect.** `AI_ENABLED`, `VITE_AI_ENABLED`, `AI_ACTIONS_ENABLED`, `VITE_AI_ACTIONS_ENABLED`, `AI_WEB_SEARCH_ENABLED` = `true` were added for Production on 2026-11-18 (no prompt). The redeploy that makes them take effect raised Vercel's "Verify Your Identity" box (6-digit authenticator code). Per Joseph's instruction the work stopped there; the box was left open for him.
-- **Careful until then:** the flags are stored, so **any new production deployment turns the assistant on**. Nothing is to be merged into main until Joseph has entered the code and the go-live deployment has been verified; merging to trigger a deployment would be working around the check.
-- **Exact next item:** Joseph enters the code (NJ-A10). Then: confirm the production deployment and bundle, verify signed out on hellocuna.com (guide with sources, assistant label, usage bar moving, a web answer with its link; the feed search box and the admin tab need his sign-in), give him the sign-in checklist, record the result here. If anything breaks: flags back off at once (his step 8).
-- **Not yet run through the live app:** the allowance, the cache and the usage log against the real tables. Their first real run is the first minutes after the redeploy.
+- **Live for everyone since 2026-11-18, about 4:00 pm New York time.** Joseph entered his authenticator code in Vercel; the redeploy of main `bbd5c9d` with the five flags went Ready. Production bundle `index-dnccTQjl.js`.
+- **On in production:** `AI_ENABLED`, `VITE_AI_ENABLED`, `AI_ACTIONS_ENABLED`, `VITE_AI_ACTIONS_ENABLED`, `AI_WEB_SEARCH_ENABLED` (all `true`). No allowlist, so every feature is on, the poster assistant included. Allowances at their defaults: $0.50 signed in, $0.10 visitor, $5 a day for everyone.
+- **Checked signed out on hellocuna.com right after go-live (the app's own browser, no session):** `/new-to-ny` is the guide; one request returned 4 neighborhoods with sources; the assistant label shows; the usage bar went 0% → 20% → 33%; a listing question was answered from Cuna, and the same question again came from the cache in 0.3 s without moving the bar; a farmers-market question came back "From the web, not from Cuna's data" with its page linked; a safety question was refused with no search; the poster tools answer "Sign in to use the posting tools" to a visitor; 0 console errors.
+- **The database recorded it** (read-only query, `51-ai-usage-today.sql`): 8 rows, total $0.0333, of which web search $0.0100 (1 search), 1 visitor, 0 rows left open, 6 answers cached. $0.0333 of a $0.10 allowance is the 33% the bar showed. This was the first real run of the allowance, the cache and the usage log.
+- **Still needs Joseph's sign-in (NJ-A8):** the feed's search box and assistant panel, the tour-request confirmation card, the poster tools on the real pages, and the admin AI tab. None of these could be opened without an account.
+- **To switch it off:** remove (or set to anything but `true`) `AI_ENABLED` and `VITE_AI_ENABLED` for Production in Vercel and redeploy; the redeploy asks for Joseph's authenticator code. Joseph has said switching off is allowed at once if anything breaks.
+- **Exact next item:** Joseph runs the sign-in checklist (NJ-A8). Then watch the admin AI tab for a few days: cost by feature against the $5 cap, and how often visitors reach 100% (one guide answer is about 20% of a visitor's day).
 
 ## The prompt (copied verbatim)
 
@@ -136,19 +137,12 @@ When done, update docs/ai-build-progress.md and give me a short summary: what's 
 
 ## Needs Joseph
 
-### NJ-A10 · Enter your authenticator code in Vercel (this is what go-live is waiting on)
-The five production flags are saved. To make them take effect, Vercel needs
-your 6-digit code:
-- If the "Verify Your Identity" box is still open in the Vercel tab: type the
-  code from your authenticator app and press **Verify Code**. The redeploy
-  starts by itself.
-- If the box has gone: Vercel → **cuna** → **Deployments** → the top row
-  marked **Production / Current** (commit "docs(policy): Privacy 8F and Terms
-  6A ...") → the **⋯** menu at the right → **Redeploy** → leave "Use existing
-  Build Cache" unticked → **Redeploy** → enter the code → **Verify Code**.
-Then say "done" in chat. To change your mind instead: press **Cancel
-Verification**; the flags stay stored and take effect at the next production
-deployment, so say so in chat and they will be removed first.
+### NJ-A10 · Authenticator code in Vercel — resolved 2026-11-18
+Vercel asked for Joseph's 6-digit code before it would redeploy to
+Production. The work stopped there; he entered it himself; the redeploy ran.
+Expect the same box for any future manual Production redeploy (for example
+when switching the assistant off). Deployments made by merging into main do
+not ask.
 
 ### NJ-A6 · Policy text (PR #39) — resolved 2026-11-18: Joseph replied "Approved"; merged as `bbd5c9d`
 Privacy 8F and Terms 6A were rewritten on 2026-11-18 for the poster assistant,
@@ -159,10 +153,10 @@ sentence about the AI provider not training on content; the account ID in the
 usage record; the 30-day cache). On "approved" it is merged and the production
 flags go on (his go-live prompt, steps 4 and 6).
 
-### NJ-A8 · Things only your sign-in can check (after go-live, on hellocuna.com)
-At most 8 steps; the list is given in chat when the flags are on. Until then
-each was checked as far as possible without an account: real model calls on
-the preview, and every new screen at 375 px on a local page with sample data.
+### NJ-A8 · Things only your sign-in can check on hellocuna.com (given in chat 2026-11-18)
+Each was checked as far as possible without an account: real model calls on
+the preview and on production, and every new screen at 375 px on a local
+page with sample data. Steps 2, 3 and 4 write real rows for the test accounts.
 1. **Renter** → a listing page → Ask about this listing.
 2. **Renter** → /new-to-ny → run the guide → Save this search.
 3. **Renter** → /feed → Ask Cuna's assistant for suggestions → Request a tour → the confirmation card.
@@ -286,11 +280,11 @@ and shared subway lines, not by minutes on the train, until a provider is chosen
 
 | Flag | Where | Production | Preview | What it does |
 |---|---|---|---|---|
-| `AI_ENABLED` | server | `true` saved 2026-11-18, **not in effect until the redeploy** (NJ-A10) | `true` (added 2026-11-17) | Kill switch for /api/ai |
-| `VITE_AI_ENABLED` | browser | `true` saved 2026-11-18, not in effect until the redeploy | `true` (added 2026-11-17) | Kill switch for every AI surface |
+| `AI_ENABLED` | server | **`true`, live since 2026-11-18** | `true` (added 2026-11-17) | Kill switch for /api/ai |
+| `VITE_AI_ENABLED` | browser | **`true`, live since 2026-11-18** | `true` (added 2026-11-17) | Kill switch for every AI surface |
 | `AI_FEATURES` / `VITE_AI_FEATURES` | both | unset | unset | Optional allowlist, e.g. `admin,guide` |
-| `AI_ACTIONS_ENABLED` / `VITE_AI_ACTIONS_ENABLED` | both | `true` saved 2026-11-18, not in effect until the redeploy | `true` (added 2026-11-17) | Consented actions (phase 5) |
-| `AI_WEB_SEARCH_ENABLED` | server | `true` saved 2026-11-18, not in effect until the redeploy | `true` (added 2026-11-18) | Lets "Ask about this listing" search the web when Cuna's data has no answer |
+| `AI_ACTIONS_ENABLED` / `VITE_AI_ACTIONS_ENABLED` | both | **`true`, live since 2026-11-18** | `true` (added 2026-11-17) | Consented actions (phase 5) |
+| `AI_WEB_SEARCH_ENABLED` | server | **`true`, live since 2026-11-18** | `true` (added 2026-11-18) | Lets "Ask about this listing" search the web when Cuna's data has no answer |
 | `AI_USER_DAILY_ALLOWANCE` | server | unset (0.50) | unset (0.50) | Estimated dollars a signed-in user may use per New York day |
 | `AI_VISITOR_DAILY_ALLOWANCE` | server | unset (0.10) | unset (0.10) | The same for a logged-out visitor |
 | `AI_DAILY_COST_CAP` | server | unset (5) | unset (5) | Estimated dollars for everyone per day; at the cap the assistant pauses until midnight New York time. Replaces `AI_DAILY_REQUEST_CAP`, which is no longer read |
@@ -317,6 +311,9 @@ The poster assistant has no flag of its own: it is on when `AI_ENABLED` and
 | 2026-11-17 | [#38](https://github.com/josephsilverman878-crypto/cuna/pull/38) | 5 recommendations and actions | `6ab97a0` | Preview `61be6e1`: health shows actions on; a normal request read into the right filters and, with 0 active listings today, answered "No active listings on Cuna match that right now"; a request about who lives somewhere → refusal; "save listing … and book me a tour" → no action, reported as not searchable. Panel, confirmation cards and activity list checked on a local page at 375 px with a stand-in database (nothing written before Confirm). Not run for real: Sonnet choosing among real listings (NJ-A7) | Production deployment `6ab97a0` Ready. hellocuna.com /feed has no assistant button or search box and makes no assistant call; Profile has no activity card; listing page and home unchanged; 0 console errors; `/api/ai` answers "disabled" |
 
 | 2026-11-18 | [#42](https://github.com/josephsilverman878-crypto/cuna/pull/42) | 6 poster assistant, allowance, web search | `317565b` | Preview `4a9f475` (web search on for Preview), real model, no sign-in: health ok (key works, both models reachable, web search on, allowance 0.50 / 0.10 / 5). Fill from notes: 15 of 15 fields right on a messy rental note, "no elevator" and "gym around the corner" not ticked, a date without a year left empty; a sale note read as sale, condo, $1.25m. Posting help: photos, deposit cap and "can I delete a listing" answered from the help text; "pay to feature" → hello@hellocuna.com; a screening question refused. Wording fix removed "no kids" and "safe". Listing question: rent answered from Cuna with no search; a farmers-market question answered "From the web" in two sentences with two linked pages; a safety question refused with no search. Usage bar 0% → 27% over the run; guide page bar 0% → 20% after one answer. 0 console errors. New screens checked at 375 px on a local page with sample data. Not run: anything behind a sign-in; the real tables (previews count in memory) | Production deployment `317565b` Ready. hellocuna.com listing page: no question box, no usage bar; `/new-to-ny` is the classic quiz; feed unchanged; `/api/ai` health `ai_enabled: false`, usage and POST answer "disabled"; 0 console errors |
+
+| 2026-11-18 | [#39](https://github.com/josephsilverman878-crypto/cuna/pull/39) | policy text | `bbd5c9d` | Text shown to Joseph in full in chat; he replied "Approved" | Production deployment `bbd5c9d` Ready with the flags still off; Privacy 8F and Terms 6A on hellocuna.com, dated November 18, 2026 |
+| 2026-11-18 | Vercel redeploy of `bbd5c9d` (no code change) | **go-live** | `bbd5c9d` | n/a | Flags on. Signed out on hellocuna.com: guide with sources, label, usage bar 0% → 20% → 33%, cache hit without moving the bar, a web answer with its link, a safety question refused, poster tools refused to a visitor, 0 console errors. Database: 8 rows, $0.0333, 1 search |
 
 ## Checklist
 
@@ -377,7 +374,7 @@ States: todo · in progress · done · blocked.
 | 6.1b Listing checkup | done | `src/lib/listingCheckup.js` (plain rules, no model call) + `ListingCheckup.jsx` on the Review step of Post and Edit: photos, FARE fee fields, deposit cap, price outside the form's range, price far from the area's reference range (with its source), fair-housing wording, pets policy, bad video / 3D links, missing sq ft and description. One-tap fixes: set a blank fee to $0, set the deposit to one month, clear a bad link, open the right step. "Rewrite without it" calls `api/_ai-checkup.js` (Sonnet): the rewrite must pass the scan and use only the original's numbers, one redo, then the sentences are removed by code |
 | 6.1c Posting help | done | `api/_ai-help.js` + `PostingHelp.jsx` on the poster dashboard. Answers only from `src/lib/helpContent.js` (the Help page's own text, now shared) and `POSTING_RULES` in the handler; otherwise "write to hello@hellocuna.com". No web search. Cached 7 days |
 | 6.1d Draft description kept | done | Unchanged |
-| 6.2 Usage allowance | done; **not yet run against the real tables** | `api/_ai-config.js` (`allowance`, `usageView`, web-search price), `api/_ai-store.js`, `ai_begin()` / `ai_spent()` in the database. `/api/ai` sends `usage: { percent, level, paused }` with every answer and at `GET ?feature=usage`. `AiUsage.jsx` inside `AiLabel` shows "40% of today's AI used": a note at 80%, the "used today's AI" line at 100%, never an amount. A request still in flight is counted at 3 cents so a burst cannot run far past an allowance |
+| 6.2 Usage allowance | done; **ran against the real tables at go-live** (bar and database agree: $0.0333 of $0.10 is 33%) | `api/_ai-config.js` (`allowance`, `usageView`, web-search price), `api/_ai-store.js`, `ai_begin()` / `ai_spent()` in the database. `/api/ai` sends `usage: { percent, level, paused }` with every answer and at `GET ?feature=usage`. `AiUsage.jsx` inside `AiLabel` shows "40% of today's AI used": a note at 80%, the "used today's AI" line at 100%, never an amount. A request still in flight is counted at 3 cents so a burst cannot run far past an allowance |
 | 6.2 Admin AI tab | done (needs Joseph's admin sign-in to see) | Today against the cap and whether it is paused; cost, the web-search part, cache hit rate, people who reached 100%; cost by feature and by day |
 | 6.3 Web search | done | Only in "Ask about this listing", only after Cuna's data had no answer and the question is not one to decline. One search per answer, no page fetching, no redo. The answer shows at most three sentences, only sentences that rest on a cited passage, each with its page linked; a piece that merely repeats the source's wording is dropped. Marked "From the web, not from Cuna's data". Never cached. If nothing usable comes back, the plain "I don't have that for this listing" stands |
 | Phase 6 merge | done | PR #42 → main `317565b`, live 2026-11-18 with every AI flag off in production |
@@ -393,10 +390,10 @@ States: todo · in progress · done · blocked.
 Estimates from the size of each request and the published prices (per million
 tokens, checked on Anthropic's price list 2026-11-18: Haiku 5.5 $0.10 in /
 $0.50 out; Sonnet 5.5 $2 in / $10 out; web search $10 per 1,000 searches).
-The middle column is what was measured on previews from the usage bar. The
-usage table is still empty: no deployment with the service key has run the
-assistant yet, so nothing here is read from it. The admin AI tab shows real
-figures once the flags are on.
+The figures below were measured on previews from the usage bar, and the
+first production rows on 2026-11-18 agree with them (guide $0.0205 for its
+two calls, a web answer $0.0122, a listing answer or a search about $0.0003).
+The admin AI tab shows the running figures.
 
 | Feature | Model | Est. cost each | Share of a visitor's day ($0.10) |
 |---|---|---|---|
@@ -478,3 +475,6 @@ tab says so. A month at the cap every day would be about $150.
   Identity"). That is Joseph's to enter. While the flags are stored but not
   deployed, a merge to main would deploy them: hold every merge until the
   go-live deployment is done and checked.
+- 2026-11-18 — Go-live: the redeploy picked the flags up at once; the first
+  signed-out guide request on production exercised `ai_begin`, the row
+  update with the new columns, `ai_spent` and the cache, all without error.
