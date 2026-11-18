@@ -63,6 +63,22 @@ function sourcesOf(content) {
   return out.slice(0, 6)
 }
 
+// Every page a search returned (title and link only), cited or not. Used
+// only to link a source the answer names without formally citing it.
+function resultsOf(content) {
+  const out = []
+  const seen = new Set()
+  for (const b of content || []) {
+    if (b.type !== 'web_search_tool_result' || !Array.isArray(b.content)) continue
+    for (const r of b.content) {
+      if (r?.type !== 'web_search_result' || !/^https?:\/\//i.test(String(r.url || '')) || seen.has(r.url)) continue
+      seen.add(r.url)
+      out.push({ url: String(r.url).slice(0, 400), title: String(r.title || r.url).replace(/\s+/g, ' ').trim().slice(0, 140) })
+    }
+  }
+  return out.slice(0, 20)
+}
+
 function addUsage(total, u = {}) {
   for (const k of ['input_tokens', 'output_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens']) {
     total[k] = (total[k] || 0) + (u[k] || 0)
@@ -134,7 +150,7 @@ export async function callModel(client, { feature, system, user, schema, extraNo
       parsed = check.success ? check.data : null
     } catch { parsed = null }
   }
-  return { text, parsed, usage, model: response.model || model, stop, sources: sourcesOf(response.content) }
+  return { text, parsed, usage, model: response.model || model, stop, sources: sourcesOf(response.content), results: resultsOf(response.content) }
 }
 
 function errorCode(err) {
@@ -207,6 +223,7 @@ export async function runAi(ctx, spec) {
   let code = null
   let output = null
   let sources = []
+  let results = []
   let answeredBy = model
 
   const scan = (out) => {
@@ -232,7 +249,7 @@ export async function runAi(ctx, spec) {
     } else {
       let out = spec.schema ? r.parsed : r.text.trim()
       if (out == null || out === '') throw Object.assign(new Error('unreadable answer'), { code: 'parse' })
-      sources = r.sources
+      sources = r.sources; results = r.results || []
 
       // 4. checks: grounding first, then fair housing; one regeneration in all
       const problem = () => {
@@ -257,11 +274,11 @@ export async function runAi(ctx, spec) {
           : p.note)
         if (r.stop !== 'refusal' && r.stop !== 'max_tokens') {
           const again = spec.schema ? r.parsed : r.text.trim()
-          if (again != null && again !== '') { out = again; sources = r.sources }
+          if (again != null && again !== '') { out = again; sources = r.sources; results = r.results || [] }
         }
         p = problem()
       }
-      if (p) { usedFallback = true; status = 'fallback'; code = p.kind; output = spec.fallback; sources = [] }
+      if (p) { usedFallback = true; status = 'fallback'; code = p.kind; output = spec.fallback; sources = []; results = [] }
       else output = out
     }
   } catch (err) {
@@ -288,7 +305,7 @@ export async function runAi(ctx, spec) {
   if (hash && !usedFallback) {
     await ctx.store.cacheSet(hash, { feature: spec.feature, dataVersion: spec.dataVersion || '', model: answeredBy, output })
   }
-  return { ok: true, output, cached: false, sources, fallback: usedFallback }
+  return { ok: true, output, cached: false, sources, results, fallback: usedFallback }
 }
 
 // Every string in a JSON answer, joined, for the fair-housing scan.

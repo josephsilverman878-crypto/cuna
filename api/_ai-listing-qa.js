@@ -42,18 +42,48 @@ Rules
 - Search once for the specific fact asked. Prefer official and first-hand pages: nyc.gov, mta.info, city and state agencies, the building's or the business's own page.
 - Answer in one to three plain sentences, at most, using only what the search results state, and cite the result each statement comes from. Name the source in the sentence ("According to the MTA, ...").
 - Put everything in your own words. Never copy or quote a result's text, not even a short line.
-- State only what you can cite. Leave out anything the results do not support, and do not add other examples.
+- State only what you can cite. Leave out anything the results do not support, and do not add other examples, other sources or older versions of the same fact.
 - If the results do not answer the question, reply exactly: "I couldn't find that."
 - Do not repeat another website's listing for this or any other home: no prices, availability or descriptions taken from other listing sites.
 - Never say who lives in a building or area, who it suits, or anything about safety, crime or school quality. For those, reply exactly: "That's not something I can advise on."
 - No advice on whether to rent or buy, no opinion on the price, no sales language.
 - Write only the answer. No preamble, nothing about searching, no list of links.`
 
+// The first `max` sentences of a text. A full stop after "a.m.", "St." and
+// the like, or before a lower-case word, does not end a sentence.
+export function firstSentences(text, max = 3) {
+  const parts = String(text || '').trim().split(/(?<=[.!?])\s+(?=[A-Z"\u201c])/)
+  const out = []
+  for (const part of parts) {
+    const prev = out[out.length - 1]
+    if (prev && /\b(?:St|Ave|Rd|Blvd|Pl|Mr|Ms|Mrs|Dr|No|Jr|Sr|Inc|Co|vs)\.$/.test(prev)) out[out.length - 1] = prev + ' ' + part
+    else out.push(part)
+  }
+  return out.slice(0, max).join(' ')
+}
+
+// The pages to link under a web answer: every page it cites, plus any other
+// search result whose site the answer names, so no source goes unlinked.
+export function linkedSources(answer, cited = [], results = []) {
+  const out = [...cited]
+  const text = String(answer || '').toLowerCase()
+  for (const r of results) {
+    if (out.length >= 6) break
+    if (out.some(s => s.url === r.url)) continue
+    let host = ''
+    try { host = new URL(r.url).hostname.replace(/^www\./, '').split('.').slice(-2)[0] || '' } catch { host = '' }
+    const site = String(r.title || '').split(/\s[-|\u2013\u2014]\s/).pop().trim().toLowerCase()
+    const named = (host.length >= 5 && text.includes(host)) || (site.length >= 5 && site !== String(r.title || '').toLowerCase() && text.includes(site))
+    if (named && !out.some(s => { try { return new URL(s.url).hostname === new URL(r.url).hostname } catch { return false } })) out.push(r)
+  }
+  return out
+}
+
 // A web answer must cite at least one page, or be one of the two fixed lines.
 export function checkWebAnswer(text, { sources } = {}) {
   const t = String(text || '').trim()
   if (/^i couldn't find that\.?$/i.test(t) || /not something I can advise on/i.test(t)) return null
-  if (t.length > 700) return 'Answer in one to three sentences.'
+  if (t.length > 1200) return 'Answer in one to three sentences.'
   if (!sources || sources.length === 0) return 'Every statement must cite the search result it comes from. If the results do not answer the question, reply exactly: "I couldn\'t find that."'
   return null
 }
@@ -75,9 +105,10 @@ async function webAnswer(ctx, { l, hood, question }) {
     fallback: WEB_NOT_FOUND,
   })
   if (!r.ok || r.fallback) return null
-  const answer = clean(r.output, 700)
+  // At most three sentences reach the page, whatever the model wrote.
+  const answer = firstSentences(clean(r.output, 1200), 3).slice(0, 700)
   if (/couldn't find that/i.test(answer) || /not something I can advise on/i.test(answer) || !r.sources?.length) return null
-  return { answer, sources: r.sources }
+  return { answer, sources: linkedSources(answer, r.sources, r.results) }
 }
 
 function money(n) { return '$' + Math.round(Number(n)).toLocaleString('en-US') }

@@ -8,7 +8,7 @@ import { verifyFill, fillNotes, numbersIn } from '../api/_ai-fill.js'
 import { buildFill } from '../src/lib/fillFromNotes.js'
 import { postingHelp, HELP_TEXT, HELP_UNKNOWN, HELP_REFUSAL, checkHelp } from '../api/_ai-help.js'
 import { checkup, stripSentences, checkRewrite } from '../api/_ai-checkup.js'
-import { listingQa, checkWebAnswer, QA_UNKNOWN } from '../api/_ai-listing-qa.js'
+import { listingQa, checkWebAnswer, firstSentences, linkedSources, QA_UNKNOWN } from '../api/_ai-listing-qa.js'
 import { checkupItems, priceVsArea, referenceFor } from '../src/lib/listingCheckup.js'
 import { scanAssistantOutput } from '../src/lib/fairHousing.js'
 
@@ -290,6 +290,21 @@ test('web answers must cite a page or say they found nothing', () => {
   assert.equal(checkWebAnswer("I couldn't find that.", { sources: [] }), null)
   assert.match(checkWebAnswer('The building was finished in 1931.', { sources: [] }), /cite/)
   assert.equal(checkWebAnswer('According to the city, 1931.', { sources: [{ url: 'https://www.nyc.gov/b', title: 'x' }] }), null)
+})
+
+test('a web answer is cut to three sentences and every source it names is linked', () => {
+  const long = 'Yes. According to Marketspread, it runs Sundays from 9 a.m. to 2 p.m. in its 2026 season. It is on 4th St. off 5th Avenue. Older listings show other hours. LocalHarvest gives 10 a.m. to 4 p.m.'
+  assert.equal(firstSentences(long, 3), 'Yes. According to Marketspread, it runs Sundays from 9 a.m. to 2 p.m. in its 2026 season. It is on 4th St. off 5th Avenue.')
+  const cited = [{ url: 'https://marketspread.com/market/1', title: 'Park Slope Farmers Market - Marketspread' }]
+  const results = [
+    ...cited,
+    { url: 'https://www.localharvest.org/m1', title: 'Park Slope Market - LocalHarvest' },
+    { url: 'https://www.landcan.org/x', title: 'Farmers markets | Land Conservation Assistance Network' },
+    { url: 'https://example.org/unrelated', title: 'Unrelated page' },
+  ]
+  const text = 'According to Marketspread it is open Sundays. LocalHarvest and the Land Conservation Assistance Network list other hours.'
+  assert.deepEqual(linkedSources(text, cited, results).map(s => new URL(s.url).hostname), ['marketspread.com', 'www.localharvest.org', 'www.landcan.org'])
+  assert.deepEqual(linkedSources('According to Marketspread it is open Sundays.', cited, results), cited, 'a page the answer does not name is not listed')
 })
 
 test("Cuna's data goes first; the web is used only when it has no answer and search is on", async () => {
