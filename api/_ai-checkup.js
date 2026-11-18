@@ -14,7 +14,7 @@ import { z } from 'zod'
 import { runAi } from './_ai.js'
 import { ungroundedNumber } from './_ai-check.js'
 import { scanAssistantOutput } from '../src/lib/fairHousing.js'
-import { FILL_SIGN_IN } from './_ai-fill.js'
+import { FILL_SIGN_IN, posterSignedOut } from './_ai-fill.js'
 
 const schema = z.object({ text: z.string() })
 
@@ -47,7 +47,7 @@ export function checkRewrite(out, original) {
 
 // POST { feature: 'checkup', description }
 export async function checkup(ctx, body) {
-  if (ctx.actor?.kind !== 'user') return FILL_SIGN_IN
+  if (posterSignedOut(ctx)) return FILL_SIGN_IN
   const original = clean(body.description, 2000).replace(/"""/g, "'''")
   if (original.length < 20) return { ok: true, cached: false, output: { kind: 'message', message: 'Write a description first, then run the checkup on it.' } }
   const hits = scanAssistantOutput(original).hits

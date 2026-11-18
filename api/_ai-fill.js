@@ -19,6 +19,13 @@ export const FILL_MIN = 20
 export const FILL_MAX = 6000
 export const FILL_SIGN_IN = { ok: false, reason: 'sign_in', message: 'Sign in to use the posting tools.' }
 
+// The poster tools are for signed-in people. Production enforces that;
+// preview deployments sit behind Vercel login, so there the tools can be
+// tried without an account (the same rule as the admin test question).
+export function posterSignedOut(ctx) {
+  return ctx.actor?.kind !== 'user' && ctx.env?.VERCEL_ENV === 'production'
+}
+
 const FIELD_KEYS = [
   'listing_type', 'property_type', 'street_address', 'unit', 'city', 'zip_code',
   'price', 'bedrooms', 'bathrooms', 'sqft', 'available_date',
@@ -218,7 +225,7 @@ function freeText(v) {
 
 // POST { feature: 'fill_notes', notes }
 export async function fillNotes(ctx, body) {
-  if (ctx.actor?.kind !== 'user') return FILL_SIGN_IN
+  if (posterSignedOut(ctx)) return FILL_SIGN_IN
   const notes = String(body.notes ?? '').replace(/\r/g, '').replace(/"""/g, "'''").slice(0, FILL_MAX)
   if (notes.trim().length < FILL_MIN) {
     return { ok: true, cached: false, output: { kind: 'message', message: 'Paste a few lines of notes about the home first.' } }

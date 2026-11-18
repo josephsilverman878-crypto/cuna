@@ -141,10 +141,15 @@ test('the handler sends the notes once, returns checked fields with remarks, and
   assert.equal(JSON.stringify(store.finished).includes('Example St'), false, 'the usage log holds no content')
 })
 
-test('fill from notes needs a signed-in poster and real notes', async () => {
+test('the poster tools need a signed-in person in production, and real notes', async () => {
   const client = fakeClient([])
-  const anon = await fillNotes({ ...ctxOf(client, fakeStore()), actor: { kind: 'ip', key: 'ip:x', userId: null } }, { notes: NOTES })
+  const visitor = { kind: 'ip', key: 'ip:x', userId: null }
+  const anon = await fillNotes({ ...ctxOf(client, fakeStore()), actor: visitor, env: { VERCEL_ENV: 'production' } }, { notes: NOTES })
   assert.equal(anon.ok, false); assert.equal(anon.reason, 'sign_in')
+  for (const run of [postingHelp, checkup]) {
+    const r = await run({ ...ctxOf(client, fakeStore()), actor: visitor, env: { VERCEL_ENV: 'production' } }, { question: 'How many photos?', description: 'No kids. Two bedrooms with a dishwasher.' })
+    assert.equal(r.reason, 'sign_in', 'production: poster tools need a signed-in person')
+  }
   const short = await fillNotes(ctxOf(client, fakeStore()), { notes: 'hi' })
   assert.equal(short.output.kind, 'message')
   assert.equal(client.calls.length, 0)

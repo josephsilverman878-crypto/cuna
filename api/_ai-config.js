@@ -21,7 +21,8 @@ export const PRICES = {
 }
 
 // Web search is billed per search the model runs, on top of the tokens the
-// results use: $10 per 1,000 searches on Anthropic's price list.
+// results use: $10 per 1,000 searches on Anthropic's price list (checked
+// 2026-11-18, with the token prices above).
 export const WEB_SEARCH_PRICE_USD = 0.01
 
 export function searchCost(usage = {}) {

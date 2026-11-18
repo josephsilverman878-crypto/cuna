@@ -10,7 +10,7 @@ import { runAi } from './_ai.js'
 import { sha256 } from './_ai-store.js'
 import { ungroundedNumber } from './_ai-check.js'
 import { CONTACT, SECTIONS } from '../src/lib/helpContent.js'
-import { FILL_SIGN_IN } from './_ai-fill.js'
+import { FILL_SIGN_IN, posterSignedOut } from './_ai-fill.js'
 
 // What the Post listing and Edit listing forms do. Keep this in step with
 // src/pages/PostListing.jsx, src/pages/EditListing.jsx, src/lib/listingQuality.js
@@ -73,7 +73,7 @@ export function checkHelp(out) {
 
 // POST { feature: 'posting_help', question }
 export async function postingHelp(ctx, body) {
-  if (ctx.actor?.kind !== 'user') return FILL_SIGN_IN
+  if (posterSignedOut(ctx)) return FILL_SIGN_IN
   const question = clean(body.question, 300).replace(/"""/g, "'''")
   if (question.length < 3) return { ok: true, cached: false, output: { kind: 'message', message: 'Type a question about posting on Cuna.' } }
   const r = await runAi(ctx, {
