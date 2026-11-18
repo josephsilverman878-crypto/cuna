@@ -171,6 +171,9 @@ test('a web answer keeps only the cited pages, counts its searches in the cost, 
       ] },
       { type: 'text', text: 'According to the city, the building dates from 1931.', citations: [cite('https://www.nyc.gov/a', 'NYC'), cite('https://www.nyc.gov/a', 'NYC')] },
       { type: 'text', text: ' It has six floors.', citations: [cite('javascript:alert(1)', 'bad')] },
+      { type: 'text', text: ' (' },
+      { type: 'text', text: 'Built 1931 Six stories Elevator building', citations: [{ ...cite('https://www.nyc.gov/a', 'NYC'), cited_text: 'Property record. Built 1931. Six stories. Elevator building. Lot 12.' }] },
+      { type: 'text', text: ').' },
     ],
     stop_reason: 'end_turn',
     usage: { input_tokens: 10000, output_tokens: 100, server_tool_use: { web_search_requests: 2 } },
@@ -181,7 +184,8 @@ test('a web answer keeps only the cited pages, counts its searches in the cost, 
   const r = await runAi({ ...ctxOf(client, store), env: { AI_WEB_SEARCH_ENABLED: 'true' } },
     spec({ feature: 'listing_web', schema: null, webSearch: true, cacheInput: null, fallback: 'neutral', validate: (out, extra) => { seen = extra.sources; return null } }))
   assert.equal(r.ok, true)
-  assert.equal(r.output, 'According to the city, the building dates from 1931. It has six floors.')
+  assert.equal(r.output, 'According to the city, the building dates from 1931. It has six floors.',
+    'a piece that only repeats the source is dropped, with its empty brackets')
   assert.deepEqual(r.sources, [{ url: 'https://www.nyc.gov/a', title: 'NYC' }], 'only the cited page, once, and only http links')
   assert.deepEqual(seen, r.sources, 'the grounding check is told which pages were cited')
   const row = store.finished[0]

@@ -36,13 +36,37 @@ export function modelClient(env = process.env) {
   return sharedClient
 }
 
+// Is this cited piece of the answer just the source's own words? (Nearly
+// every word of it appears in the passage it cites.)
+function copiesSource(text, citations) {
+  const words = (v) => String(v || '').toLowerCase().match(/[a-z0-9]+/g) || []
+  const mine = words(text)
+  if (mine.length < 4) return false
+  return citations.some((c) => {
+    const theirs = new Set(words(c?.cited_text))
+    return mine.filter(w => theirs.has(w)).length / mine.length >= 0.85
+  })
+}
+
 // The answer's words. After a web search only the text that follows the
-// last search result counts, so "let me look that up" never reaches a page.
+// last search result counts, so "let me look that up" never reaches a page;
+// and a piece that only repeats a source's wording is left out (its page is
+// still linked), so the answer is in the assistant's own words and another
+// site's text is never reproduced.
 function textOf(content) {
   const blocks = content || []
   let from = 0
-  blocks.forEach((b, i) => { if (b.type === 'web_search_tool_result') from = i + 1 })
-  return blocks.slice(from).filter(b => b.type === 'text').map(b => b.text).join('')
+  let searched = false
+  blocks.forEach((b, i) => { if (b.type === 'web_search_tool_result') { from = i + 1; searched = true } })
+  const parts = []
+  for (const b of blocks.slice(from)) {
+    if (b.type !== 'text') continue
+    if (searched && Array.isArray(b.citations) && b.citations.length && copiesSource(b.text, b.citations)) continue
+    parts.push(b.text)
+  }
+  const text = parts.join('')
+  if (!searched) return text
+  return text.replace(/\(\s*\)/g, '').replace(/\s+([.,;:!?])/g, '$1').replace(/([.!?])\.+/g, '$1').replace(/[ \t]{2,}/g, ' ').trim()
 }
 
 // The web pages the answer actually cites (title and link only; the page's
