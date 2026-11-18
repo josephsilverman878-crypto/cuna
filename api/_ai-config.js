@@ -20,6 +20,17 @@ export const PRICES = {
   'claude-sonnet-5': { in: 2.00, out: 10.00, cacheRead: 0.20, cacheWrite: 2.50 },
 }
 
+// Web search is billed per search the model runs, on top of the tokens the
+// results use: $10 per 1,000 searches on Anthropic's price list (checked
+// 2026-11-18, with the token prices above).
+export const WEB_SEARCH_PRICE_USD = 0.01
+
+export function searchCost(usage = {}) {
+  return (usage.web_search_requests || 0) * WEB_SEARCH_PRICE_USD
+}
+
+// The estimated cost of one model call: input tokens, output tokens, cached
+// tokens and web searches at the prices above.
 export function estimateCost(model, usage = {}) {
   const p = PRICES[model] || PRICES[MODELS.smart]
   const m = 1_000_000
@@ -27,18 +38,51 @@ export function estimateCost(model, usage = {}) {
     ((usage.input_tokens || 0) * p.in) / m +
     ((usage.output_tokens || 0) * p.out) / m +
     ((usage.cache_read_input_tokens || 0) * p.cacheRead) / m +
-    ((usage.cache_creation_input_tokens || 0) * p.cacheWrite) / m
+    ((usage.cache_creation_input_tokens || 0) * p.cacheWrite) / m +
+    searchCost(usage)
   )
 }
 
-// Daily limits (New York day). AI_DAILY_REQUEST_CAP overrides the global cap.
-export function limits(env = process.env) {
-  const cap = Number.parseInt(env.AI_DAILY_REQUEST_CAP || '', 10)
+// The daily AI usage allowance, in estimated dollars per New York day.
+// People never see these amounts, only a percentage of their own allowance.
+//   AI_USER_DAILY_ALLOWANCE     per signed-in user      (default 0.50)
+//   AI_VISITOR_DAILY_ALLOWANCE  per logged-out visitor  (default 0.10)
+//   AI_DAILY_COST_CAP           everyone together       (default 5); when it
+//                               is reached the assistant pauses for everyone
+//                               until midnight New York time
+// `reserve` is what a request still in flight is assumed to cost, so a burst
+// of parallel requests cannot run far past an allowance before any of them
+// has finished and reported its real cost.
+function dollars(v, fallback) {
+  const n = Number.parseFloat(v ?? '')
+  return Number.isFinite(n) && n >= 0 ? n : fallback
+}
+export function allowance(env = process.env) {
   return {
-    userPerDay: 30,
-    ipPerDay: 10,
-    globalPerDay: Number.isFinite(cap) && cap >= 0 ? cap : 500,
+    user: dollars(env.AI_USER_DAILY_ALLOWANCE, 0.5),
+    visitor: dollars(env.AI_VISITOR_DAILY_ALLOWANCE, 0.1),
+    global: dollars(env.AI_DAILY_COST_CAP, 5),
+    reserve: 0.03,
   }
+}
+
+// One person's allowance: signed-in, logged-out, or none (the system actor
+// used for admin write-ups is bound by the global cap only).
+export function capFor(actor, env = process.env) {
+  const a = allowance(env)
+  return actor?.kind === 'user' ? a.user : actor?.kind === 'ip' ? a.visitor : null
+}
+
+// What the browser is told: a percentage and a level, never dollars.
+//   level: 'ok' | 'near' (80% or more) | 'full' (100%)
+export function usageView({ spent = 0, cap = null, globalSpent = 0, globalCap = 0 }) {
+  const paused = globalSpent >= globalCap
+  let percent = 0
+  if (cap != null) {
+    if (cap <= 0 || spent >= cap) percent = 100
+    else if (spent > 0) percent = Math.min(99, Math.max(1, Math.round((spent / cap) * 100)))
+  }
+  return { percent, level: percent >= 100 ? 'full' : percent >= 80 ? 'near' : 'ok', paused }
 }
 
 // Per-feature settings. tier picks the model; effort is the thinking depth
@@ -54,20 +98,27 @@ export const FEATURES = {
   search_parse: { tier: 'fast', effort: 'low', maxTokens: 3000, cacheDays: 7 },
   listing_qa: { tier: 'fast', effort: 'low', maxTokens: 3000, cacheDays: 7 },
   recommend: { tier: 'smart', effort: 'low', maxTokens: 8000, cacheDays: 1 },
+  // Poster assistant.
+  fill_notes: { tier: 'fast', effort: 'low', maxTokens: 5000, cacheDays: 0 },
+  checkup: { tier: 'smart', effort: 'low', maxTokens: 5000, cacheDays: 0 },
+  posting_help: { tier: 'fast', effort: 'low', maxTokens: 2500, cacheDays: 7 },
+  // A listing question Cuna's data could not answer, answered from a web search.
+  listing_web: { tier: 'fast', effort: 'low', maxTokens: 3000, cacheDays: 0 },
 }
 
 // Bump when a prompt changes in a way that should not reuse old cached answers.
-export const PROMPT_VERSION = '2026-11-17.1'
+export const PROMPT_VERSION = '2026-11-18.1'
 
 // Shown near every AI surface (the browser has its own copy in src/lib/ai.js).
 export const AI_LABEL =
   "Cuna's assistant recommends neighborhoods in NYC and listings from Cuna based on what you share."
 
-// What the person sees when a daily cap is reached. Friendly, never an error.
+// What the person sees when an allowance is used up. Friendly, never an
+// error, and never a dollar amount. Midnight is New York time.
 export const LIMIT_MESSAGES = {
-  user: "You've reached today's limit for Cuna's assistant. It starts fresh tomorrow. Search, filters and saved searches all still work.",
-  ip: "You've reached today's limit for Cuna's assistant. Sign in for a higher daily limit, or come back tomorrow. Search and filters still work.",
-  global: "Cuna's assistant is taking a break for today. It will be back tomorrow. Search, filters and saved searches all still work.",
+  user: "You've used today's AI. It resets at midnight. Search, filters and saved searches all still work.",
+  ip: "You've used today's AI. It resets at midnight. Signing in gives you a larger daily allowance. Search and filters still work.",
+  global: "Cuna's assistant is paused for today. It will be back at midnight. Search, filters and saved searches all still work.",
 }
 
 // Used when the assistant's wording fails the fair-housing check twice, or
@@ -110,9 +161,13 @@ export function aiEnabled(env = process.env) {
 export function featureAllowed(name, env = process.env) {
   const raw = (env.AI_FEATURES || '').trim()
   if (!raw) return true
-  // guide_parse rides with guide, search_parse with search; "admin" (the
-  // name the browser uses for the /admin AI tab) allows the test question.
-  const base = name === 'selftest' ? 'admin' : name.replace(/_parse$/, '')
+  // guide_parse rides with guide, search_parse with search, listing_web with
+  // listing_qa; "admin" (the name the browser uses for the /admin AI tab)
+  // allows the test question; "poster" allows the three poster tools.
+  const base = name === 'selftest' ? 'admin'
+    : ['fill_notes', 'checkup', 'posting_help'].includes(name) ? 'poster'
+    : name === 'listing_web' ? 'listing_qa'
+    : name.replace(/_parse$/, '')
   return raw.split(',').map(s => s.trim()).filter(Boolean).some(f => f === name || f === base)
 }
 

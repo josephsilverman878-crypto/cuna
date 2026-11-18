@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { z } from 'zod'
 import { runAi, collectStrings } from '../api/_ai.js'
-import { estimateCost, limits, featureAllowed, aiEnabled, LIMIT_MESSAGES } from '../api/_ai-config.js'
+import { estimateCost, searchCost, allowance, capFor, usageView, featureAllowed, aiEnabled, LIMIT_MESSAGES } from '../api/_ai-config.js'
 import { getStore, identify, stableJson, sha256 } from '../api/_ai-store.js'
 import { scanAssistantOutput } from '../src/lib/fairHousing.js'
 
@@ -29,7 +29,8 @@ function fakeClient(queue) {
 function fakeStore({ cap = 3 } = {}) {
   const s = {
     kind: 'fake', slots: 0, finished: [], logged: [], cache: new Map(), cacheWrites: 0,
-    async takeSlot() { if (s.slots >= cap) return { ok: false, reason: 'user' }; s.slots++; return { ok: true, id: s.slots } },
+    async takeSlot() { if (s.slots >= cap) return { ok: false, reason: 'user', spent: 0.5, global: 1 }; s.slots++; return { ok: true, id: s.slots, spent: 0, global: 0 } },
+    async spent() { return { actor: 0, global: 0 } },
     async finish(id, fields) { s.finished.push({ id, ...fields }) },
     async log(row) { s.logged.push(row) },
     async cacheGet(hash, dv) { const c = s.cache.get(hash); return c && c.dataVersion === dv ? c : null },
@@ -84,11 +85,13 @@ test('a changed data version misses the cache', async () => {
   assert.equal(r2.cached, false); assert.equal(r2.output.answer, 'second')
 })
 
-test('a reached cap returns a friendly message and makes no model call', async () => {
+test('a used-up allowance returns the friendly message and makes no model call', async () => {
   const client = fakeClient([])
   const store = fakeStore({ cap: 0 })
   const r = await runAi(ctxOf(client, store), spec())
   assert.equal(r.ok, false); assert.equal(r.reason, 'limit'); assert.equal(r.message, LIMIT_MESSAGES.user)
+  assert.match(r.message, /^You've used today's AI\. It resets at midnight\./)
+  assert.doesNotMatch(Object.values(LIMIT_MESSAGES).join(' '), /\$|dollar|cent/i, 'people never see an amount')
   assert.equal(client.calls.length, 0)
 })
 
@@ -156,14 +159,58 @@ test('web search is added only when the server flag is on, and such answers are 
   assert.equal(store.cacheWrites, 0)
 })
 
+test('a web answer keeps only the cited pages, counts its searches in the cost, and drops the preamble', async () => {
+  const cite = (url, title) => ({ type: 'web_search_result_location', url, title, cited_text: 'x', encrypted_index: 'e' })
+  const response = {
+    content: [
+      { type: 'text', text: 'Let me look that up.' },
+      { type: 'server_tool_use', id: 's1', name: 'web_search', input: { query: 'q' } },
+      { type: 'web_search_tool_result', tool_use_id: 's1', content: [
+        { type: 'web_search_result', url: 'https://www.nyc.gov/a', title: 'NYC', encrypted_content: 'zzz' },
+        { type: 'web_search_result', url: 'https://example.com/not-cited', title: 'Other', encrypted_content: 'zzz' },
+      ] },
+      { type: 'text', text: 'According to the city, the building dates from 1931.', citations: [cite('https://www.nyc.gov/a', 'NYC'), cite('https://www.nyc.gov/a', 'NYC')] },
+      { type: 'text', text: ' It has six floors.', citations: [cite('javascript:alert(1)', 'bad')] },
+      { type: 'text', text: ' (' },
+      { type: 'text', text: 'Built 1931 Six stories Elevator building', citations: [{ ...cite('https://www.nyc.gov/a', 'NYC'), cited_text: 'Property record. Built 1931. Six stories. Elevator building. Lot 12.' }] },
+      { type: 'text', text: ').' },
+    ],
+    stop_reason: 'end_turn',
+    usage: { input_tokens: 10000, output_tokens: 100, server_tool_use: { web_search_requests: 2 } },
+  }
+  const client = fakeClient([response])
+  const store = fakeStore()
+  let seen = null
+  const r = await runAi({ ...ctxOf(client, store), env: { AI_WEB_SEARCH_ENABLED: 'true' } },
+    spec({ feature: 'listing_web', schema: null, webSearch: true, cacheInput: null, fallback: 'neutral', validate: (out, extra) => { seen = extra.sources; return null } }))
+  assert.equal(r.ok, true)
+  assert.equal(r.output, 'According to the city, the building dates from 1931. It has six floors.',
+    'a piece that only repeats the source is dropped, with its empty brackets')
+  assert.deepEqual(r.sources, [{ url: 'https://www.nyc.gov/a', title: 'NYC' }], 'only the cited page, once, and only http links')
+  assert.deepEqual(seen, r.sources, 'the grounding check is told which pages were cited')
+  const row = store.finished[0]
+  assert.equal(row.web_searches, 2)
+  assert.ok(Math.abs(row.search_cost_usd - 0.02) < 1e-9)
+  assert.ok(Math.abs(row.cost_usd - (0.001 + 0.00005 + 0.02)) < 1e-9, 'tokens plus searches')
+  assert.equal(JSON.stringify(store.finished).includes('nyc.gov'), false, 'no web content or link is logged')
+})
+
 test('cost estimate uses the price table', () => {
   assert.ok(Math.abs(estimateCost('claude-haiku-5-5', { input_tokens: 1_000_000, output_tokens: 1_000_000 }) - 0.6) < 1e-9)
   assert.ok(Math.abs(estimateCost('claude-sonnet-5-5', { input_tokens: 1_000_000, output_tokens: 1_000_000, cache_read_input_tokens: 1_000_000 }) - 12.1) < 1e-9)
+  assert.ok(Math.abs(searchCost({ web_search_requests: 3 }) - 0.03) < 1e-9)
+  assert.ok(Math.abs(estimateCost('claude-haiku-5-5', { input_tokens: 1_000_000, web_search_requests: 1 }) - 0.11) < 1e-9, 'a search is part of the cost')
 })
 
-test('limits, kill switch and feature allowlist read the environment', () => {
-  assert.deepEqual(limits({}), { userPerDay: 30, ipPerDay: 10, globalPerDay: 500 })
-  assert.equal(limits({ AI_DAILY_REQUEST_CAP: '40' }).globalPerDay, 40)
+test('the allowance, kill switch and feature allowlist read the environment', () => {
+  assert.deepEqual(allowance({}), { user: 0.5, visitor: 0.1, global: 5, reserve: 0.03 })
+  const env = { AI_USER_DAILY_ALLOWANCE: '1.25', AI_VISITOR_DAILY_ALLOWANCE: '0.2', AI_DAILY_COST_CAP: '12' }
+  assert.deepEqual(allowance(env), { user: 1.25, visitor: 0.2, global: 12, reserve: 0.03 })
+  assert.equal(allowance({ AI_DAILY_COST_CAP: 'lots' }).global, 5, 'a bad value falls back to the default')
+  assert.equal(capFor({ kind: 'user' }, {}), 0.5); assert.equal(capFor({ kind: 'ip' }, {}), 0.1); assert.equal(capFor({ kind: 'system' }, {}), null)
+  assert.equal(featureAllowed('fill_notes', { AI_FEATURES: 'poster' }), true)
+  assert.equal(featureAllowed('posting_help', { AI_FEATURES: 'guide' }), false)
+  assert.equal(featureAllowed('listing_web', { AI_FEATURES: 'listing_qa' }), true)
   assert.equal(aiEnabled({}), false); assert.equal(aiEnabled({ AI_ENABLED: 'true' }), true)
   assert.equal(featureAllowed('guide', {}), true)
   assert.equal(featureAllowed('guide_parse', { AI_FEATURES: 'guide' }), true)
@@ -175,9 +222,36 @@ test('production without the service-role key has no store; previews get in-memo
   const store = getStore({ VERCEL_ENV: 'preview' })
   assert.equal(store.kind, 'memory')
   const ip = { kind: 'ip', key: 'ip:test-' + Math.random(), userId: null }
+  // A logged-out visitor has $0.10 a day: three 4-cent answers, then no more.
   let allowed = 0
-  for (let i = 0; i < 12; i++) { const s = await store.takeSlot({ actor: ip }); if (s.ok) allowed++ }
-  assert.equal(allowed, 10, 'logged-out visitors get 10 a day')
+  for (let i = 0; i < 6; i++) {
+    const s = await store.takeSlot({ actor: ip })
+    if (!s.ok) { assert.equal(s.reason, 'ip'); continue }
+    allowed++
+    await store.finish(s.id, { cost_usd: 0.04 })
+  }
+  assert.equal(allowed, 3)
+  const spent = await store.spent(ip)
+  assert.ok(Math.abs(spent.actor - 0.12) < 1e-9)
+  // A cache hit is logged with no cost and moves nothing.
+  await store.log({ actor_key: ip.key, cache_hit: true, cost_usd: 0 })
+  assert.ok(Math.abs((await store.spent(ip)).actor - 0.12) < 1e-9)
+  // The global cap pauses everyone, whoever they are.
+  const tiny = getStore({ VERCEL_ENV: 'preview', AI_DAILY_COST_CAP: '0.05' })
+  const other = await tiny.takeSlot({ actor: { kind: 'user', key: 'u:fresh-' + Math.random(), userId: 'x' } })
+  assert.equal(other.ok, false); assert.equal(other.reason, 'global')
+})
+
+test('the usage bar is a percentage and a level, never an amount', () => {
+  assert.deepEqual(usageView({ spent: 0, cap: 0.5, globalSpent: 0, globalCap: 5 }), { percent: 0, level: 'ok', paused: false })
+  assert.equal(usageView({ spent: 0.0003, cap: 0.1, globalSpent: 0, globalCap: 5 }).percent, 1, 'any use shows on the bar')
+  assert.deepEqual(usageView({ spent: 0.2, cap: 0.5, globalSpent: 1, globalCap: 5 }), { percent: 40, level: 'ok', paused: false })
+  assert.equal(usageView({ spent: 0.4, cap: 0.5, globalSpent: 1, globalCap: 5 }).level, 'near')
+  assert.equal(usageView({ spent: 0.499, cap: 0.5, globalSpent: 1, globalCap: 5 }).percent, 99, 'never 100 before the allowance is used')
+  assert.deepEqual(usageView({ spent: 0.51, cap: 0.5, globalSpent: 1, globalCap: 5 }), { percent: 100, level: 'full', paused: false })
+  assert.equal(usageView({ spent: 0, cap: 0.5, globalSpent: 5, globalCap: 5 }).paused, true)
+  assert.equal(usageView({ spent: 3, cap: null, globalSpent: 3, globalCap: 5 }).percent, 0, 'the system actor has no bar')
+  assert.equal(JSON.stringify(usageView({ spent: 0.2, cap: 0.5, globalSpent: 1, globalCap: 5 })).includes('0.2'), false)
 })
 
 test('a logged-out visitor is identified by a keyed hash, never the raw IP', async () => {

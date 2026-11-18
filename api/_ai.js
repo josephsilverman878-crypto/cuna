@@ -2,14 +2,16 @@
 //
 //   runAi(ctx, spec)
 //     1. cache   identical request + same data version -> stored answer, no model call
-//     2. limits  per user / per IP / global daily caps (ai_take_slot)
+//     2. limits  the person's daily usage allowance and the global daily
+//                cost cap, both in estimated dollars (ai_begin)
 //     3. model   one Claude call with timeout and retries (the SDK retries
 //                429 / 5xx / connection errors itself)
 //     4. checks  the feature's own grounding check, then the fair-housing scan
 //                (src/lib/fairHousing.js). A failure regenerates ONCE with a
 //                stricter instruction; a second failure returns a neutral
 //                message instead of the model's words.
-//     5. log     counts, model, tokens, cost estimate, errors. Never content.
+//     5. log     counts, model, tokens, web searches, cost estimate, errors.
+//                Never content.
 //
 // Model calls happen only here, on the server, with ANTHROPIC_API_KEY. The
 // key is never sent to the browser and never logged.
@@ -18,7 +20,7 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import { scanAssistantOutput } from '../src/lib/fairHousing.js'
 import {
   MODELS, FEATURES, PROMPT_VERSION, HOUSE_RULES, NEUTRAL_FALLBACK, LIMIT_MESSAGES,
-  estimateCost, webSearchEnabled,
+  estimateCost, searchCost, webSearchEnabled,
 } from './_ai-config.js'
 import { sha256, stableJson, nyDay } from './_ai-store.js'
 
@@ -34,25 +36,80 @@ export function modelClient(env = process.env) {
   return sharedClient
 }
 
-function textOf(content) {
-  return (content || []).filter(b => b.type === 'text').map(b => b.text).join('')
+// Is this cited piece of the answer just the source's own words? (Nearly
+// every word of it appears in the passage it cites.)
+function copiesSource(text, citations) {
+  const words = (v) => String(v || '').toLowerCase().match(/[a-z0-9]+/g) || []
+  const mine = words(text)
+  if (mine.length < 3) return false
+  return citations.some((c) => {
+    const theirs = new Set(words(c?.cited_text))
+    return mine.filter(w => theirs.has(w)).length / mine.length >= 0.85
+  })
 }
 
+// The answer's words. After a web search only the text that follows the
+// last search result counts, so "let me look that up" never reaches a page;
+// and a piece that only repeats a source's wording is left out (its page is
+// still linked), so the answer is in the assistant's own words and another
+// site's text is never reproduced.
+function textOf(content) {
+  const blocks = content || []
+  let from = 0
+  let searched = false
+  blocks.forEach((b, i) => { if (b.type === 'web_search_tool_result') { from = i + 1; searched = true } })
+  const parts = []
+  for (const b of blocks.slice(from)) {
+    if (b.type !== 'text') continue
+    if (searched && Array.isArray(b.citations) && b.citations.length && copiesSource(b.text, b.citations)) continue
+    parts.push(b.text)
+  }
+  const text = parts.join('')
+  if (!searched) return text
+  return text.replace(/\(\s*\)/g, '').replace(/\s+([.,;:!?])/g, '$1').replace(/([.!?])\.+/g, '$1').replace(/[ \t]{2,}/g, ' ').trim()
+}
+
+// The web pages the answer actually cites (title and link only; the page's
+// content is never kept). A page that was found but not cited is not listed.
 function sourcesOf(content) {
   const out = []
+  const seen = new Set()
   for (const b of content || []) {
-    if (b.type !== 'web_search_tool_result' || !Array.isArray(b.content)) continue
-    for (const r of b.content) {
-      if (r?.type === 'web_search_result' && r.url) out.push({ url: r.url, title: r.title || r.url })
+    if (b.type !== 'text' || !Array.isArray(b.citations)) continue
+    for (const c of b.citations) {
+      if (c?.type !== 'web_search_result_location' || !/^https?:\/\//i.test(String(c.url || ''))) continue
+      const url = String(c.url).slice(0, 400)
+      if (seen.has(url)) continue
+      seen.add(url)
+      out.push({ url, title: String(c.title || url).replace(/\s+/g, ' ').trim().slice(0, 140) })
     }
   }
   return out.slice(0, 6)
+}
+
+// The passages the answer cites, each with its page. Held in memory for the
+// length of one request so a feature can check which sentence rests on
+// which page; never returned to the browser, never logged, never stored.
+function citationsOf(content) {
+  const out = []
+  for (const b of content || []) {
+    if (b.type !== 'text' || !Array.isArray(b.citations)) continue
+    for (const c of b.citations) {
+      if (c?.type !== 'web_search_result_location' || !/^https?:\/\//i.test(String(c.url || ''))) continue
+      out.push({ url: String(c.url).slice(0, 400), title: String(c.title || c.url).replace(/\s+/g, ' ').trim().slice(0, 140), text: String(c.cited_text || '').slice(0, 2000) })
+    }
+  }
+  return out.slice(0, 24)
 }
 
 function addUsage(total, u = {}) {
   for (const k of ['input_tokens', 'output_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens']) {
     total[k] = (total[k] || 0) + (u[k] || 0)
   }
+  // Web searches arrive as usage.server_tool_use.web_search_requests from the
+  // API, and as web_search_requests once added up here.
+  total.web_search_requests = (total.web_search_requests || 0) +
+    (u.server_tool_use?.web_search_requests || u.web_search_requests || 0)
   return total
 }
 
@@ -79,10 +136,12 @@ export async function callModel(client, { feature, system, user, schema, extraNo
   if (webSearch) {
     // Search results only: the assistant may cite and link a public page. It
     // never fetches a page itself (no web_fetch tool), and answers that used
-    // search are not cached, so no third-party content is stored.
+    // search are not cached, so no third-party content is stored. One search
+    // per answer: a search is the most expensive thing the assistant does.
     params.tools = [{
       type: cfg.tier === 'smart' ? 'web_search_20260209' : 'web_search_20250305',
-      name: 'web_search', max_uses: 2,
+      name: 'web_search', max_uses: 1,
+      user_location: { type: 'approximate', city: 'New York', region: 'New York', country: 'US', timezone: 'America/New_York' },
     }]
   }
 
@@ -114,7 +173,7 @@ export async function callModel(client, { feature, system, user, schema, extraNo
       parsed = check.success ? check.data : null
     } catch { parsed = null }
   }
-  return { text, parsed, usage, model: response.model || model, stop, sources: sourcesOf(response.content) }
+  return { text, parsed, usage, model: response.model || model, stop, sources: sourcesOf(response.content), citations: citationsOf(response.content) }
 }
 
 function errorCode(err) {
@@ -135,10 +194,14 @@ function errorCode(err) {
 //   cacheInput     anything JSON-able that identifies the request, or null to skip the cache
 //   dataVersion    string that changes when the grounding data changes
 //   scanText(out)  the words to run through the fair-housing scan (default: all strings)
-//   validate(out)  returns a correction note if the answer is not grounded, else null
+//   validate(out, { sources })  returns a correction note if the answer is
+//                  not grounded, else null (sources: the cited web pages)
 //   fallback       the neutral answer in this feature's shape
 //   counted        false for the second model call of one request
 //   webSearch      true to allow search (only when AI_WEB_SEARCH_ENABLED=true)
+//   regenerate     false to skip the one redo and go straight to the fallback
+//                  (used for web answers, where a redo means paying for a
+//                  second search)
 // ctx: { store, actor, requestId, client, env, startedAt }
 // Returns { ok: true, output, cached, sources } | { ok: false, reason, message }.
 export async function runAi(ctx, spec) {
@@ -183,6 +246,7 @@ export async function runAi(ctx, spec) {
   let code = null
   let output = null
   let sources = []
+  let citations = []
   let answeredBy = model
 
   const scan = (out) => {
@@ -208,11 +272,11 @@ export async function runAi(ctx, spec) {
     } else {
       let out = spec.schema ? r.parsed : r.text.trim()
       if (out == null || out === '') throw Object.assign(new Error('unreadable answer'), { code: 'parse' })
-      sources = r.sources
+      sources = r.sources; citations = r.citations || []
 
       // 4. checks: grounding first, then fair housing; one regeneration in all
       const problem = () => {
-        const note = spec.validate ? spec.validate(out) : null
+        const note = spec.validate ? spec.validate(out, { sources }) : null
         if (note) return { kind: 'grounding', note }
         const fh = scan(out)
         if (!fh.ok) {
@@ -226,18 +290,18 @@ export async function runAi(ctx, spec) {
         return null
       }
       let p = problem()
-      if (p && Date.now() - startedAt < TOTAL_BUDGET_MS - REQUEST_TIMEOUT_MS) {
+      if (p && spec.regenerate !== false && Date.now() - startedAt < TOTAL_BUDGET_MS - REQUEST_TIMEOUT_MS) {
         regenerations = 1
         r = await attempt(p.kind === 'grounding'
           ? 'Your previous draft was rejected: ' + p.note + ' Answer again using only the data provided.'
           : p.note)
         if (r.stop !== 'refusal' && r.stop !== 'max_tokens') {
           const again = spec.schema ? r.parsed : r.text.trim()
-          if (again != null && again !== '') { out = again; sources = r.sources }
+          if (again != null && again !== '') { out = again; sources = r.sources; citations = r.citations || [] }
         }
         p = problem()
       }
-      if (p) { usedFallback = true; status = 'fallback'; code = p.kind; output = spec.fallback; sources = [] }
+      if (p) { usedFallback = true; status = 'fallback'; code = p.kind; output = spec.fallback; sources = []; citations = [] }
       else output = out
     }
   } catch (err) {
@@ -251,6 +315,7 @@ export async function runAi(ctx, spec) {
     input_tokens: usage.input_tokens || 0, output_tokens: usage.output_tokens || 0,
     cache_read_tokens: usage.cache_read_input_tokens || 0, cache_write_tokens: usage.cache_creation_input_tokens || 0,
     cost_usd: Number(estimateCost(answeredBy, usage).toFixed(6)),
+    web_searches: usage.web_search_requests || 0, search_cost_usd: Number(searchCost(usage).toFixed(6)),
     fh_regenerations: regenerations, fh_fallback: usedFallback && code === 'fair_housing',
     web_search: useSearch, duration_ms: Date.now() - t0,
   }
@@ -263,7 +328,7 @@ export async function runAi(ctx, spec) {
   if (hash && !usedFallback) {
     await ctx.store.cacheSet(hash, { feature: spec.feature, dataVersion: spec.dataVersion || '', model: answeredBy, output })
   }
-  return { ok: true, output, cached: false, sources, fallback: usedFallback }
+  return { ok: true, output, cached: false, sources, citations, fallback: usedFallback }
 }
 
 // Every string in a JSON answer, joined, for the fair-housing scan.

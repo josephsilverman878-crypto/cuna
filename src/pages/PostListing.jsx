@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import { scanDescription } from '../lib/fairHousing'
 import DraftDescription from '../components/DraftDescription'
+import FillFromNotes from '../components/FillFromNotes'
+import ListingCheckup from '../components/ListingCheckup'
 import { validateListing } from '../lib/listingQuality'
 import { isDuplicateAddressError, DUPLICATE_ADDRESS_MESSAGE } from '../lib/flags'
 import { PETS_POLICY_OPTIONS, PETS_POLICY_NOTE, petsPolicyLabel } from '../lib/petsPolicy'
@@ -52,6 +54,9 @@ export default function PostListing() {
   const [floorPlans, setFloorPlans] = useState([])
   const [dragging, setDragging] = useState(false)
   const [fhAck, setFhAck] = useState(false)
+  // Fields "Fill from notes" filled and the poster has not checked yet.
+  // They are outlined in the form; editing a field clears its outline.
+  const [filled, setFilled] = useState({})
   // The map point for the typed address (LocationCheck). Null until the
   // address is found; the neighborhood comes from it, never from typing.
   const [geo, setGeo] = useState(null)
@@ -61,12 +66,24 @@ export default function PostListing() {
   const fhScan = scanDescription(form.description)
   const neighborhoodName = geo?.neighborhoodName || (geo ? '' : form.neighborhood)
 
+  function clearFilled(field) {
+    setFilled(m => (m[field] ? { ...m, [field]: false } : m))
+  }
+
   function update(field, value) {
     setForm(f => ({ ...f, [field]: value }))
+    clearFilled(field)
   }
 
   function toggleAmenity(key) {
     setForm(f => ({ ...f, [key]: !f[key] }))
+    clearFilled(key)
+  }
+
+  // Fill from notes: fills the form only. Nothing is saved until Post listing.
+  function applyFill(patch, keys) {
+    setForm(f => ({ ...f, ...patch }))
+    setFilled(Object.fromEntries(keys.map(k => [k, true])))
   }
 
   // ── OTHER FEES (dynamic list) ─────────────────────────────────
@@ -280,6 +297,18 @@ export default function PostListing() {
 
   // ── STYLES ───────────────────────────────────────────────────
   const inputStyle = { marginTop: '6px' }
+  const filledRing = '0 0 0 3px rgba(196,113,74,0.28)'
+  // The style of a field's input: outlined while it holds a value that
+  // came from the poster's notes and has not been checked.
+  const fs = (field) => (filled[field]
+    ? { ...inputStyle, borderColor: 'var(--terracotta)', boxShadow: filledRing, background: '#FFF9F5' }
+    : inputStyle)
+  const TAB_FIELDS = [
+    ['listing_type', 'property_type', 'address', 'city', 'zip_code', 'price', 'bedrooms', 'bathrooms', 'sqft', 'available_date'],
+    ['security_deposit', 'application_fee', 'move_in_fee', 'other_fees', 'lease_term_months', 'months_free', 'common_charges', 'maintenance', 'monthly_taxes', 'tax_deductible_pct', 'financing_allowed_pct'],
+    ['pets_policy', 'doorman', 'elevator', 'gym', 'laundry', 'dishwasher', 'hardwood', 'roof_deck', 'central_air', 'washer_dryer', 'parking', 'storage'],
+  ]
+  const tabHasFilled = (i) => (TAB_FIELDS[i] || []).some(k => filled[k])
   const rowStyle = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }
 
   const amenityBtn = (key, label) => (
@@ -298,6 +327,7 @@ export default function PostListing() {
         cursor: 'pointer',
         transition: 'all 0.15s',
         textAlign: 'left',
+        boxShadow: filled[key] ? filledRing : 'none',
       }}
     >
       {label}
@@ -334,6 +364,8 @@ export default function PostListing() {
 
     // ── TAB 0: DETAILS ──
     <div key="details" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <FillFromNotes form={form} onApply={applyFill}
+        onUndo={(before) => { setForm(before); setFilled({}) }} onDone={() => setFilled({})} />
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', margin: 0 }}>What are you listing?</h3>
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -344,13 +376,14 @@ export default function PostListing() {
               background: form.listing_type === t.id ? 'rgba(180,74,54,0.08)' : 'var(--white)',
               color: form.listing_type === t.id ? 'var(--terracotta)' : 'var(--warm-gray)',
               fontWeight: form.listing_type === t.id ? 600 : 400, fontSize: '14px', cursor: 'pointer',
+              boxShadow: filled.listing_type && form.listing_type === t.id ? filledRing : 'none',
             }}>{t.verb}</button>
           ))}
         </div>
         {isSaleForm && (
           <div>
             <label className="label">Property type *</label>
-            <select value={form.property_type} onChange={e => update('property_type', e.target.value)} style={inputStyle}>
+            <select value={form.property_type} onChange={e => update('property_type', e.target.value)} style={fs('property_type')}>
               <option value="">Select…</option>
               {['coop', 'condo', 'house', 'multi_family', 'townhouse'].map(v => <option key={v} value={v}>{propertyTypeLabel(v)}</option>)}
             </select>
@@ -365,14 +398,14 @@ export default function PostListing() {
         <div>
           <label className="label">Street address *</label>
           <input required placeholder="123 Main St, Apt 4B" value={form.address}
-            onChange={e => update('address', e.target.value)} style={inputStyle} />
+            onChange={e => update('address', e.target.value)} style={fs('address')} />
         </div>
 
         <div style={rowStyle}>
           <div>
             <label className="label">City *</label>
             <input required placeholder="New York" value={form.city}
-              onChange={e => update('city', e.target.value)} style={inputStyle} />
+              onChange={e => update('city', e.target.value)} style={fs('city')} />
           </div>
           <div>
             <label className="label">State *</label>
@@ -384,7 +417,7 @@ export default function PostListing() {
         <div>
           <label className="label">Zip code</label>
           <input placeholder="11215" inputMode="numeric" value={form.zip_code}
-            onChange={e => update('zip_code', e.target.value)} style={inputStyle} />
+            onChange={e => update('zip_code', e.target.value)} style={fs('zip_code')} />
         </div>
 
         <LocationCheck
@@ -400,19 +433,19 @@ export default function PostListing() {
         <div>
           <label className="label">{isSaleForm ? 'Asking price ($) *' : 'Monthly rent ($) *'}</label>
           <input required type="number" min="1" placeholder={isSaleForm ? '850000' : '3500'} value={form.price}
-            onChange={e => update('price', e.target.value)} style={inputStyle} />
+            onChange={e => update('price', e.target.value)} style={fs('price')} />
         </div>
 
         <div style={rowStyle}>
           <div>
             <label className="label">Bedrooms *</label>
             <input required type="number" min="0" placeholder="2" value={form.bedrooms}
-              onChange={e => update('bedrooms', e.target.value)} style={inputStyle} />
+              onChange={e => update('bedrooms', e.target.value)} style={fs('bedrooms')} />
           </div>
           <div>
             <label className="label">Bathrooms *</label>
             <input required type="number" min="0.5" step="0.5" placeholder="1" value={form.bathrooms}
-              onChange={e => update('bathrooms', e.target.value)} style={inputStyle} />
+              onChange={e => update('bathrooms', e.target.value)} style={fs('bathrooms')} />
           </div>
         </div>
 
@@ -420,12 +453,12 @@ export default function PostListing() {
           <div>
             <label className="label">Square footage</label>
             <input type="number" placeholder="850" value={form.sqft}
-              onChange={e => update('sqft', e.target.value)} style={inputStyle} />
+              onChange={e => update('sqft', e.target.value)} style={fs('sqft')} />
           </div>
           <div>
             <label className="label">Available date</label>
             <input type="date" value={form.available_date}
-              onChange={e => update('available_date', e.target.value)} style={inputStyle} />
+              onChange={e => update('available_date', e.target.value)} style={fs('available_date')} />
           </div>
         </div>
 
@@ -455,7 +488,7 @@ export default function PostListing() {
     // ── TAB 1: COSTS & FEES (rent) / SALE DETAILS (sale) ──
     <div key="fees" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {isSaleForm ? (
-        <SaleFinancialsFields form={form} update={update} inputStyle={inputStyle} rowStyle={rowStyle} showType={false} />
+        <SaleFinancialsFields form={form} update={update} inputStyle={inputStyle} fieldStyle={fs} rowStyle={rowStyle} showType={false} />
       ) : (<>
       <div className="card" style={{
         background: 'rgba(180,74,54,0.06)', border: '1px solid rgba(180,74,54,0.2)',
@@ -474,19 +507,19 @@ export default function PostListing() {
           <div>
             <label className="label">Security deposit ($)</label>
             <input type="number" min="0" placeholder="0" value={form.security_deposit}
-              onChange={e => update('security_deposit', e.target.value)} style={inputStyle} />
+              onChange={e => update('security_deposit', e.target.value)} style={fs('security_deposit')} />
           </div>
           <div>
             <label className="label">Application fee ($)</label>
             <input type="number" min="0" placeholder="0" value={form.application_fee}
-              onChange={e => update('application_fee', e.target.value)} style={inputStyle} />
+              onChange={e => update('application_fee', e.target.value)} style={fs('application_fee')} />
           </div>
         </div>
 
         <div>
           <label className="label">Move-in fee ($)</label>
           <input type="number" min="0" placeholder="0" value={form.move_in_fee}
-            onChange={e => update('move_in_fee', e.target.value)} style={inputStyle} />
+            onChange={e => update('move_in_fee', e.target.value)} style={fs('move_in_fee')} />
         </div>
       </div>
 
@@ -502,6 +535,11 @@ export default function PostListing() {
         {form.other_fees.length === 0 && (
           <p style={{ fontSize: '13px', color: 'var(--warm-gray)', margin: 0 }}>
             No other fees added.
+          </p>
+        )}
+        {filled.other_fees && (
+          <p style={{ fontSize: '12px', color: 'var(--terracotta-dark, var(--terracotta))', margin: 0 }}>
+            Added from your notes. Check each fee and its amount.
           </p>
         )}
 
@@ -540,12 +578,12 @@ export default function PostListing() {
           <div>
             <label className="label">Lease term (months)</label>
             <input type="number" min="1" max="36" placeholder="12" value={form.lease_term_months}
-              onChange={e => update('lease_term_months', e.target.value)} style={inputStyle} />
+              onChange={e => update('lease_term_months', e.target.value)} style={fs('lease_term_months')} />
           </div>
           <div>
             <label className="label">Free months</label>
             <input type="number" min="0" max="11" step="0.5" placeholder="0" value={form.months_free}
-              onChange={e => update('months_free', e.target.value)} style={inputStyle} />
+              onChange={e => update('months_free', e.target.value)} style={fs('months_free')} />
           </div>
         </div>
         <p style={{ fontSize: '13px', color: 'var(--charcoal-soft)', margin: 0, lineHeight: 1.55 }}>
@@ -575,6 +613,7 @@ export default function PostListing() {
                 color: form.pets_policy === opt.value ? 'var(--terracotta)' : 'var(--warm-gray)',
                 fontWeight: form.pets_policy === opt.value ? 600 : 400,
                 fontSize: '14px', cursor: 'pointer', transition: 'all 0.15s',
+                boxShadow: filled.pets_policy && form.pets_policy === opt.value ? filledRing : 'none',
               }}
             >
               {opt.label}
@@ -732,6 +771,8 @@ export default function PostListing() {
 
     // ── TAB 3: REVIEW ──
     <div key="review" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <ListingCheckup form={form} photoCount={photos.length} neighborhoodName={neighborhoodName}
+        videoOk={videoOk} tourOk={tourOk} update={update} setTab={setTab} />
       <div className="card">
         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', marginBottom: '16px' }}>Review your listing</h3>
 
@@ -914,7 +955,7 @@ export default function PostListing() {
                 borderBottom: `2px solid ${i === tab ? 'var(--terracotta)' : 'transparent'}`,
                 transition: 'all 0.15s',
               }}>
-              {name}
+              {name}{tabHasFilled(i) && <span aria-label="has fields filled from your notes" title="Fields filled from your notes" style={{ color: 'var(--terracotta)' }}> •</span>}
             </button>
           ))}
         </div>

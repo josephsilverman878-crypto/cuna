@@ -116,14 +116,23 @@ page that filters down to fewer than 10 rows does not end the feed early.
 
 ## Cuna's assistant (AI)
 Every model call happens in ONE server function, api/ai.js, through the shared
-pipeline in api/_ai.js: cache, daily limits, model call, grounding check,
-fair-housing scan, usage log. Features are small handler files listed in
+pipeline in api/_ai.js: cache, daily usage allowance, model call, grounding
+check, fair-housing scan, usage log. Features are small handler files listed in
 api/_ai-registry.js. Don't add a second endpoint or call the model anywhere
 else, and never from the browser.
 
-- Model names, prices, limits and the house rules live in api/_ai-config.js
-  and nowhere else. Haiku for cheap high-volume work, Sonnet for
-  recommendations and write-ups.
+- Model names, prices (tokens and web searches), the allowance and the house
+  rules live in api/_ai-config.js and nowhere else. Haiku for cheap
+  high-volume work, Sonnet for recommendations and write-ups.
+- Limits are a daily usage ALLOWANCE in estimated cost, not request counts:
+  AI_USER_DAILY_ALLOWANCE (default $0.50, signed in),
+  AI_VISITOR_DAILY_ALLOWANCE (default $0.10, logged out) and the global
+  AI_DAILY_COST_CAP (default $5; when reached the assistant pauses for
+  everyone until midnight New York time). Checked in the database by
+  ai_begin() (50-ai-allowance.sql). A cached answer costs nothing.
+- People see a percentage of their allowance (src/components/AiUsage.jsx,
+  inside AiLabel), NEVER a dollar amount. Dollars appear only in /admin.
+  /api/ai sends `usage: { percent, level, paused }` with every answer.
 - ANTHROPIC_API_KEY is server-only. Never a VITE_ variable, never in src/.
 - Kill switch: AI_ENABLED (server) and VITE_AI_ENABLED (client). Off means
   every AI surface is gone and the classic quiz, search and filters work as
@@ -136,14 +145,27 @@ else, and never from the browser.
 - Every output goes through scanAssistantOutput() in src/lib/fairHousing.js on
   the server: one regeneration with a stricter instruction, then the neutral
   fallback. Don't loosen that list to make an answer pass.
-- ai_usage holds counts, model, tokens, cost estimate and error codes. Never
-  what a person typed or what the assistant answered, never a raw IP.
-  ai_usage and ai_cache are service-role only (49-ai.sql); admins read
-  aggregates through admin_ai_usage().
+- ai_usage holds counts, model, tokens, web-search counts, cost estimate and
+  error codes. Never what a person typed or what the assistant answered,
+  never a raw IP. ai_usage and ai_cache are service-role only (49-ai.sql);
+  admins read aggregates through admin_ai_costs() and admin_ai_days()
+  (50-ai-allowance.sql).
 - Production refuses to run the assistant without SUPABASE_SERVICE_ROLE_KEY
   (no limits without it). Previews without the key use in-memory limits.
 - Web search is off unless AI_WEB_SEARCH_ENABLED=true, and never fetches
-  StreetEasy pages or stores another site's content.
+  StreetEasy pages or stores another site's content. Only "Ask about this
+  listing" uses it, and only after Cuna's own data had no answer
+  (api/_ai-listing-qa.js): search results only, no page fetching, every
+  cited page linked, the answer never cached. A web answer with no cited
+  page is thrown away.
+- Poster assistant (allowlist name `poster`): "Fill from notes"
+  (api/_ai-fill.js; every value must be quoted from the notes and is checked
+  on the server, so nothing is guessed; notes are never stored; nothing
+  saves), "Listing checkup" (src/lib/listingCheckup.js, plain rules, no model
+  call; only the wording fix in api/_ai-checkup.js uses the model) and
+  "Posting help" (api/_ai-help.js; answers only from src/lib/helpContent.js
+  and POSTING_RULES in that file, otherwise hello@hellocuna.com). Keep
+  POSTING_RULES in step with the posting forms when their rules change.
 - Tests: `npm run test:ai` (fake model, fake store; no network, no cost).
 
 ## Debugging lesson

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import BottomNav from '../components/BottomNav'
 import { scanDescription } from '../lib/fairHousing'
 import DraftDescription from '../components/DraftDescription'
+import ListingCheckup from '../components/ListingCheckup'
 import { validateListing } from '../lib/listingQuality'
 import { isDuplicateAddressError, DUPLICATE_ADDRESS_MESSAGE } from '../lib/flags'
 import { PETS_POLICY_OPTIONS, PETS_POLICY_NOTE, petsPolicyLabel } from '../lib/petsPolicy'
@@ -842,6 +843,8 @@ export default function EditListing() {
 
     // ── TAB 3: REVIEW ──
     <div key="review" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <ListingCheckup form={form} photoCount={existingPhotos.length + photos.length} neighborhoodName={neighborhoodName}
+        videoOk={videoOk} tourOk={tourOk} update={update} setTab={setTab} />
       <div className="card">
         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', marginBottom: '16px' }}>Review changes</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

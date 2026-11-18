@@ -9,6 +9,9 @@ import { writeup } from './_ai-writeup.js'
 import { searchParse } from './_ai-search.js'
 import { listingQa } from './_ai-listing-qa.js'
 import { recommend } from './_ai-recommend.js'
+import { fillNotes } from './_ai-fill.js'
+import { checkup } from './_ai-checkup.js'
+import { postingHelp } from './_ai-help.js'
 
 // One tiny grounded question through the whole pipeline (limits, model,
 // fair-housing check, log). Admins only in production; previews sit behind
@@ -32,4 +35,7 @@ async function selftest(ctx) {
   })
 }
 
-export const handlers = { selftest, guide, draft, writeup, search_parse: searchParse, listing_qa: listingQa, recommend }
+export const handlers = {
+  selftest, guide, draft, writeup, search_parse: searchParse, listing_qa: listingQa, recommend,
+  fill_notes: fillNotes, checkup, posting_help: postingHelp,
+}
