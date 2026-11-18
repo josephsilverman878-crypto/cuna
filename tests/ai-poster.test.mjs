@@ -322,14 +322,16 @@ test('a web answer with no cited page, a not-found, or steering wording falls ba
   const env = { AI_WEB_SEARCH_ENABLED: 'true' }
   const unknown = () => reply({ answered: false, answer: "I don't have that for this listing." })
   for (const second of [
-    [webReply('The building was finished in 1931.'), webReply('It was finished in 1931.')],                       // never cites
+    [webReply('The building was finished in 1931.')],                                                              // never cites
     [webReply("I couldn't find that.")],                                                                           // nothing found
-    [webReply('It is a very safe block.', [cite('https://x.example/a', 'X')]), webReply('A safe, desirable block.', [cite('https://x.example/a', 'X')])], // steering twice
+    [webReply('It is a very safe block.', [cite('https://x.example/a', 'X')])],                                    // steering wording
   ]) {
     const client = fakeClient([unknown(), ...second])
     const r = await listingQa(ctxOf(client, fakeStore(), { db: fakeDb, env }), { listing_id: LISTING.id, question: 'Tell me about the building.' })
     assert.equal(r.output.answered, false); assert.equal(r.output.web, undefined)
     assert.match(r.output.answer, /I don't have that for this listing/)
+    assert.equal(client.calls.length, 2, 'a web answer is never redone: one listing call, one search call')
+    assert.equal(client.calls[1].tools[0].max_uses, 1, 'one search per answer')
   }
   // A question the assistant must decline is never sent to the web.
   const refused = fakeClient([reply({ answered: false, answer: "That's not something I can advise on." })])

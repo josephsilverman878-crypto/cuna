@@ -97,10 +97,11 @@ export async function callModel(client, { feature, system, user, schema, extraNo
   if (webSearch) {
     // Search results only: the assistant may cite and link a public page. It
     // never fetches a page itself (no web_fetch tool), and answers that used
-    // search are not cached, so no third-party content is stored.
+    // search are not cached, so no third-party content is stored. One search
+    // per answer: a search is the most expensive thing the assistant does.
     params.tools = [{
       type: cfg.tier === 'smart' ? 'web_search_20260209' : 'web_search_20250305',
-      name: 'web_search', max_uses: 2,
+      name: 'web_search', max_uses: 1,
       user_location: { type: 'approximate', city: 'New York', region: 'New York', country: 'US', timezone: 'America/New_York' },
     }]
   }
@@ -159,6 +160,9 @@ function errorCode(err) {
 //   fallback       the neutral answer in this feature's shape
 //   counted        false for the second model call of one request
 //   webSearch      true to allow search (only when AI_WEB_SEARCH_ENABLED=true)
+//   regenerate     false to skip the one redo and go straight to the fallback
+//                  (used for web answers, where a redo means paying for a
+//                  second search)
 // ctx: { store, actor, requestId, client, env, startedAt }
 // Returns { ok: true, output, cached, sources } | { ok: false, reason, message }.
 export async function runAi(ctx, spec) {
@@ -246,7 +250,7 @@ export async function runAi(ctx, spec) {
         return null
       }
       let p = problem()
-      if (p && Date.now() - startedAt < TOTAL_BUDGET_MS - REQUEST_TIMEOUT_MS) {
+      if (p && spec.regenerate !== false && Date.now() - startedAt < TOTAL_BUDGET_MS - REQUEST_TIMEOUT_MS) {
         regenerations = 1
         r = await attempt(p.kind === 'grounding'
           ? 'Your previous draft was rejected: ' + p.note + ' Answer again using only the data provided.'
