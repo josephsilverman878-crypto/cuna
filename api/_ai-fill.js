@@ -241,7 +241,7 @@ export async function fillNotes(ctx, body) {
   if (!r.ok) return r
   const v = verifyFill(r.output, notes)
   const remarks = []
-  if (v.broker_fee) remarks.push('Your notes mention a broker fee. Cuna has no tenant-paid broker fee, so it was not filled in.')
+  if (v.broker_fee || /broker(age)?('s)?\s+fee/i.test(notes)) remarks.push('Your notes mention a broker fee. Cuna has no tenant-paid broker fee, so it was not filled in.')
   if (scanDescription(notes).blocked.length > 0) {
     remarks.push('Your notes include wording about who may apply. That cannot go in a listing, so it was left out.')
   }

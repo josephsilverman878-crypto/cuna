@@ -126,7 +126,7 @@ test('the handler sends the notes once, returns checked fields with remarks, and
       { field: 'bedrooms', value: '3', quote: '2BR' },
     ],
     amenities: [{ amenity: 'dishwasher', quote: 'Dishwasher' }],
-    other_fees: [{ description: 'Broker fee', amount: '525', quote: 'Broker fee 15%' }],
+    other_fees: [],   // the model follows "never include a broker fee"; the remark must still appear
   }
   const client = fakeClient([reply(model)])
   const store = fakeStore()
