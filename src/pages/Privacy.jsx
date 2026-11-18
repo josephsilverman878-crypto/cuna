@@ -40,7 +40,7 @@ export default function Privacy() {
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '24px' }}>
         <div className="card">
           <p style={{ fontSize: '13px', color: 'var(--warm-gray)', marginBottom: '20px' }}>
-            Last updated: November 5, 2026
+            Last updated: November 18, 2026
           </p>
 
           <P>
@@ -147,6 +147,7 @@ export default function Privacy() {
                 <li><strong>Resend</strong> — delivers tour-request, question, saved-listing and saved-search emails from hello@hellocuna.com. It handles the contents of each email in order to deliver it.</li>
                 <li><strong>Mapbox</strong> — draws the maps and answers walking-time and commute requests. It receives your IP address, the map area you look at, and the addresses or coordinates your browser sends for those requests.</li>
                 <li><strong>NYC GeoSearch (NYC Planning Labs), NYC Open Data, New York State Open Data and the New York State Department of Health</strong> — public services your browser queries directly: an address to place it on the map, a licence number or a tax lot number for the verification checks an administrator runs, and the public school, hospital, subway, building and sales records behind the building, neighborhood and market pages. They receive the query and your IP address and nothing from your account.</li>
+                <li><strong>Anthropic</strong> — only if Cuna's assistant is switched on and you use it: it runs the AI model that answers and, for some answers, a web search. It receives the words you type or paste into the assistant and the listing and neighborhood facts the answer is built from. We do not add your name, email address, account or IP address to what we send (section 8F).</li>
                 <li><strong>Google and Apple</strong> — only if sign-in with Google or Apple is switched on and you choose it: they confirm who you are and give us your name and email address. We do not receive your Google or Apple password. These options are off until this policy says otherwise.</li>
                 <li><strong>Google Fonts</strong> — the typefaces on the site load from Google's servers, so Google receives your IP address and browser details when a page loads.</li>
                 <li><strong>Unsplash</strong> — when a listing has no photo, a placeholder image is loaded from Unsplash, which receives the same technical details.</li>
@@ -410,6 +411,98 @@ export default function Privacy() {
             receive your Google or Apple password. A new account created this way still chooses a
             role and accepts these Terms and this policy before anything is stored. Until the sign-in
             page shows these buttons, they are off.
+          </P>
+
+          <H>8F. Cuna's assistant (AI features)</H>
+          <P>
+            Cuna's assistant is a set of optional features that use an artificial-intelligence
+            model. For everyone: the neighborhood guide, the plain-English search box, "Ask about
+            this listing", listing suggestions, and short neighborhood summaries written for
+            neighborhood pages. For Posters: "Fill from notes", "Draft description", "Listing
+            checkup" and "Posting help". Each one is labelled where it appears. If these features
+            are not switched on, none of this section applies and nothing is sent.
+          </P>
+          <P><strong>What is sent to the AI provider.</strong> The model is run by Anthropic, PBC. When you use an assistant feature, our server sends Anthropic only what that feature needs:</P>
+          <UL>
+            <li>the words you type into the assistant, or into its optional boxes (budget, bedrooms, where you need to get to, must-haves, a follow-up, a question about a listing, a question about posting);</li>
+            <li>facts from Cuna's own data that the answer is built from: neighborhood names, subway lines, published price ranges, the public details of listings (price, size, amenities, pet policy, dates, fees, the listing's description), and for "Posting help" the text of our Help page and posting rules;</li>
+            <li>for a description draft, the listing fields the Poster has filled in. The street address is not sent;</li>
+            <li>for the "Listing checkup" wording fix, the description the Poster wrote.</li>
+          </UL>
+          <P>
+            <strong>Notes you paste into "Fill from notes".</strong> When a Poster pastes notes and
+            presses the button, the whole text of those notes is sent to the AI provider so it can
+            read them and pick out listing details (address, price, size, fees, amenities and the
+            like). That includes anything else the notes contain, so remove what you do not want
+            sent, such as another person's name, phone number or email address, before you paste.
+            We do not store the notes: they are not saved to your listing, your account, our
+            database or our logs, and the answer is not cached. The form is only filled in on your
+            screen, each filled field is marked for you to check, and nothing is saved until you
+            post the listing yourself.
+          </P>
+          <P>
+            We do not add your name, email address, phone number, account ID, IP address, saved
+            listings, tour requests, messages to agents or rental application to anything we send
+            to the AI provider. Please do not type personal or sensitive information into the
+            assistant; it is not needed and the assistant does not use it. Anthropic processes
+            what we send in order to return an answer, under its commercial terms, which do not
+            allow it to train its models on this content.
+          </P>
+          <P>
+            <strong>Answers that use web search.</strong> The assistant always looks in Cuna's own
+            data first. When that data does not hold the answer to a question you ask about a
+            listing, the assistant may search the web. To do that, a search phrase written from
+            your question and the listing's location (its address or neighborhood) is sent through
+            Anthropic to the web search service it uses; that service receives the search phrase,
+            not your name, account or IP address. An answer found this way is marked "From the
+            web, not from Cuna's data" and links every page it relies on. We do not store the
+            search results, the pages or the answer, and we do not copy other websites' listings.
+            The linked pages belong to other organisations, whose own privacy policies apply when
+            you open them.
+          </P>
+          <P>
+            <strong>Finding a place you name.</strong> If you tell the guide where you need to get
+            to, we first match the name against subway stations and neighborhoods we already hold.
+            A street address is looked up with NYC GeoSearch, the city's public address service,
+            which receives that address and our server's request, not your identity.
+          </P>
+          <P><strong>What we keep.</strong></P>
+          <UL>
+            <li><strong>No conversation history.</strong> We do not keep what you type or paste to the assistant, or what it answers, in your account or in our logs. While you use a page, your request and the answer are held in your own browser tab (session storage) so they survive a sign-in or a reload; closing the tab clears them.</li>
+            <li><strong>A usage record without content.</strong> For each request we record the date, which feature was used, the model, how much text was processed (token counts), how many web searches were run, an estimated cost, whether the daily allowance was reached and any error code. To apply the daily allowance, the record carries your account ID if you are signed in, or otherwise a scrambled code made from your IP address that changes every day and cannot be turned back into the address. It never contains your words, your notes or the answer.</li>
+            <li><strong>A short-lived answer cache.</strong> To avoid asking the model the same thing twice, an answer may be stored for up to 30 days under a scrambled fingerprint of the request. The stored entry holds the answer only, with no account, no IP address and no readable copy of the request. Answers that used web search, and anything from "Fill from notes", are never cached.</li>
+            <li><strong>Neighborhood summaries</strong> written by the assistant are stored and shown on neighborhood pages, labelled "Written by Cuna's assistant from public data". They are about places, not people.</li>
+          </UL>
+          <P>
+            <strong>Your daily usage allowance.</strong> Each person can use a set amount of the
+            assistant each day, and there is a daily total for everyone together. The allowance is
+            measured from the estimated cost of each answer (how much text the model processed and
+            any web searches), using the usage record described above. You see it only as a
+            percentage ("40% of today's AI used"), never as an amount. Signed-in users have a
+            larger allowance than visitors who are not signed in. Answers served from the cache do
+            not use any of it. When your allowance is used up, or the daily total is reached, the
+            assistant pauses until midnight New York time and the rest of Cuna keeps working.
+          </P>
+          <P>
+            <strong>Actions the assistant can take for you.</strong> Where this is switched on, the
+            assistant can save a listing, save a search, or open a tour request for you. It does so
+            only when you tap Confirm on a card that says exactly what will happen and what will be
+            shared. Nothing you type can make it act by itself. A tour request started this way is an
+            ordinary tour request: it uses the same form, shares only what you switch on there
+            (section 5), and counts toward the same limits. Each action you confirm is listed in
+            your Profile under "What the assistant did for you"; only you can see that list, and it
+            is deleted with your account.
+          </P>
+          <P>
+            <strong>How suggestions are made.</strong> The assistant recommends neighborhoods in
+            NYC and listings from Cuna based on what you share: price, size, commute, transit,
+            amenities and similar criteria you state. Its recommendations are built from Cuna's
+            listings and from public data, each figure shown with its source and date. A web
+            search is used only to answer a specific question about a listing, never to choose
+            which neighborhoods or listings to recommend. The assistant does not use, ask for or
+            infer race, religion, national origin, family or marital status, age, disability,
+            source of income or any other protected characteristic, and it will not answer
+            questions about who lives in an area.
           </P>
 
           <H>9. The "New to NY" quiz</H>
