@@ -4,13 +4,14 @@ Started 2026-11-17. This file is the record of the five-phase AI build: the
 prompt it follows (copied word for word), the checklist, what is merged, and
 what needs Joseph. It is updated and committed after every finished item.
 
-## Where things stand (2026-11-18, waiting for Joseph's "approved" on the policy text)
+## Where things stand (2026-11-18, go-live waiting on Joseph's authenticator code in Vercel)
 
-- **Merged and live with every AI flag off in production:** phases 1 to 5 (#34 to #38) and, on 2026-11-18, the poster assistant, the daily usage allowance and web search (#42). The code on main is `317565b`. Users see no change yet.
-- **Database:** `49-ai.sql` applied 2026-11-17; `50-ai-allowance.sql` (the usage allowance) **applied 2026-11-18** after a same-day backup and its rollback-only test (49 checks, 0 FAIL). No Supabase warning box appeared for either script.
-- **Go-live command given 2026-11-18** ("I want the AI live on hellocuna.com for everyone, today", copied below). Steps 1 to 5 are done. **Step 6 (production flags) is waiting on one thing: Joseph's "approved" for the policy text** (PR #39, shown to him in full in chat). His prompt says to wait for that before step 6.
-- **Exact next item:** on "approved": squash-merge #39, verify production, add `AI_ENABLED`, `VITE_AI_ENABLED`, `AI_ACTIONS_ENABLED`, `VITE_AI_ACTIONS_ENABLED`, `AI_WEB_SEARCH_ENABLED` (all `true`) for **Production** in Vercel, redeploy main, verify signed out on hellocuna.com (step 7), and hand Joseph the sign-in checklist. If Vercel asks for an authenticator code or any other security check: stop and tell him. If anything breaks: flags back off at once (step 8).
-- **Not yet run through the live app:** the allowance, the cache and the usage log against the real tables. No preview has the service key, so production's first minutes after the flags go on are their first real run. The role simulation proved the grants and the arithmetic, not the app.
+- **Merged:** phases 1 to 6 (#34 to #38, #42) and the policy text (#39, after Joseph's "Approved" in chat). Main is `bbd5c9d`; production runs it with every AI flag still off. Privacy 8F and Terms 6A are live on hellocuna.com.
+- **Database:** `49-ai.sql` applied 2026-11-17; `50-ai-allowance.sql` applied 2026-11-18.
+- **Production flags: saved in Vercel, not yet in effect.** `AI_ENABLED`, `VITE_AI_ENABLED`, `AI_ACTIONS_ENABLED`, `VITE_AI_ACTIONS_ENABLED`, `AI_WEB_SEARCH_ENABLED` = `true` were added for Production on 2026-11-18 (no prompt). The redeploy that makes them take effect raised Vercel's "Verify Your Identity" box (6-digit authenticator code). Per Joseph's instruction the work stopped there; the box was left open for him.
+- **Careful until then:** the flags are stored, so **any new production deployment turns the assistant on**. Nothing is to be merged into main until Joseph has entered the code and the go-live deployment has been verified; merging to trigger a deployment would be working around the check.
+- **Exact next item:** Joseph enters the code (NJ-A10). Then: confirm the production deployment and bundle, verify signed out on hellocuna.com (guide with sources, assistant label, usage bar moving, a web answer with its link; the feed search box and the admin tab need his sign-in), give him the sign-in checklist, record the result here. If anything breaks: flags back off at once (his step 8).
+- **Not yet run through the live app:** the allowance, the cache and the usage log against the real tables. Their first real run is the first minutes after the redeploy.
 
 ## The prompt (copied verbatim)
 
@@ -135,7 +136,21 @@ When done, update docs/ai-build-progress.md and give me a short summary: what's 
 
 ## Needs Joseph
 
-### NJ-A6 · Policy text (PR #39): reply "approved" or send changes — this is what go-live is waiting on
+### NJ-A10 · Enter your authenticator code in Vercel (this is what go-live is waiting on)
+The five production flags are saved. To make them take effect, Vercel needs
+your 6-digit code:
+- If the "Verify Your Identity" box is still open in the Vercel tab: type the
+  code from your authenticator app and press **Verify Code**. The redeploy
+  starts by itself.
+- If the box has gone: Vercel → **cuna** → **Deployments** → the top row
+  marked **Production / Current** (commit "docs(policy): Privacy 8F and Terms
+  6A ...") → the **⋯** menu at the right → **Redeploy** → leave "Use existing
+  Build Cache" unticked → **Redeploy** → enter the code → **Verify Code**.
+Then say "done" in chat. To change your mind instead: press **Cancel
+Verification**; the flags stay stored and take effect at the next production
+deployment, so say so in chat and they will be removed first.
+
+### NJ-A6 · Policy text (PR #39) — resolved 2026-11-18: Joseph replied "Approved"; merged as `bbd5c9d`
 Privacy 8F and Terms 6A were rewritten on 2026-11-18 for the poster assistant,
 web search and the usage allowance, and shown to Joseph in full in chat. The
 PR is [#39](https://github.com/josephsilverman878-crypto/cuna/pull/39), head
@@ -271,11 +286,11 @@ and shared subway lines, not by minutes on the train, until a provider is chosen
 
 | Flag | Where | Production | Preview | What it does |
 |---|---|---|---|---|
-| `AI_ENABLED` | server | off (unset) | `true` (added 2026-11-17) | Kill switch for /api/ai |
-| `VITE_AI_ENABLED` | browser | off (unset) | `true` (added 2026-11-17) | Kill switch for every AI surface |
+| `AI_ENABLED` | server | `true` saved 2026-11-18, **not in effect until the redeploy** (NJ-A10) | `true` (added 2026-11-17) | Kill switch for /api/ai |
+| `VITE_AI_ENABLED` | browser | `true` saved 2026-11-18, not in effect until the redeploy | `true` (added 2026-11-17) | Kill switch for every AI surface |
 | `AI_FEATURES` / `VITE_AI_FEATURES` | both | unset | unset | Optional allowlist, e.g. `admin,guide` |
-| `AI_ACTIONS_ENABLED` / `VITE_AI_ACTIONS_ENABLED` | both | off (unset) | `true` (added 2026-11-17) | Consented actions (phase 5) |
-| `AI_WEB_SEARCH_ENABLED` | server | off (unset) | `true` (added 2026-11-18) | Lets "Ask about this listing" search the web when Cuna's data has no answer |
+| `AI_ACTIONS_ENABLED` / `VITE_AI_ACTIONS_ENABLED` | both | `true` saved 2026-11-18, not in effect until the redeploy | `true` (added 2026-11-17) | Consented actions (phase 5) |
+| `AI_WEB_SEARCH_ENABLED` | server | `true` saved 2026-11-18, not in effect until the redeploy | `true` (added 2026-11-18) | Lets "Ask about this listing" search the web when Cuna's data has no answer |
 | `AI_USER_DAILY_ALLOWANCE` | server | unset (0.50) | unset (0.50) | Estimated dollars a signed-in user may use per New York day |
 | `AI_VISITOR_DAILY_ALLOWANCE` | server | unset (0.10) | unset (0.10) | The same for a logged-out visitor |
 | `AI_DAILY_COST_CAP` | server | unset (5) | unset (5) | Estimated dollars for everyone per day; at the cap the assistant pauses until midnight New York time. Replaces `AI_DAILY_REQUEST_CAP`, which is no longer read |
@@ -371,7 +386,7 @@ States: todo · in progress · done · blocked.
 
 | Item | State | Notes |
 |---|---|---|
-| Privacy.jsx and Terms.jsx draft in its own PR | done (waiting for "approved") | [#39](https://github.com/josephsilverman878-crypto/cuna/pull/39): Privacy 8F "Cuna's assistant (AI features)" + Anthropic in the provider list; Terms 6A "Cuna's Assistant". Rewritten 2026-11-18 (head `13f91cd`) to cover notes pasted into Fill from notes, web search, and the daily usage allowance. Not merged |
+| Privacy.jsx and Terms.jsx draft in its own PR | done, approved and merged | [#39](https://github.com/josephsilverman878-crypto/cuna/pull/39): Privacy 8F "Cuna's assistant (AI features)" + Anthropic in the provider list; Terms 6A "Cuna's Assistant". Rewritten 2026-11-18 (head `13f91cd`) to cover notes pasted into Fill from notes, web search, and the daily usage allowance. **Merged 2026-11-18 as `bbd5c9d`** after Joseph's "Approved"; both sections confirmed on hellocuna.com |
 
 ## Cost estimate
 
@@ -458,3 +473,8 @@ tab says so. A month at the cap every day would be about $150.
 - 2026-11-18 — `git fsck` hung for minutes on this folder and stray " 2" files
   appeared in `.git` (see NJ-A9): both point to the Desktop being a synced
   folder.
+- 2026-11-18 — Vercel: adding new Production variables raised no prompt;
+  **redeploying to Production asks for the authenticator code** ("Verify Your
+  Identity"). That is Joseph's to enter. While the flags are stored but not
+  deployed, a merge to main would deploy them: hold every merge until the
+  go-live deployment is done and checked.
