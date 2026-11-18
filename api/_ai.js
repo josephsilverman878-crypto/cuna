@@ -41,7 +41,7 @@ export function modelClient(env = process.env) {
 function copiesSource(text, citations) {
   const words = (v) => String(v || '').toLowerCase().match(/[a-z0-9]+/g) || []
   const mine = words(text)
-  if (mine.length < 4) return false
+  if (mine.length < 3) return false
   return citations.some((c) => {
     const theirs = new Set(words(c?.cited_text))
     return mine.filter(w => theirs.has(w)).length / mine.length >= 0.85
@@ -87,20 +87,19 @@ function sourcesOf(content) {
   return out.slice(0, 6)
 }
 
-// Every page a search returned (title and link only), cited or not. Used
-// only to link a source the answer names without formally citing it.
-function resultsOf(content) {
+// The passages the answer cites, each with its page. Held in memory for the
+// length of one request so a feature can check which sentence rests on
+// which page; never returned to the browser, never logged, never stored.
+function citationsOf(content) {
   const out = []
-  const seen = new Set()
   for (const b of content || []) {
-    if (b.type !== 'web_search_tool_result' || !Array.isArray(b.content)) continue
-    for (const r of b.content) {
-      if (r?.type !== 'web_search_result' || !/^https?:\/\//i.test(String(r.url || '')) || seen.has(r.url)) continue
-      seen.add(r.url)
-      out.push({ url: String(r.url).slice(0, 400), title: String(r.title || r.url).replace(/\s+/g, ' ').trim().slice(0, 140) })
+    if (b.type !== 'text' || !Array.isArray(b.citations)) continue
+    for (const c of b.citations) {
+      if (c?.type !== 'web_search_result_location' || !/^https?:\/\//i.test(String(c.url || ''))) continue
+      out.push({ url: String(c.url).slice(0, 400), title: String(c.title || c.url).replace(/\s+/g, ' ').trim().slice(0, 140), text: String(c.cited_text || '').slice(0, 2000) })
     }
   }
-  return out.slice(0, 20)
+  return out.slice(0, 24)
 }
 
 function addUsage(total, u = {}) {
@@ -174,7 +173,7 @@ export async function callModel(client, { feature, system, user, schema, extraNo
       parsed = check.success ? check.data : null
     } catch { parsed = null }
   }
-  return { text, parsed, usage, model: response.model || model, stop, sources: sourcesOf(response.content), results: resultsOf(response.content) }
+  return { text, parsed, usage, model: response.model || model, stop, sources: sourcesOf(response.content), citations: citationsOf(response.content) }
 }
 
 function errorCode(err) {
@@ -247,7 +246,7 @@ export async function runAi(ctx, spec) {
   let code = null
   let output = null
   let sources = []
-  let results = []
+  let citations = []
   let answeredBy = model
 
   const scan = (out) => {
@@ -273,7 +272,7 @@ export async function runAi(ctx, spec) {
     } else {
       let out = spec.schema ? r.parsed : r.text.trim()
       if (out == null || out === '') throw Object.assign(new Error('unreadable answer'), { code: 'parse' })
-      sources = r.sources; results = r.results || []
+      sources = r.sources; citations = r.citations || []
 
       // 4. checks: grounding first, then fair housing; one regeneration in all
       const problem = () => {
@@ -298,11 +297,11 @@ export async function runAi(ctx, spec) {
           : p.note)
         if (r.stop !== 'refusal' && r.stop !== 'max_tokens') {
           const again = spec.schema ? r.parsed : r.text.trim()
-          if (again != null && again !== '') { out = again; sources = r.sources; results = r.results || [] }
+          if (again != null && again !== '') { out = again; sources = r.sources; citations = r.citations || [] }
         }
         p = problem()
       }
-      if (p) { usedFallback = true; status = 'fallback'; code = p.kind; output = spec.fallback; sources = []; results = [] }
+      if (p) { usedFallback = true; status = 'fallback'; code = p.kind; output = spec.fallback; sources = []; citations = [] }
       else output = out
     }
   } catch (err) {
@@ -329,7 +328,7 @@ export async function runAi(ctx, spec) {
   if (hash && !usedFallback) {
     await ctx.store.cacheSet(hash, { feature: spec.feature, dataVersion: spec.dataVersion || '', model: answeredBy, output })
   }
-  return { ok: true, output, cached: false, sources, results, fallback: usedFallback }
+  return { ok: true, output, cached: false, sources, citations, fallback: usedFallback }
 }
 
 // Every string in a JSON answer, joined, for the fair-housing scan.

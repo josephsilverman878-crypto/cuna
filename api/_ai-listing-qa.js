@@ -49,34 +49,49 @@ Rules
 - No advice on whether to rent or buy, no opinion on the price, no sales language.
 - Write only the answer. No preamble, nothing about searching, no list of links.`
 
-// The first `max` sentences of a text. A full stop after "a.m.", "St." and
-// the like, or before a lower-case word, does not end a sentence.
-export function firstSentences(text, max = 3) {
+// Splits a text into sentences. A full stop after "St." and the like, or
+// before a lower-case word ("9 a.m. to 2 p.m."), does not end a sentence.
+export function sentencesOf(text) {
   const parts = String(text || '').trim().split(/(?<=[.!?])\s+(?=[A-Z"\u201c])/)
   const out = []
   for (const part of parts) {
     const prev = out[out.length - 1]
     if (prev && /\b(?:St|Ave|Rd|Blvd|Pl|Mr|Ms|Mrs|Dr|No|Jr|Sr|Inc|Co|vs)\.$/.test(prev)) out[out.length - 1] = prev + ' ' + part
-    else out.push(part)
-  }
-  return out.slice(0, max).join(' ')
-}
-
-// The pages to link under a web answer: every page it cites, plus any other
-// search result whose site the answer names, so no source goes unlinked.
-export function linkedSources(answer, cited = [], results = []) {
-  const out = [...cited]
-  const text = String(answer || '').toLowerCase()
-  for (const r of results) {
-    if (out.length >= 6) break
-    if (out.some(s => s.url === r.url)) continue
-    let host = ''
-    try { host = new URL(r.url).hostname.replace(/^www\./, '').split('.').slice(-2)[0] || '' } catch { host = '' }
-    const site = String(r.title || '').split(/\s[-|\u2013\u2014]\s/).pop().trim().toLowerCase()
-    const named = (host.length >= 5 && text.includes(host)) || (site.length >= 5 && site !== String(r.title || '').toLowerCase() && text.includes(site))
-    if (named && !out.some(s => { try { return new URL(s.url).hostname === new URL(r.url).hostname } catch { return false } })) out.push(r)
+    else if (part) out.push(part)
   }
   return out
+}
+
+const COMMON = new Set(['according', 'which', 'their', 'there', 'these', 'those', 'about', 'with', 'from', 'that', 'this', 'have', 'does', 'also', 'into', 'your', 'listing', 'listed', 'lists', 'source', 'sources', 'page', 'says', 'said', 'been', 'will', 'would', 'they', 'them', 'than', 'then', 'when', 'where', 'what', 'near', 'more', 'most', 'other', 'only', 'open', 'year', 'york'])
+function tokens(text) {
+  const all = String(text || '').toLowerCase().match(/[a-z0-9]+/g) || []
+  return { words: new Set(all.filter(w => /^[a-z]{4,}$/.test(w) && !COMMON.has(w))), numbers: new Set(all.filter(w => /^\d+$/.test(w))) }
+}
+
+// Keeps only the sentences that rest on a passage the answer cites, at most
+// `max` of them, and returns each kept sentence's page. A sentence shares
+// words (or numbers) with the passage it came from; one that shares none
+// with any cited passage has no source to link, so it is not shown.
+//   citations: [{ url, title, text }]  ->  { answer, sources: [{ url, title }] }
+export function supportedAnswer(text, citations = [], max = 3) {
+  const cited = citations.map(c => ({ ...c, ...tokens(c.text + ' ' + c.title) }))
+  const kept = []
+  const sources = new Map()
+  for (const sentence of sentencesOf(text)) {
+    const mine = tokens(sentence)
+    let best = null, score = 0
+    for (const c of cited) {
+      const words = [...mine.words].filter(w => c.words.has(w)).length
+      const numbers = [...mine.numbers].filter(n => c.numbers.has(n)).length
+      const ok = words >= 3 || (words >= 1 && numbers >= 2)
+      if (ok && words + numbers > score) { best = c; score = words + numbers }
+    }
+    if (!best) continue
+    kept.push(sentence)
+    if (!sources.has(best.url)) sources.set(best.url, { url: best.url, title: best.title })
+    if (kept.length >= max) break
+  }
+  return { answer: kept.join(' '), sources: [...sources.values()].slice(0, 6) }
 }
 
 // A web answer must cite at least one page, or be one of the two fixed lines.
@@ -105,10 +120,14 @@ async function webAnswer(ctx, { l, hood, question }) {
     fallback: WEB_NOT_FOUND,
   })
   if (!r.ok || r.fallback) return null
-  // At most three sentences reach the page, whatever the model wrote.
-  const answer = firstSentences(clean(r.output, 1200), 3).slice(0, 700)
-  if (/couldn't find that/i.test(answer) || /not something I can advise on/i.test(answer) || !r.sources?.length) return null
-  return { answer, sources: linkedSources(answer, r.sources, r.results) }
+  const text = clean(r.output, 1200)
+  if (/couldn't find that/i.test(text) || /not something I can advise on/i.test(text) || !r.sources?.length) return null
+  // At most three sentences reach the page, and only sentences that rest on
+  // a cited passage, each with its page linked. The passages themselves
+  // are dropped here: only the answer and the links go to the browser.
+  const { answer, sources } = supportedAnswer(text, r.citations, 3)
+  if (!answer || sources.length === 0) return null
+  return { answer: answer.slice(0, 700), sources }
 }
 
 function money(n) { return '$' + Math.round(Number(n)).toLocaleString('en-US') }

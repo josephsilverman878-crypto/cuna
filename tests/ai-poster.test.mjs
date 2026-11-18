@@ -8,7 +8,7 @@ import { verifyFill, fillNotes, numbersIn } from '../api/_ai-fill.js'
 import { buildFill } from '../src/lib/fillFromNotes.js'
 import { postingHelp, HELP_TEXT, HELP_UNKNOWN, HELP_REFUSAL, checkHelp } from '../api/_ai-help.js'
 import { checkup, stripSentences, checkRewrite } from '../api/_ai-checkup.js'
-import { listingQa, checkWebAnswer, firstSentences, linkedSources, QA_UNKNOWN } from '../api/_ai-listing-qa.js'
+import { listingQa, checkWebAnswer, sentencesOf, supportedAnswer, QA_UNKNOWN } from '../api/_ai-listing-qa.js'
 import { checkupItems, priceVsArea, referenceFor } from '../src/lib/listingCheckup.js'
 import { scanAssistantOutput } from '../src/lib/fairHousing.js'
 
@@ -276,7 +276,7 @@ const fakeDb = {
   rpc: async (name) => (name === 'get_listing_public' ? { data: LISTING, error: null } : { data: [], error: null }),
   from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }) }),
 }
-const cite = (url, title) => ({ type: 'web_search_result_location', url, title, cited_text: 'x', encrypted_index: 'e' })
+const cite = (url, title) => ({ type: 'web_search_result_location', url, title, cited_text: 'NYC Buildings record: the building at 245 Example St was finished in 1931 and has six floors.', encrypted_index: 'e' })
 const webReply = (text, citations) => ({
   content: [
     { type: 'server_tool_use', id: 's1', name: 'web_search', input: { query: 'q' } },
@@ -292,19 +292,24 @@ test('web answers must cite a page or say they found nothing', () => {
   assert.equal(checkWebAnswer('According to the city, 1931.', { sources: [{ url: 'https://www.nyc.gov/b', title: 'x' }] }), null)
 })
 
-test('a web answer is cut to three sentences and every source it names is linked', () => {
-  const long = 'Yes. According to Marketspread, it runs Sundays from 9 a.m. to 2 p.m. in its 2026 season. It is on 4th St. off 5th Avenue. Older listings show other hours. LocalHarvest gives 10 a.m. to 4 p.m.'
-  assert.equal(firstSentences(long, 3), 'Yes. According to Marketspread, it runs Sundays from 9 a.m. to 2 p.m. in its 2026 season. It is on 4th St. off 5th Avenue.')
-  const cited = [{ url: 'https://marketspread.com/market/1', title: 'Park Slope Farmers Market - Marketspread' }]
-  const results = [
-    ...cited,
-    { url: 'https://www.localharvest.org/m1', title: 'Park Slope Market - LocalHarvest' },
-    { url: 'https://www.landcan.org/x', title: 'Farmers markets | Land Conservation Assistance Network' },
-    { url: 'https://example.org/unrelated', title: 'Unrelated page' },
+test('a web answer keeps only sentences that rest on a cited passage, at most three, each with its link', () => {
+  assert.deepEqual(sentencesOf('It runs Sundays from 9 a.m. to 2 p.m. in its 2026 season. It is on 4th St. off 5th Avenue. Done.'),
+    ['It runs Sundays from 9 a.m. to 2 p.m. in its 2026 season.', 'It is on 4th St. off 5th Avenue.', 'Done.'])
+  const citations = [
+    { url: 'https://marketspread.com/market/1', title: 'Park Slope Farmers Market - Marketspread', text: 'Down to Earth Park Slope Farmers Market. Market open Sundays, 9:00AM - 2:00PM, Year Round. 4th Street off 5th Avenue.' },
+    { url: 'https://www.bklynlibrary.org/locations/park-slope', title: 'Park Slope Library', text: 'Park Slope Library, 431 6th Ave, Brooklyn, NY 11215. Hours vary.' },
   ]
-  const text = 'According to Marketspread it is open Sundays. LocalHarvest and the Land Conservation Assistance Network list other hours.'
-  assert.deepEqual(linkedSources(text, cited, results).map(s => new URL(s.url).hostname), ['marketspread.com', 'www.localharvest.org', 'www.landcan.org'])
-  assert.deepEqual(linkedSources('According to Marketspread it is open Sundays.', cited, results), cited, 'a page the answer does not name is not listed')
+  const text = 'Marketspread lists the Down to Earth Park Slope Farmers Market on 4th Street as open Sundays. ' +
+    'According to state data, the Bartel-Pritchard Square Greenmarket at 205 Prospect Park West runs from May 3 to December 20. ' +
+    'The Park Slope Library is at 431 6th Ave in Brooklyn. ' +
+    'The listing gives only the ZIP code, so I cannot confirm which is nearest. ' +
+    'The market sits near 5th Avenue in Park Slope. ' +
+    'Sundays are the market days on 4th Street in Park Slope.'
+  const r = supportedAnswer(text, citations, 3)
+  assert.equal(r.answer, 'Marketspread lists the Down to Earth Park Slope Farmers Market on 4th Street as open Sundays. The Park Slope Library is at 431 6th Ave in Brooklyn. The market sits near 5th Avenue in Park Slope.')
+  assert.deepEqual(r.sources.map(x => new URL(x.url).hostname), ['marketspread.com', 'www.bklynlibrary.org'], 'each kept sentence has its page; a sentence with no cited passage is not shown')
+  assert.equal('text' in r.sources[0], false, 'the cited passage itself never leaves the server')
+  assert.deepEqual(supportedAnswer('Nothing here matches.', citations), { answer: '', sources: [] })
 })
 
 test("Cuna's data goes first; the web is used only when it has no answer and search is on", async () => {
